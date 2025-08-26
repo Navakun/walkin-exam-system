@@ -148,6 +148,10 @@
           showBanner(data.message || `ดึงผลสอบไม่สำเร็จ (HTTP ${resp.status})`, 'danger', 5000);
           return;
         }
+        
+        // แสดงคะแนน
+        document.getElementById('totalValue').textContent = data.data.total_questions || '0';
+        document.getElementById('correctValue').textContent = data.data.correct_count || '0';
 
         // รองรับชื่อฟิลด์ได้หลายแบบจาก API
         const total   = data.total ?? data.total_questions ?? data.questions_total ?? null;

@@ -65,12 +65,73 @@ try {
         exit;
     }
 
-    // ดึงเฉพาะข้อที่ยังไม่ได้ตอบ จาก question_ids ที่สุ่มไว้
-    $answered = $pdo->prepare('SELECT question_id FROM answer WHERE session_id = ?');
-    $answered->execute([$session_id]);
-    $answered_ids = $answered->fetchAll(PDO::FETCH_COLUMN);
-    $remaining = array_values(array_diff($question_ids, array_map('intval', $answered_ids)));
-    if (count($remaining) === 0) {
+    // จำกัดจำนวนข้อสอบต่อการสอบ
+    $LIMIT = 5;
+
+    // นับจำนวนข้อทั้งหมดในชุด แล้วจำกัดที่ 5
+    $total_in_set = count($question_ids);
+    $total_limit = min($LIMIT, $total_in_set);
+
+    // ดึงข้อที่ตอบไปแล้วพร้อมผลตอบ เพื่อปรับระดับความยาก
+    $stmAns = $pdo->prepare('
+        SELECT a.question_id, 
+               CASE WHEN a.selected_choice = q.correct_choice THEN 1 ELSE 0 END as is_correct,
+               q.difficulty
+        FROM answer a
+        JOIN question q ON q.question_id = a.question_id
+        WHERE a.session_id = ?
+    ');
+    $stmAns->execute([$session_id]);
+    $answered = $stmAns->fetchAll(PDO::FETCH_ASSOC);
+    $answered_ids = array_column($answered, 'question_id');
+
+    // คำนวณระดับความยากเฉลี่ยของข้อที่ตอบถูก
+    $avg_difficulty = 0.5; // ค่าเริ่มต้นกลาง
+    $correct_count = 0;
+    foreach ($answered as $ans) {
+        if ($ans['is_correct']) {
+            $avg_difficulty = ($avg_difficulty + $ans['difficulty']) / 2;
+            $correct_count++;
+        }
+    }
+
+    // ปรับระดับความยากตามผลตอบ
+    $target_difficulty = $avg_difficulty;
+    if ($correct_count / max(1, count($answered)) > 0.7) {
+        // ถ้าตอบถูกเกิน 70% เพิ่มความยาก
+        $target_difficulty += 0.1;
+    } elseif ($correct_count / max(1, count($answered)) < 0.3) {
+        // ถ้าตอบถูกน้อยกว่า 30% ลดความยาก
+        $target_difficulty -= 0.1;
+    }
+    $target_difficulty = max(0.1, min(0.9, $target_difficulty));
+
+    // ดึงข้อสอบที่ยังไม่ได้ตอบและมีความยากใกล้เคียงกับเป้าหมาย
+    $stmQ = $pdo->prepare("
+        SELECT q.question_id
+        FROM question q
+        JOIN exam_set_question esq ON esq.question_id = q.question_id
+        WHERE esq.examset_id = ?
+        AND q.question_id NOT IN (" . implode(',', array_fill(0, count($answered_ids), '?')) . ")
+        ORDER BY ABS(q.difficulty - ?) ASC
+        LIMIT ?
+    ");
+    
+    $params = [$examset_id];
+    foreach ($answered_ids as $aid) {
+        $params[] = $aid;
+    }
+    $params[] = $target_difficulty;
+    $params[] = $LIMIT - count($answered);
+    
+    $stmQ->execute($params);
+    $remaining_ids = $stmQ->fetchAll(PDO::FETCH_COLUMN);
+    $remaining = array_values($remaining_ids);
+
+    if (count($remaining) === 0 || count($answered_ids) >= $total_limit) {
+        // อัปเดต end_time ถ้าทำครบแล้ว
+        $pdo->prepare('UPDATE examsession SET end_time = COALESCE(end_time, NOW()) WHERE session_id = ?')
+            ->execute([$session_id]);
         echo json_encode(['status' => 'finished', 'message' => 'ทำข้อสอบครบแล้ว']);
         exit;
     }

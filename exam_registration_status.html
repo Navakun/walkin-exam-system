@@ -8,7 +8,40 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="favicon.ico">
-
+    <style>
+        .search-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .search-filters {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-filters input {
+            min-width: 200px;
+        }
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            display: inline-block;
+            text-align: center;
+            min-width: 100px;
+        }
+        .registered { background: #e3f2fd; color: #1976d2; }
+        .completed { background: #e8f5e9; color: #2e7d32; }
+        .cancelled { background: #ffebee; color: #c62828; }
+        .absent { background: #fff3e0; color: #ef6c00; }
+        .finished { background: #e8f5e9; color: #2e7d32; }
+        .table-container {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -36,10 +69,17 @@
 
         <!-- ส่วนค้นหา -->
         <div class="search-section">
-            <input type="text" id="searchInput" placeholder="ค้นหาด้วยรหัสนิสิต หรือ ชื่อ-นามสกุล">
-            <button onclick="searchRegistrations()" class="btn btn-primary">
-                <i class="fas fa-search"></i> ค้นหา
-            </button>
+            <div class="search-filters">
+                <input type="text" id="searchInput" placeholder="ค้นหาด้วยรหัสนิสิต หรือ ชื่อ-นามสกุล" class="form-control">
+                <label for="searchDate" class="form-label visually-hidden">ค้นหาด้วยวันที่สอบ</label>
+                <input type="date" id="searchDate" class="form-control" placeholder="เลือกวันที่สอบ" title="ค้นหาด้วยวันที่สอบ">
+                <button onclick="searchRegistrations()" class="btn btn-primary">
+                    <i class="fas fa-search"></i> ค้นหา
+                </button>
+                <button onclick="resetSearch()" class="btn btn-secondary">
+                    <i class="fas fa-redo"></i> ล้างการค้นหา
+                </button>
+            </div>
         </div>
 
         <!-- ตารางแสดงสถานะ -->
@@ -53,7 +93,7 @@
                         <th>เวลา</th>
                         <th>หัวข้อสอบ</th>
                         <th>สถานะ</th>
-                        <th>การดำเนินการ</th>
+                        <!-- <th>การดำเนินการ</th> -->
                     </tr>
                 </thead>
                 <tbody id="registrationTable">
@@ -214,11 +254,6 @@
                             ${getStatusText(reg.status)}
                         </span>
                     </td>
-                    <td>
-                        <button onclick="viewDetails('${reg.booking_id}')" class="action-btn">
-                            ดูรายละเอียด
-                        </button>
-                    </td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -230,7 +265,8 @@
                 'registered': 'ลงทะเบียนแล้ว',
                 'completed': 'สอบเสร็จสิ้น',
                 'cancelled': 'ยกเลิก',
-                'absent': 'ขาดสอบ'
+                'absent': 'ขาดสอบ',
+                'finished': 'สอบเสร็จแล้ว'
             };
             return statusMap[status] || status;
         }
@@ -238,13 +274,34 @@
         // ค้นหาการลงทะเบียน
         function searchRegistrations() {
             const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const searchDate = document.getElementById('searchDate').value;
             const rows = document.getElementById('registrationTable').getElementsByTagName('tr');
 
             Array.from(rows).forEach(row => {
                 const studentId = row.cells[0].textContent.toLowerCase();
                 const studentName = row.cells[1].textContent.toLowerCase();
-                const visible = studentId.includes(searchText) || studentName.includes(searchText);
+                const examDate = row.cells[2].textContent; // วันที่สอบในรูปแบบ dd/mm/yyyy
+                
+                // แปลงวันที่จาก dd/mm/yyyy เป็น yyyy-mm-dd เพื่อเปรียบเทียบ
+                const [day, month, year] = examDate.split('/');
+                const formattedExamDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+
+                // เช็คเงื่อนไขการค้นหา
+                const matchText = studentId.includes(searchText) || studentName.includes(searchText);
+                const matchDate = !searchDate || formattedExamDate === searchDate;
+                
+                const visible = matchText && matchDate;
                 row.style.display = visible ? '' : 'none';
+            });
+        }
+
+        // รีเซ็ตการค้นหา
+        function resetSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchDate').value = '';
+            const rows = document.getElementById('registrationTable').getElementsByTagName('tr');
+            Array.from(rows).forEach(row => {
+                row.style.display = '';
             });
         }
 

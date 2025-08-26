@@ -116,19 +116,75 @@ try {
     }
     $pdo->commit();
 
-    // (8) คำถามถัดไป
-    $stm = $pdo->prepare("
-        SELECT q.question_id, q.question_text
-        FROM exam_set_question esq
-        JOIN question q ON q.question_id = esq.question_id
-        WHERE esq.examset_id = ?
-        AND q.question_id NOT IN (
-            SELECT question_id FROM answer WHERE session_id = ?
-        )
-        ORDER BY q.question_id ASC
-        LIMIT 1
-    ");
-    $stm->execute([$examset_id, $session_id]);
+    // (8) ตรวจสอบจำนวนข้อที่ตอบและหาข้อถัดไป
+    $LIMIT = 5;
+
+    // ดึง question_ids จาก session
+    $stmQ = $pdo->prepare('SELECT question_ids FROM examsession WHERE session_id = ?');
+    $stmQ->execute([$session_id]);
+    $rowQ = $stmQ->fetch(PDO::FETCH_ASSOC);
+    $question_ids = json_decode($rowQ['question_ids'] ?? '[]', true);
+    if (!is_array($question_ids)) $question_ids = [];
+
+    // จำกัดที่ 5 ข้อ
+    $total_limit = min($LIMIT, count($question_ids));
+    $limited_qids = array_slice($question_ids, 0, $LIMIT);
+
+    // นับจำนวนข้อที่ตอบแล้ว
+    $stm = $pdo->prepare('SELECT COUNT(*) FROM answer WHERE session_id = ?');
+    $stm->execute([$session_id]);
+    $answered_count = (int)$stm->fetchColumn();
+
+    // ถ้าตอบครบแล้ว → คำนวณคะแนนและจบ
+    if ($answered_count >= $total_limit) {
+        // คำนวณคะแนนจากเฉพาะ 5 ข้อที่สุ่มได้
+        $score = 0;
+        foreach ($limited_qids as $qid) {
+            $stmA = $pdo->prepare('
+                SELECT a.selected_choice, q.correct_choice 
+                FROM answer a 
+                JOIN question q ON q.question_id = a.question_id
+                WHERE a.session_id = ? AND a.question_id = ?
+            ');
+            $stmA->execute([$session_id, $qid]);
+            $ans = $stmA->fetch(PDO::FETCH_ASSOC);
+            if ($ans && strtoupper($ans['selected_choice']) === strtoupper($ans['correct_choice'])) {
+                $score++;
+            }
+        }
+
+        // อัปเดตคะแนนและเวลาสิ้นสุด
+        $pdo->prepare('
+            UPDATE examsession 
+            SET score = ?, end_time = COALESCE(end_time, NOW()) 
+            WHERE session_id = ?
+        ')->execute([$score, $session_id]);
+
+        $pdo->commit();
+        echo json_encode([
+            'status' => 'finished',
+            'message' => 'ทำข้อสอบครบแล้ว',
+            'score' => $score
+        ]);
+        exit;
+    }
+
+    // หาข้อถัดไปจากกลุ่ม 5 ข้อแรก
+    $answered_ids = $pdo->prepare('SELECT question_id FROM answer WHERE session_id = ?');
+    $answered_ids->execute([$session_id]);
+    $answered = $answered_ids->fetchAll(PDO::FETCH_COLUMN);
+    
+    $remaining = array_values(array_diff($limited_qids, array_map('intval', $answered)));
+    if (empty($remaining)) {
+        $pdo->prepare('UPDATE examsession SET end_time = COALESCE(end_time, NOW()) WHERE session_id = ?')
+            ->execute([$session_id]);
+        $pdo->commit();
+        echo json_encode(['status' => 'finished', 'message' => 'ทำข้อสอบครบแล้ว']);
+        exit;
+    }
+
+    $stm = $pdo->prepare("SELECT question_id, question_text FROM question WHERE question_id = ?");
+    $stm->execute([$remaining[0]]);
     $nextQ = $stm->fetch(PDO::FETCH_ASSOC);
 
     if (!$nextQ) {

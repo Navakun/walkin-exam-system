@@ -121,9 +121,10 @@ try {
     }
 
     // --- ตรวจสอบว่านักศึกษามี booking/exambooking สำหรับ examset_id นี้หรือไม่ ---
-    $stmB = $pdo->prepare('SELECT booking_id FROM exambooking WHERE student_id = ? AND examset_id = ? AND status = "registered" ORDER BY booking_id DESC LIMIT 1');
-    $stmB->execute([$student_id, $examset_id]);
-    if (!$stmB->fetchColumn()) {
+    $stmB = $pdo->prepare('SELECT booking_id FROM exambooking WHERE student_id = ? AND status = "registered" LIMIT 1');
+    $stmB->execute([$student_id]);
+    $booking = $stmB->fetch(PDO::FETCH_ASSOC);
+    if (!$booking) {
         http_response_code(403);
         echo json_encode(['status' => 'error', 'message' => 'คุณยังไม่ได้ลงทะเบียนสอบ กรุณาลงทะเบียนก่อนเข้าสอบ']);
         exit;
@@ -141,12 +142,12 @@ try {
     $qstmt = $pdo->prepare('SELECT question_id FROM exam_set_question WHERE examset_id = ? ORDER BY RAND() LIMIT 5');
     $qstmt->execute([$examset_id]);
     $qids = $qstmt->fetchAll(PDO::FETCH_COLUMN);
-    if (count($qids) < 1) {
+    if (count($qids) != 5) {  // เปลี่ยนเงื่อนไขให้ต้องได้ 5 ข้อพอดี
         http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => 'ไม่พบข้อสอบในชุดนี้']);
+        echo json_encode(['status' => 'error', 'message' => 'ไม่สามารถสุ่มข้อสอบได้ครบ 5 ข้อ']);
         exit;
     }
-    $question_ids_json = json_encode(array_map('intval', $qids));
+    $question_ids_json = json_encode(array_map('intval', array_slice($qids, 0, 5)));
 
     // --- สร้าง session ใหม่ พร้อมบันทึก question_ids ---
     $stmI = $pdo->prepare('

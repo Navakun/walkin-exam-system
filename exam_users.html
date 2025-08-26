@@ -123,6 +123,11 @@
                 <td>${r.score ?? '-'}</td>
                 <td>${r.start_time ?? '-'}</td>
                 <td>${r.end_time ?? '-'}</td>
+                <td>
+                    <button onclick="viewDetails('${r.session_id}')" class="btn-details">
+                        <i class="fas fa-info-circle"></i> ดูรายละเอียด
+                    </button>
+                </td>
             `;
                                         tbody.appendChild(tr);
                                 }
@@ -147,6 +152,44 @@
         document.getElementById('searchInput').addEventListener('input', (e) => {
             filterTable(e.target.value);
         });
+
+        // ฟังก์ชันดูรายละเอียด
+        async function viewDetails(sessionId) {
+            try {
+                const token = localStorage.getItem('teacherToken');
+                const response = await fetch(`/exam_project2/api/get_booking_details.php?id=${sessionId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch details');
+                }
+
+                const data = await response.json();
+                if (data.status === 'error') {
+                    throw new Error(data.message);
+                }
+
+                // แสดงรายละเอียดในรูปแบบ modal หรือ alert
+                alert(`
+รายละเอียดการสอบ:
+รหัสนิสิต: ${data.details.student_id}
+ชื่อ-นามสกุล: ${data.details.student_name}
+วันที่สอบ: ${data.details.exam_date}
+เวลาสอบ: ${data.details.exam_time}
+ชุดข้อสอบ: ${data.details.exam_title}
+คะแนน: ${data.details.score || '-'}
+สถานะ: ${data.details.status}
+                `);
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('ไม่สามารถดึงข้อมูลรายละเอียดได้: ' + error.message);
+            }
+        }
     </script>
 
 </body>

@@ -46,7 +46,7 @@ try {
     $stmtSession->execute([':session_id' => $session_id]);
     $sessionData = $stmtSession->fetch(PDO::FETCH_ASSOC);
     $question_ids = json_decode($sessionData['question_ids'], true);
-    $total_questions = count($question_ids);
+    $total_questions = 5; // กำหนดให้เป็น 5 ข้อตามโจทย์
 
     echo json_encode([
         'status' => 'success',

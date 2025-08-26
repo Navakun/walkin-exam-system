@@ -282,14 +282,6 @@
             timeSlotForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
 
-                // ตรวจสอบ token
-                const token = localStorage.getItem('teacher_token');
-                if (!token) {
-                    showError('กรุณาเข้าสู่ระบบใหม่');
-                    window.location.href = 'teacher_login.html';
-                    return;
-                }
-
                 const formData = {
                     slot_date: document.getElementById('examDate').value,
                     start_time: document.getElementById('startTime').value,
