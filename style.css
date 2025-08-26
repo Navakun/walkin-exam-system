@@ -1,0 +1,1779 @@
+/* Registration Page Modern Styles */
+.reg-bg {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0;
+}
+
+.reg-header {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 0 12px 0;
+    margin-bottom: 10px;
+}
+
+.logo-text {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.course-title h2 {
+    font-size: 2rem;
+    color: #1e293b;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.top-right {
+    display: flex;
+    gap: 10px;
+}
+
+.reg-main {
+    width: 100%;
+    max-width: 500px;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px 0 rgba(30,41,59,0.08);
+    padding: 32px 28px 28px 28px;
+    margin-bottom: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.student-name {
+    font-size: 1.1rem;
+    color: #334155;
+    margin-bottom: 18px;
+    font-weight: 500;
+}
+
+.slot-list {
+    margin-bottom: 24px;
+}
+
+.slot-card {
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 18px 16px;
+    margin: 12px 0;
+    background: #f1f5f9;
+    box-shadow: 0 2px 8px 0 rgba(30,41,59,0.04);
+    cursor: pointer;
+    transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
+    font-size: 1rem;
+}
+.slot-card.selected {
+    border-color: #2563eb;
+    background: #e0e7ff;
+    box-shadow: 0 4px 16px 0 rgba(37,99,235,0.10);
+}
+.slot-card strong {
+    color: #1e293b;
+}
+
+.reg-confirm-btn {
+    width: 100%;
+    background: linear-gradient(90deg, #2563eb 0%, #6366f1 100%);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 14px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px 0 rgba(99,102,241,0.10);
+    margin-top: 10px;
+    transition: background 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+.reg-confirm-btn:hover {
+    background: linear-gradient(90deg, #6366f1 0%, #2563eb 100%);
+    box-shadow: 0 4px 16px 0 rgba(99,102,241,0.18);
+}
+/* Hide elements with the .hidden class */
+.hidden {
+    display: none !important;
+}
+/* ปุ่มเลือกเวลาสำหรับ register_exam.html */
+.select-slot-btn {
+    background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.08);
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.select-slot-btn:hover:not(:disabled) {
+    background: linear-gradient(90deg, #1e40af 0%, #2563eb 100%);
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 4px 16px rgba(37,99,235,0.15);
+}
+.select-slot-btn:disabled {
+    background: #e5e7eb;
+    color: #aaa;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+/* =================================
+   1. General & Reusable Styles (ใช้ร่วมกันทุกหน้า)
+   ================================= */
+
+:root {
+    --primary-color: #2563eb;
+    --secondary-color: #3b82f6;
+    --success-color: #22c55e;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --info-color: #3b82f6;
+    --light-color: #f3f4f6;
+    --dark-color: #1f2937;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Kanit', 'Prompt', 'Arial', sans-serif;
+    text-align: center;
+    background: linear-gradient(135deg, #f4f6f9 0%, #ffffff 100%);
+    color: #333;
+    position: relative;
+    z-index: 0;
+    overflow-x: hidden;
+    min-height: 100vh;
+}
+
+/* ถ้าต้องการใช้ Video Background ในหน้าไหน ให้ยกเลิกคอมเมนต์ส่วนนี้*/
+#bg-video {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    transform: translateX(-50%) translateY(-50%);
+    z-index: -1;
+    filter: brightness(0.6);
+    pointer-events: none;
+}
+
+
+
+header {
+    background: rgba(255, 255, 255, 0.95);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    border-bottom: 1px solid rgba(224, 224, 224, 0.5);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+                0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.logo-text {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.logo-text h2 {
+    font-size: 18px;
+    margin: 0;
+    color: #333;
+    text-align: left;
+}
+
+/* Message Box Styles */
+.message {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 16px;
+    animation: fadeIn 0.5s ease-in;
+}
+
+.message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.top-right a,
+.top-right button {
+    color: black;
+    text-decoration: none;
+}
+
+.logout-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.logout-btn:hover {
+    background: #c82333;
+}
+
+
+/* =================================
+   2. Login Page Styles (สำหรับ login.html, teacher_login.html)
+   ================================= */
+.login-box {
+    background: #ffffff;
+    padding: 30px 40px;
+    margin: 60px auto;
+    width: 350px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.login-box h2 {
+    margin-top: 0;
+    color: #333;
+}
+
+.login-box p {
+    color: #666;
+    margin-bottom: 25px;
+}
+
+.login-box input {
+    margin-bottom: 15px;
+    padding: 12px 15px;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+.login-box button {
+    margin-top: 10px;
+    padding: 12px;
+    width: 100%;
+    border-radius: 8px;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.login-box button:hover {
+    background-color: #0056b3;
+}
+
+
+/* =================================
+   3. Exam Selection Page Styles (สำหรับ choose_exam.html)
+   ================================= */
+.exam-choose {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.exam-choose h2 {
+    color: #333;
+    font-size: 2.5rem;
+    margin-bottom: 30px;
+}
+
+.exam-choose .exam-set {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 30px;
+}
+
+.exam-choose .card {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    flex-basis: 300px;
+    flex-grow: 1;
+    max-width: 350px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.exam-choose .card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.exam-choose .card h3 {
+    margin-top: 0;
+    font-size: 1.5rem;
+    color: #0056b3;
+}
+
+.exam-choose .card p {
+    font-size: 1rem;
+    line-height: 1.5;
+    flex-grow: 1;
+}
+
+.exam-choose .card a {
+    margin-top: auto;
+}
+
+.exam-choose .card button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.exam-choose .card button:hover {
+    background-color: #218838;
+}
+
+/* =================================
+   4. Exam Page Styles (สำหรับ exam_page.html)
+   ================================= */
+.exam-container {
+    max-width: 800px;
+    margin: 40px auto;
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.exam-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+#timer {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #dc3545;
+}
+
+#question-area h3 {
+    font-size: 1.8rem;
+    margin-bottom: 25px;
+    text-align: left;
+    line-height: 1.5;
+}
+
+#choices-container {
+    text-align: left;
+}
+
+.choice-item {
+    display: block;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.choice-item:hover {
+    background-color: #f8f9fa;
+}
+
+.choice-item input[type="radio"] {
+    margin-right: 10px;
+}
+
+#next-btn {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: white;
+    background-color: #007bff;
+    border: none;
+    border-radius: 8px;
+    margin-top: 30px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#next-btn:hover {
+    background-color: #0056b3;
+}
+
+#next-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+
+/* =================================
+   5. Result Page Styles (สำหรับ result_page.html)
+   ================================= */
+.result-container {
+    max-width: 600px;
+    margin: 40px auto;
+    background: white;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.result-container h1 {
+    color: #28a745;
+    font-size: 2.2rem;
+}
+
+.score-display {
+    font-size: 1.5rem;
+    margin: 20px 0;
+}
+
+.score-display span {
+    font-weight: bold;
+    font-size: 2.5rem;
+    /* ขยายขนาดคะแนนให้เด่นขึ้น */
+    color: #007bff;
+    display: block;
+    margin-top: 10px;
+}
+
+.summary-text {
+    font-size: 1.2rem;
+}
+
+.action-button {
+    display: inline-block;
+    margin-top: 30px;
+    padding: 12px 25px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: white;
+    background-color: #17a2b8;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.action-button:hover {
+    background-color: #138496;
+}
+
+/* =================================
+   6. Teacher Dashboard Styles (สำหรับ question_bank.html, exam_users.html)
+   ================================= */
+
+.teacher-dashboard {
+    padding: 30px;
+    max-width: 1200px;
+    margin: 40px auto;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.teacher-dashboard h1 {
+    margin-top: 0;
+}
+
+/* --- ตาราง --- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 1rem;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+tr:hover {
+    background-color: #e9ecef;
+}
+
+/* --- ปุ่มจัดการในตาราง --- */
+.actions button {
+    margin-right: 5px;
+    padding: 6px 12px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.btn-edit {
+    background-color: #ffc107;
+}
+
+.btn-delete {
+    background-color: #dc3545;
+}
+
+.btn-edit:hover {
+    background-color: #e0a800;
+}
+
+.btn-delete:hover {
+    background-color: #c82333;
+}
+
+/* --- สีระดับความยาก --- */
+.difficulty-1 {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.difficulty-2 {
+    color: #fd7e14;
+    font-weight: bold;
+}
+
+.difficulty-3 {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* --- ช่องค้นหา --- */
+.search-container {
+    margin-bottom: 20px;
+}
+
+#searchInput {
+    width: 50%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    font-size: 1rem;
+}
+
+/* =================================
+   7. Teacher Dashboard Page Styles (สำหรับ teacher_dashboard.html)
+   ================================= */
+
+.teacher-dashboard-main {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.dashboard-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    /* ระยะห่างระหว่างกล่อง */
+    margin-top: 30px;
+}
+
+.dashboard-card {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 40px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    width: 300px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-10px);
+}
+
+/* =================================
+   8. Registration Form Styles (สำหรับ register_exam.html)
+   ================================= */
+
+.exam-form {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.exam-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.exam-info h3 {
+    margin-top: 0;
+    color: #333;
+}
+
+.submit-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+}
+
+.submit-btn:hover {
+    background: #218838;
+}
+
+.error-message {
+    color: #dc3545;
+    margin-top: 5px;
+    font-size: 14px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.dashboard-card h3 {
+    margin-top: 0;
+    font-size: 1.5rem;
+    color: #333;
+}
+
+#bg-video {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    min-width: 100%;
+    min-height: 100%;
+    z-index: -1;
+}
+
+.login-box,
+header {
+    position: relative;
+    z-index: 1;
+}
+
+/* ==== Patch for choose_exam.html components ==== */
+
+/* การ์ดข้อสอบให้หน้าตาเหมือน .exam-choose .card เดิม */
+.exam-card {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    flex-basis: 300px;
+    flex-grow: 1;
+    max-width: 350px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.exam-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.exam-card h3 {
+    margin-top: 0;
+    font-size: 1.5rem;
+    color: #0056b3;
+}
+
+.exam-card .exam-meta {
+    font-size: 0.95rem;
+    color: #666;
+    margin: 8px 0 16px;
+}
+
+/* ปุ่มเริ่มทำข้อสอบ */
+.start-btn {
+    background-color: #28a745;
+    color: #fff;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.start-btn:hover {
+    background-color: #218838;
+}
+
+/* คอนเทนเนอร์การ์ด (สำรอง ถ้าไม่มี) */
+.exam-set {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 30px;
+}
+
+/* กล่องแจ้งข้อผิดพลาด */
+#errorBox {
+    max-width: 1200px;
+    margin: 10px auto 0;
+    text-align: center;
+}
+
+/* ให้การ์ดปรับเรียงดีบนหน้าจอเล็ก */
+@media (max-width: 600px) {
+    .exam-card {
+        max-width: 100%;
+        padding: 20px;
+    }
+}
+
+/* =================================
+   8. Homepage Styles (สำหรับ homepage.html)
+   ================================= */
+.home-content {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 20px;
+}
+
+.welcome-box {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.welcome-box h1 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-size: 2em;
+}
+
+.welcome-box h2 {
+    color: #7f8c8d;
+    margin-bottom: 30px;
+    font-size: 1.5em;
+}
+
+.info-section {
+    margin: 30px 0;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    text-align: left;
+}
+
+.info-section h3 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+}
+
+.info-section p {
+    margin: 8px 0;
+    color: #34495e;
+}
+
+.action-buttons {
+    margin-top: 30px;
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.primary-btn, .secondary-btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.primary-btn {
+    background: #3498db;
+    color: white;
+}
+
+.secondary-btn {
+    background: #95a5a6;
+    color: white;
+}
+
+.primary-btn:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
+.secondary-btn:hover {
+    background: #7f8c8d;
+    transform: translateY(-2px);
+}
+
+.login-btn, .teacher-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    margin-left: 10px;
+    color: white;
+}
+
+.login-btn {
+    background: #3498db;
+}
+
+.teacher-btn {
+    background: #95a5a6;
+}
+
+/* =================================
+   9. Registration Status Page Styles
+   ================================= */
+.hidden {
+    display: none;
+}
+.alert {
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease-out;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert::before {
+    content: '';
+    width: 24px;
+    height: 24px;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+
+.alert-success {
+    color: #065f46;
+    background-color: #d1fae5;
+    border-color: #a7f3d0;
+}
+
+.alert-success::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23065f46'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 13l4 4L19 7'/%3E%3C/svg%3E");
+}
+
+.alert-danger {
+    color: #991b1b;
+    background-color: #fee2e2;
+    border-color: #fecaca;
+}
+
+.alert-danger::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23991b1b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'/%3E%3C/svg%3E");
+}
+
+.alert-warning {
+    color: #92400e;
+    background-color: #fff7ed;
+    border-color: #fed7aa;
+}
+
+.alert-warning::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2392400e'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'/%3E%3C/svg%3E");
+}
+
+.alert-info {
+    color: #1e40af;
+    background-color: #e0f2fe;
+    border-color: #bae6fd;
+}
+
+.alert-info::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e40af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'/%3E%3C/svg%3E");
+}
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.9em;
+}
+.status-badge.registered {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+.status-badge.completed {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+.status-badge.cancelled {
+    background-color: #ffebee;
+    color: #c62828;
+}
+.status-badge.absent {
+    background-color: #fff3e0;
+    color: #ef6c00;
+}
+.action-btn {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #2196f3;
+    color: white;
+    cursor: pointer;
+}
+.action-btn:hover {
+    background-color: #1976d2;
+}
+.search-section {
+    margin: 20px 0;
+    display: flex;
+    gap: 10px;
+}
+.search-section input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+.search-section button {
+    padding: 8px 15px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.search-section button:hover {
+    background-color: #388e3c;
+}
+.table-container {
+    overflow-x: auto;
+}
+
+/* =================================
+   10. Teacher Dashboard Additional Styles
+   ================================= */
+.page-wrap {
+    max-width: 1100px;
+    margin: 24px auto;
+    padding: 0 16px;
+}
+
+.toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.toolbar .spacer {
+    flex: 1;
+}
+
+.table-wrap {
+    overflow: auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .08);
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #ffffff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+thead th {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(to bottom, #f8fafc 0%, #f1f5f9 100%);
+    text-align: left;
+    padding: 16px;
+    font-weight: 600;
+    color: var(--dark-color);
+    border-bottom: 2px solid #e5e7eb;
+    white-space: nowrap;
+    transition: background-color 0.2s ease;
+}
+
+thead th:hover {
+    background: #f1f5f9;
+}
+
+tbody td {
+    padding: 16px;
+    border-bottom: 1px solid #f2f2f2;
+    transition: all 0.2s ease;
+}
+
+tbody tr:hover td {
+    background-color: rgba(37, 99, 235, 0.05);
+}
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* เพิ่ม zebra striping effect */
+tbody tr:nth-child(even) {
+    background-color: rgba(243, 244, 246, 0.3);
+}
+
+tbody tr:hover {
+    background: #fafafa;
+}
+
+.pill {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    background: #eef2ff;
+
+/* =================================
+    11. Student Exam Page Styles
+    ================================= */
+
+.exam-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #eee;
+}
+
+.exam-info h1 {
+    margin: 0 0 10px 0;
+    color: var(--primary-color);
+}
+
+.exam-info p {
+    margin: 0;
+    color: #666;
+}
+
+.exam-timer {
+    text-align: center;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    padding: 15px 25px;
+    border-radius: 12px;
+    color: white;
+}
+
+.timer-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+#timer {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+#question-area {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.choice-item {
+    display: block;
+    padding: 15px;
+    margin: 10px 0;
+    border: 2px solid #eee;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    padding-left: 45px;
+}
+
+.choice-item:hover {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.choice-item input[type="radio"] {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: 10px;
+}
+
+#next-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+}
+
+#next-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+#next-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.exam-progress {
+    margin: 20px 0;
+    padding: 15px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.progress-text {
+    text-align: center;
+    margin-bottom: 10px;
+    color: var(--dark-color);
+    font-weight: 500;
+}
+
+.progress-bar {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#progress-fill {
+    height: 100%;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.confirm-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    animation: slideIn 0.3s ease-out;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.modal-btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.modal-btn.confirm {
+    background: var(--danger-color);
+    color: white;
+}
+
+.modal-btn.cancel {
+    background: #e5e7eb;
+    color: var(--dark-color);
+}
+
+.modal-btn:hover {
+    transform: translateY(-1px);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+}
+
+/* =================================
+   11. Student Exam Page Styles
+   ================================= */
+
+.exam-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #eee;
+}
+
+.exam-info h1 {
+    margin: 0 0 10px 0;
+    color: var(--primary-color);
+}
+
+.exam-info p {
+    margin: 0;
+    color: #666;
+}
+
+.exam-timer {
+    text-align: center;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    padding: 15px 25px;
+    border-radius: 12px;
+    color: white;
+}
+
+.timer-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+#timer {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+#question-area {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.choice-item {
+    display: block;
+    padding: 15px;
+    margin: 10px 0;
+    border: 2px solid #eee;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    padding-left: 45px;
+}
+
+.choice-item:hover {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.choice-item input[type="radio"] {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: 10px;
+}
+
+#next-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+}
+
+#next-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+#next-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.exam-progress {
+    margin: 20px 0;
+    padding: 15px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.progress-text {
+    text-align: center;
+    margin-bottom: 10px;
+    color: var(--dark-color);
+    font-weight: 500;
+}
+
+.progress-bar {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#progress-fill {
+    height: 100%;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.confirm-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    animation: slideIn 0.3s ease-out;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.modal-btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.modal-btn.confirm {
+    background: var(--danger-color);
+    color: white;
+}
+
+.modal-btn.cancel {
+    background: #e5e7eb;
+    color: var(--dark-color);
+}
+
+.modal-btn:hover {
+    transform: translateY(-1px);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.btn {
+    border: 0;
+    border-radius: 12px;
+    padding: 12px 24px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    letter-spacing: 0.025em;
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn.primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: #fff;
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2),
+                0 2px 4px -1px rgba(37, 99, 235, 0.1);
+}
+
+.btn.primary:hover {
+    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+    box-shadow: 0 6px 8px -1px rgba(37, 99, 235, 0.3),
+                0 4px 6px -1px rgba(37, 99, 235, 0.2);
+    transform: translateY(-1px);
+}
+
+.btn.gray {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    color: var(--dark-color);
+}
+
+.btn.gray:hover {
+    background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+    transform: translateY(-1px);
+}
+
+.input {
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    min-width: 260px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--dark-color);
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    background: #ffffff;
+}
+
+.input:hover {
+    border-color: #d1d5db;
+}
+
+.input::placeholder {
+    color: #9ca3af;
+    opacity: 0.8;
+}
+
+.error {
+    color: #dc2626;
+    margin: 8px 0;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #ffffff;
+    color: #333;
+}
+
+header .logo-text {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+header img {
+    height: 48px;
+}
+
+header .top-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.logout-btn {
+    background: #dc2626;
+    color: #fff;
+    border: 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.muted {
+    color: #64748b;
+}
+
+/* ปุ่มกลับหน้าหลัก */
+.home-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #28a745;
+    color: white !important;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    margin-right: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.home-btn:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    text-decoration: none;
+    color: white !important;
+}
+
+.home-btn i {
+    font-size: 1.1rem;
+    margin-right: 5px;
+}
+
+.home-btn i {
+    font-size: 16px;
+}
+
+/* === Dashboard Styles === */
+.welcome-banner {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    padding: 40px 20px;
+    border-radius: 16px;
+    margin-bottom: 40px;
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15);
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.welcome-banner h2 {
+    font-size: 2.5rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.welcome-banner .welcome-text {
+    font-size: 1.2rem;
+    margin: 10px 0 0;
+    opacity: 0.9;
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    padding: 25px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    text-decoration: none;
+    color: var(--dark-color);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border-color: var(--primary-color);
+}
+
+.card-icon {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.card-content {
+    flex: 1;
+    text-align: left;
+}
+
+.card-content h3 {
+    margin: 0 0 5px;
+    font-size: 1.4rem;
+    color: var(--dark-color);
+}
+
+.card-content p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+.card-arrow {
+    color: #9ca3af;
+    font-size: 20px;
+    transition: transform 0.3s ease;
+}
+
+.card:hover .card-arrow {
+    transform: translateX(5px);
+    color: var(--primary-color);
+}
+
+.dashboard-footer {
+    text-align: center;
+    padding: 20px;
+    color: #6b7280;
+    font-size: 0.9rem;
+    margin-top: 40px;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>แผงควบคุมนิสิต</title>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.ico">
+</head>
+
+<body>
+  <header>
+    <div class="logo-text">
+      <img src="nulogo.png" alt="Logo" height="60">
+      <div class="course-title">
+        <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ<br>มหาวิทยาลัยนเรศวร</h2>
+      </div>
+    </div>
+    <div class="top-right">
+      <span id="studentName"></span>
+      <button id="logoutBtn" class="logout-btn">ออกจากระบบ</button>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <div class="welcome-banner">
+      <h2><i class="fas fa-graduation-cap"></i> แผงควบคุมนิสิต</h2>
+      <p class="welcome-text">ยินดีต้อนรับสู่ระบบจัดการการสอบออนไลน์</p>
+    </div>
+
+    <div class="card-list">
+  <a href="register_exam.html" class="card">
+        <div class="card-icon">
+          <i class="fas fa-calendar-alt"></i>
+        </div>
+        <div class="card-content">
+          <h3>ลงทะเบียนวันสอบ</h3>
+          <p>เลือกช่วงเวลาสอบที่ต้องการ</p>
+        </div>
+        <div class="card-arrow">
+          <i class="fas fa-chevron-right"></i>
+        </div>
+      </a>
+      
+      <a href="student_registration_status.html" class="card">
+        <div class="card-icon">
+          <i class="fas fa-list-check"></i>
+        </div>
+        <div class="card-content">
+          <h3>สถานะการลงทะเบียน</h3>
+          <p>ดูข้อมูลการลงทะเบียนสอบของคุณ</p>
+        </div>
+        <div class="card-arrow">
+          <i class="fas fa-chevron-right"></i>
+        </div>
+      </a>
+
+      <a href="student_exam.html" class="card" onclick="handleStartExam()">
+        <div class="card-icon">
+          <i class="fas fa-edit"></i>
+        </div>
+        <div class="card-content">
+          <h3>เข้าสอบ</h3>
+          <p>เข้าสู่ระบบการสอบเมื่อถึงเวลา</p>
+        </div>
+        <div class="card-arrow">
+          <i class="fas fa-chevron-right"></i>
+        </div>
+      </a>
+    </div>
+  </main>
+  
+  <footer class="dashboard-footer">
+    <p>© 2025 ระบบจัดการการสอบออนไลน์ มหาวิทยาลัยนเรศวร</p>
+  </footer>
+
+  <script>
+    function parseJwt(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+
+        return JSON.parse(jsonPayload);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    const token = localStorage.getItem('studentToken');
+    if (!token) {
+  window.location.href = 'student_login.html';
+    } else {
+      const payload = parseJwt(token);
+      if (payload && payload.name) {
+        let displayName = payload.name;
+        if (payload.student_id) {
+          displayName = `${payload.student_id} ${payload.name}`;
+        }
+        document.getElementById('studentName').innerText = displayName;
+      }
+    }
+
+    function handleStartExam() {
+    const session_id = localStorage.getItem('session_id');
+    const examset_id = localStorage.getItem('examset_id');
+
+    if (session_id && examset_id) {
+      window.location.href = 'student_exam.html';
+    } else {
+      alert('คุณยังไม่ได้ลงทะเบียนสอบ กรุณาลงทะเบียนก่อนเข้าสอบ');
+      window.location.href = 'register_exam.html';
+    }
+  }
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  if (confirm('คุณต้องการออกจากระบบหรือไม่?')) {
+    localStorage.clear();
+  window.location.href = 'student_login.html';
+  }
+});
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('studentToken');
+      localStorage.removeItem('studentId');
+  window.location.href = 'student_login.html';
+    });
+  </script>
+</body>
+
+</html>

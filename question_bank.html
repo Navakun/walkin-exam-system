@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <title>คลังข้อสอบ</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:," />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .select-filter {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            min-width: 200px;
+            background-color: white;
+        }
+
+        .select-filter:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo-text">
+            <img src="nulogo.png" alt="Logo" height="80">
+            <div class="course-title">
+                <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ มหาวิทยาลัยนเรศวร</h2>
+            </div>
+        </div>
+        <div class="top-right">
+            <button id="backBtn" class="home-btn">กลับหน้าหลัก</button>
+            <button id="logoutBtn" class="logout-btn">ออกจากระบบ</button>
+        </div>
+    </header>
+
+    <main class="teacher-dashboard">
+        <h1>คลังข้อสอบ</h1>
+        <div id="errorBox" class="message error" style="display: none;"></div>
+        <div class="action-bar">
+            <button id="addQuestionBtn" class="action-button">เพิ่มคำถามใหม่</button>
+            <label for="examsetFilter" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">กรองชุดข้อสอบ</label>
+            <select id="examsetFilter" class="select-filter">
+                <option value="0">ทุกชุดข้อสอบ</option>
+                <option value="1">ชุดที่ 1: บทที่ 1</option>
+                <option value="2">ชุดที่ 2: บทที่ 2</option>
+            </select>
+        </div>
+        <hr>
+        <div id="question-list-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th style="width: 40%;">คำถาม</th>
+                        <th>คำตอบที่ถูก</th>
+                        <th>ระดับความยาก</th>
+                        <th>ชุดข้อสอบ</th>
+                        <th>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="question-table-body">
+                    <tr><td colspan="5" style="text-align: center;">กำลังโหลดรายการคำถาม...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+    const tableBody = document.getElementById('question-table-body');
+    const teacherToken = localStorage.getItem('teacherToken');
+    let allQuestions = []; // เก็บข้อมูลคำถามทั้งหมด
+    
+    // ถ้าไม่มี token ให้ redirect ไปหน้า login ทันที
+    if (!teacherToken) {
+        window.location.href = 'teacher_login.html';
+    }
+
+    // [เพิ่ม] Object สำหรับแปลงตัวเลขระดับความยากเป็นข้อความสี
+    const difficultyMap = {
+        1: '<span class="difficulty-1">ง่าย</span>',
+        2: '<span class="difficulty-2">ปานกลาง</span>',
+        3: '<span class="difficulty-3">ยาก</span>'
+    };
+
+    async function loadQuestions() {
+        if (!teacherToken) {
+            alert('กรุณาเข้าสู่ระบบสำหรับอาจารย์ก่อน');
+            window.location.href = 'teacher_login.html';
+            return;
+        }
+        
+        const examsetFilter = document.getElementById('examsetFilter');
+        examsetFilter.value = '0'; // รีเซ็ตตัวกรองเป็นแสดงทั้งหมด
+        
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">กำลังโหลดรายการคำถาม...</td></tr>';
+        try {
+            const response = await fetch('/exam_project2/api/get_all_questions.php', {
+                method: 'GET',
+                headers: { 
+                    'Authorization': `Bearer ${teacherToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (!response.ok) {
+                const errorResult = await response.json();
+                throw new Error(errorResult.message || 'Token ไม่ถูกต้อง');
+            }
+            const result = await response.json();
+            tableBody.innerHTML = '';
+            
+            // ตรวจสอบโครงสร้างของ response
+            if (!result.status || result.status === 'error') {
+                throw new Error(result.message || 'ไม่สามารถโหลดข้อมูลได้');
+            }
+
+            allQuestions = result.data || [];
+            // เรียงลำดับตาม question_id จากน้อยไปมาก
+            allQuestions.sort((a, b) => a.question_id - b.question_id);
+            filterQuestions();
+            
+            if (allQuestions.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ยังไม่มีคำถามในคลังข้อสอบ</td></tr>';
+            } else {
+                allQuestions.forEach(q => {
+                    const row = tableBody.insertRow();
+                    // [แก้ไข] ปรับการแสดงผลระดับความยากให้ใช้ difficultyMap
+                    row.innerHTML = `
+                        <td>${q.question_id}</td>
+                        <td>${q.question_text}</td>
+                        <td>${q.correct_choice}</td>
+                        <td>${difficultyMap[q.difficulty_level] || 'ไม่ระบุ'}</td>
+                        <td>${q.exam_set || '-'}</td>
+                        <td class="actions">
+                            <button class="btn-edit" onclick="editQuestion(${q.question_id})">แก้ไข</button>
+                            <button class="btn-delete" onclick="deleteQuestion(${q.question_id})">ลบ</button>
+                        </td>
+                    `;
+                });
+            }
+        } catch (error) {
+            const errorBox = document.getElementById('errorBox');
+            errorBox.style.display = 'block';
+            errorBox.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ไม่พบข้อมูล</td></tr>';
+        }
+    }
+
+    document.getElementById('addQuestionBtn').addEventListener('click', () => {
+        window.location.href = 'add_question.html';
+    });
+
+    function editQuestion(id) { 
+        // ในอนาคตจะเปลี่ยนเป็นการเปิดหน้าแก้ไข
+        alert(`ฟังก์ชันแก้ไขยังไม่ได้ทำ: ${id}`); 
+    }
+
+    async function deleteQuestion(id) {
+        if (!confirm(`คุณแน่ใจหรือไม่ที่จะลบคำถาม ID: ${id}?`)) return;
+        try {
+            const response = await fetch('/exam_project2/api/delete_question.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + teacherToken },
+                body: JSON.stringify({ question_id: id })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                alert(result.message);
+                loadQuestions();
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+        }
+    }
+    
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('teacherToken');
+        window.location.href = 'teacher_login.html';
+    });
+    document.getElementById('backBtn').addEventListener('click', () => {
+        window.location.href = 'teacher_dashboard.html';
+    });
+
+    document.getElementById('examsetFilter').addEventListener('change', filterQuestions);
+    
+    function filterQuestions() {
+        const examsetId = document.getElementById('examsetFilter').value;
+        tableBody.innerHTML = '';
+
+        let filteredQuestions = allQuestions;
+        if (examsetId !== '0') {
+            filteredQuestions = allQuestions.filter(q => {
+                // ตรวจสอบว่าข้อสอบอยู่ในชุดที่เลือกหรือไม่
+                // แปลงเป็น string เพื่อเปรียบเทียบ เนื่องจาก select value เป็น string
+                return String(q.examset_id) === examsetId;
+            });
+        }
+        
+        // Debug log
+        console.log('Filtering for examset:', examsetId);
+        console.log('Found questions:', filteredQuestions.length);
+
+        if (filteredQuestions.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ไม่พบข้อมูลในชุดข้อสอบที่เลือก</td></tr>';
+        } else {
+            filteredQuestions.forEach(q => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${q.question_id}</td>
+                    <td>${q.question_text}</td>
+                    <td>${q.correct_choice}</td>
+                    <td>${difficultyMap[q.difficulty_level] || 'ไม่ระบุ'}</td>
+                    <td>${q.examset_id ? 'ชุดที่ ' + q.examset_id : 'ไม่ได้อยู่ในชุดใด'}</td>
+                    <td class="actions">
+                        <button class="btn-edit" onclick="editQuestion(${q.question_id})">แก้ไข</button>
+                        <button class="btn-delete" onclick="deleteQuestion(${q.question_id})">ลบ</button>
+                    </td>
+                `;
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadQuestions);
+    </script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>แผงควบคุมอาจารย์</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+</head>
+
+<body>
+   
+    <header>
+        <div class="logo-text">
+            <img src="nulogo.png" alt="Logo" height="80">
+            <div class="course-title">
+                <h2>ระบบจัดสอบ Walk-in (สำหรับอาจารย์)</h2>
+            </div>
+        </div>
+        <div class="top-right">
+            <button id="logoutBtn" class="logout-btn">ออกจากระบบ</button>
+        </div>
+    </header>
+
+    <main class="container mt-4">
+        <div class="row g-4">
+            <!-- การจัดการข้อสอบ -->
+            <div class="col-12 mb-4">
+                <h3 class="border-bottom pb-2 mb-3">การจัดการข้อสอบ</h3>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-question-circle"></i>
+                                    คลังข้อสอบ
+                                </h5>
+                                <p class="card-text">จัดการคำถามในคลังข้อสอบ เพิ่ม/แก้ไข/ลบข้อสอบ</p>
+                                <a href="question_bank.html" class="btn btn-primary">
+                                    <i class="fas fa-cog"></i> จัดการข้อสอบ
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-book"></i>
+                                    ชุดข้อสอบ
+                                </h5>
+                                <p class="card-text">จัดการชุดข้อสอบ สร้างชุดข้อสอบใหม่ กำหนดข้อสอบในชุด</p>
+                                <a href="view_examset.html" class="btn btn-primary">
+                                    <i class="fas fa-cogs"></i> จัดการชุดข้อสอบ
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- การจัดการการสอบ -->
+            <div class="col-12 mb-4">
+                <h3 class="border-bottom pb-2 mb-3">การจัดการการสอบ</h3>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    ช่วงเวลาการสอบ
+                                </h5>
+                                <p class="card-text">กำหนดวันเวลาสอบ จำนวนที่นั่ง และจัดการช่วงเวลาสอบ</p>
+                                <a href="teacher_exam_out.html" class="btn btn-primary">
+                                    <i class="fas fa-clock"></i> จัดการช่วงเวลา
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-users"></i>
+                                    รายชื่อผู้เข้าสอบ
+                                </h5>
+                                <p class="card-text">ดูรายชื่อผู้ลงทะเบียนสอบ ผลการสอบ และจัดการข้อมูล</p>
+                                <div class="d-grid gap-2">
+                                    <a href="exam_users.html" class="btn btn-primary mb-2">
+                                        <i class="fas fa-list"></i> ดูรายชื่อ
+                                    </a>
+                                    <a href="exam_registration_status.html" class="btn btn-info">
+                                        <i class="fas fa-clipboard-check"></i> ตรวจสอบสถานะนิสิต
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // ตรวจสอบ token เมื่อโหลดหน้า
+            const token = localStorage.getItem('teacherToken');
+            if (!token) {
+                window.location.href = 'teacher_login.html';
+                return;
+            }
+
+            // กดปุ่มออกจากระบบ
+            // จัดการปุ่มออกจากระบบ
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    localStorage.removeItem('teacherToken');
+                    localStorage.removeItem('instructor_name');
+                    window.location.href = 'teacher_login.html';
+                });
+            }
+
+            // แสดงชื่ออาจารย์ถ้ามีการเก็บไว้ใน localStorage
+            const teacherName = localStorage.getItem('instructor_name');
+            if (teacherName) {
+                document.querySelector('.course-title h2').textContent += ` - ${teacherName}`;
+            }
+        });
+
+    </script>
+
+</body>
+
+</html>

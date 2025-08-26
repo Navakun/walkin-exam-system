@@ -1,0 +1,5 @@
+vendor/
+*.zip
+Local Walk-in DB.session.sql
+node_modules/
+.env

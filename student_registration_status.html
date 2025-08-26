@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>สถานะการลงทะเบียนสอบ</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link rel="icon" href="favicon.ico">
+</head>
+<body>
+  <header class="course-header">
+    <div class="logo-text">
+            <img src="nulogo.png" alt="Logo" height="60">
+            <div class="course-title">
+                <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ<br>มหาวิทยาลัยนเรศวร</h2>
+            </div>
+        </div>
+    <div class="ms-auto d-flex gap-2">
+      <button id="backBtn" class="btn btn-outline-primary">กลับหน้าหลัก</button>
+      <button id="logoutBtn" class="btn btn-outline-danger">ออกจากระบบ</button>
+    </div>
+  </header>
+  <div class="container mt-4">
+    <div class="d-flex align-items-center mb-3">
+      <i class="fas fa-clipboard-list fa-2x text-primary me-2"></i>
+      <h2 class="mb-0">สถานะการลงทะเบียนสอบของคุณ</h2>
+    </div>
+    <div id="successBanner" class="alert alert-success d-none"><b>✅ ลงทะเบียนสอบสำเร็จ!</b> คุณได้ลงทะเบียนสอบเรียบร้อยแล้ว</div>
+    <div class="alert alert-secondary" style="background: #f8f9fa; border: none; color: #333;">
+      <b>👩‍🎓 ยินดีต้อนรับ!</b> ที่นี่คุณสามารถตรวจสอบสถานะการลงทะเบียนสอบของตนเองได้ตลอดเวลา
+    </div>
+    <div id="loading" class="alert alert-info" style="display: none;">กำลังโหลดข้อมูล...</div>
+    <div id="statusArea"></div>
+  </div>
+  <script>
+    const token = localStorage.getItem('studentToken');
+    let student_id = null;
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        student_id = payload.student_id;
+      } catch (e) {}
+    }
+    document.getElementById('backBtn').onclick = () => window.location.href = 'student_dashboard.html';
+    document.getElementById('logoutBtn').onclick = () => {
+      localStorage.removeItem('studentToken');
+      window.location.href = 'student_login.html';
+    };
+    async function loadStatus() {
+      if (!token || !student_id) {
+        document.getElementById('statusArea').innerHTML = '<div class="alert alert-danger">กรุณาเข้าสู่ระบบใหม่อีกครั้ง</div>';
+        return;
+      }
+      // แสดง banner สำเร็จถ้ามี flag just_registered ใน query หรือ localStorage
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('just_registered') === '1' || localStorage.getItem('justRegistered') === '1') {
+        document.getElementById('successBanner').classList.remove('d-none');
+        setTimeout(() => document.getElementById('successBanner').classList.add('d-none'), 4000);
+        localStorage.removeItem('justRegistered');
+      }
+      document.getElementById('loading').style.display = 'block';
+      try {
+        const res = await fetch('/exam_project2/api/get_student_registration_status.php', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        let text = await res.text();
+        let result;
+        try { result = JSON.parse(text); } catch (e) { result = { status: 'error', message: 'Invalid JSON', raw: text }; }
+        document.getElementById('loading').style.display = 'none';
+        if (result.status === 'success' && result.data && result.data.length > 0) {
+          // หาค่าที่ลงทะเบียนล่าสุด (booking ล่าสุด)
+          let latestIdx = 0;
+          let latestTime = 0;
+          result.data.forEach((row, idx) => {
+            const t = row.scheduled_at ? new Date(row.scheduled_at).getTime() : 0;
+            if (t > latestTime) { latestTime = t; latestIdx = idx; }
+          });
+          let html = '<div class="table-responsive"><table class="table table-striped table-bordered align-middle text-center shadow-sm"><thead class="table-primary"><tr><th>วันที่สอบ</th><th>เวลาที่สอบ</th><th>วันที่ลงทะเบียน</th><th>สถานะ</th><th>ดำเนินการ</th></tr></thead><tbody>';
+          result.data.forEach((row, idx) => {
+            let statusColor = row.status === 'registered' ? 'text-success' : (row.status === 'completed' ? 'text-primary' : 'text-danger');
+            let statusText = row.status === 'registered' ? 'ลงทะเบียนแล้ว' : (row.status === 'completed' ? 'สอบเสร็จสิ้น' : (row.status === 'cancelled' ? 'ยกเลิก' : (row.status === 'absent' ? 'ขาดสอบ' : '-')));
+            let regDate = '-';
+            if (row.scheduled_at) {
+              const d = new Date(row.scheduled_at);
+              if (!isNaN(d)) {
+                const day = String(d.getDate()).padStart(2, '0');
+                const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+                const monthName = thaiMonths[d.getMonth()];
+                const year = d.getFullYear();
+                regDate = `${day} ${monthName} ${year}`;
+              }
+            }
+            let slotDate = row.slot_date;
+            if (slotDate && /^\d{4}-\d{2}-\d{2}/.test(slotDate)) {
+              const d = new Date(slotDate);
+              if (!isNaN(d)) {
+                const day = String(d.getDate()).padStart(2, '0');
+                const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+                const monthName = thaiMonths[d.getMonth()];
+                const year = d.getFullYear();
+                slotDate = `${day} ${monthName} ${year}`;
+              }
+            }
+            let actionBtn = '';
+            if (row.status === 'registered') {
+              actionBtn = `<a href="student_exam.html?examset_id=${row.examset_id}" class="btn btn-sm btn-success">เข้าสอบ</a>`;
+            } else if (row.status === 'completed') {
+              actionBtn = `<a href="student_result.html?examset_id=${row.examset_id}" class="btn btn-sm btn-primary">ดูผลสอบ</a>`;
+            }
+            html += `<tr${idx === latestIdx ? ' style=\"background:#e6ffe6;\"' : ''}><td>${slotDate}</td><td>${row.start_time} - ${row.end_time}</td><td>${regDate}</td><td class=\"${statusColor}\"><b>${statusText}</b></td><td>${actionBtn}</td></tr>`;
+          });
+          html += '</tbody></table></div>';
+          document.getElementById('statusArea').innerHTML = html;
+        } else {
+          document.getElementById('statusArea').innerHTML = `<div class="alert alert-warning text-center p-4"><i class='fas fa-info-circle fa-2x mb-2'></i><br>ยังไม่มีข้อมูลการลงทะเบียนสอบ</div>`;
+        }
+      } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('statusArea').innerHTML = '<div class="alert alert-danger">เกิดข้อผิดพลาด: ' + err + '</div>';
+      }
+    }
+    document.addEventListener('DOMContentLoaded', loadStatus);
+  // ถ้ามาจาก register_exam.html ให้ set flag justRegistered
+  if (document.referrer && document.referrer.includes('register_exam.html')) {
+    localStorage.setItem('justRegistered', '1');
+  }
+  </script>
+</body>
+</html>

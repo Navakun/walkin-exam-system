@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <title>ลงทะเบียนผู้ใช้งาน</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:," /> <!-- กัน 404 favicon -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+</head>
+
+<body>
+  <header>
+    <div class="logo-text">
+      <img src="nulogo.png" alt="Logo" height="100">
+      <div class="course-title">
+        <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ มหาวิทยาลัยนเรศวร</h2>
+      </div>
+    </div>
+    <div class="top-right">
+      <button id="logoutBtn" class="home-btn">กลับหน้า Login</button>
+    </div>
+  </header>
+
+  <main class="login-box">
+    <h2>ลงทะเบียนผู้ใช้งาน</h2>
+    <div id="messageBox" class="message"></div>
+    <form id="registerForm">
+      <input type="text" name="student_id" placeholder="รหัสนิสิต" required><br>
+      <input type="text" name="name" placeholder="ชื่อ-นามสกุล" required><br>
+      <input type="email" name="email" placeholder="อีเมล" required><br>
+      <input type="password" name="password" placeholder="รหัสผ่าน" required><br>
+      <button type="submit">ลงทะเบียน</button>
+    </form>
+  </main>
+
+  <script>
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+  window.location.href = 'student_login.html';
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const messageBox = document.getElementById('messageBox');
+      const form = e.target;
+      
+      try {
+  const response = await fetch('api/student_register.php', {
+          method: 'POST',
+          body: new FormData(form)
+        });
+
+        const result = await response.json();
+
+        messageBox.style.display = 'block';
+        
+        if (response.ok) {
+          messageBox.className = 'message success';
+          messageBox.textContent = result.message;
+          // รอสักครู่แล้วไปหน้า login
+          setTimeout(() => {
+            window.location.href = 'student_login.html';
+          }, 2000);
+        } else {
+          messageBox.className = 'message error';
+          messageBox.textContent = result.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+        }
+      } catch (error) {
+        messageBox.style.display = 'block';
+        messageBox.className = 'message error';
+        messageBox.textContent = 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+      }
+    });
+  </script>
+</body>
+
+</html>

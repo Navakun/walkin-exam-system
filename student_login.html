@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>ลงทะเบียนสอบ</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" href="data:," /> <!-- กัน 404 favicon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+
+<body>
+    <!-- วีดีโอพื้นหลังควรอยู่ใน body -->
+    <!-- <video autoplay muted loop id="bg-video">
+        <source src="video.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video> -->
+
+    <header>
+        <div class="logo-text">
+            <img src="nulogo.png" alt="Logo" height="100" />
+            <div class="course-title">
+                <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ มหาวิทยาลัยนเรศวร</h2>
+            </div>
+        </div>
+        <div class="top-right">
+            <a href="homepage.html" class="home-btn">
+                <i class="fas fa-home"></i> หน้าหลัก
+            </a>
+        </div>
+    </header>
+
+    <main class="login-box">
+        <h2>เข้าสู่ระบบ</h2>
+        <p>Information Technology Law</p>
+
+        <form id="loginForm" autocomplete="on">
+            <input type="text" name="student_id" placeholder="Username (รหัสนักศึกษา)" autocomplete="username"
+                required /><br />
+            <input type="password" name="password" placeholder="Password" autocomplete="current-password"
+                required /><br />
+            <div id="errorMessage" style="color: red; margin-bottom: 10px;"></div>
+            <button type="submit">Log in</button>
+        </form>
+        <p class="register-link">
+            ยังไม่มีบัญชี? <a href="student_register.html">ลงทะเบียนที่นี่</a>
+    </main>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const errorMessageDiv = document.getElementById('errorMessage');
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
+
+        function friendlyMessage(code) {
+            switch (code) {
+                case 'MISSING_FIELDS': return 'กรุณากรอกให้ครบถ้วน';
+                case 'USER_NOT_FOUND': return 'ไม่พบบัญชีผู้ใช้/รหัสนักศึกษา';
+                case 'INVALID_PASSWORD': return 'รหัสผ่านไม่ถูกต้อง';
+                case 'SERVER_FATAL': return 'เซิร์ฟเวอร์มีปัญหาชั่วคราว';
+                default: return code || 'เกิดข้อผิดพลาด';
+            }
+        }
+
+        loginForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            errorMessageDiv.textContent = '';
+
+            const data = Object.fromEntries(new FormData(loginForm).entries());
+
+            // กันคลิกซ้ำ
+            submitBtn.disabled = true;
+
+            // ตั้ง timeout 10 วินาที
+            const ac = new AbortController();
+            const t = setTimeout(() => ac.abort(), 10000);
+
+            try {
+                const resp = await fetch('api/student_login_new.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                    cache: 'no-store',
+                    signal: ac.signal
+                });
+
+                const raw = await resp.text();
+                let result;
+                try { result = JSON.parse(raw); }
+                catch {
+                    console.error('Non-JSON response:', raw);
+                    throw new Error('เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON');
+                }
+
+                if (!resp.ok || !result || result.status !== 'success') {
+                    const msg = friendlyMessage(result?.message) || `HTTP ${resp.status}`;
+                    errorMessageDiv.textContent = msg;
+                    return;
+                }
+
+                if (!result.token) {
+                    errorMessageDiv.textContent = 'เกิดข้อผิดพลาด: ไม่ได้รับ Token การยืนยันตัวตน';
+                    return;
+                }
+
+                console.log('Login successful, storing token...', result.token.substring(0, 20) + '...');
+                localStorage.setItem('studentToken', result.token);
+                localStorage.setItem('studentId', result.student.id);
+                
+                // ตรวจสอบว่าเก็บ token สำเร็จ
+                const storedToken = localStorage.getItem('studentToken');
+                if (!storedToken) {
+                    errorMessageDiv.textContent = 'เกิดข้อผิดพลาดในการบันทึก Token';
+                    return;
+                }
+
+                window.location.href = 'student_dashboard.html';
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    errorMessageDiv.textContent = 'การเชื่อมต่อล่าช้า กรุณาลองใหม่';
+                } else {
+                    console.error(err);
+                    errorMessageDiv.textContent = err.message || 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้';
+                }
+            } finally {
+                clearTimeout(t);
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+
+</body>
+
+</html>

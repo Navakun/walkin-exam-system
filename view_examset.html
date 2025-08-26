@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ดูชุดข้อสอบ</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:," />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+    <header>
+        <div class="logo-text">
+            <img src="nulogo.png" alt="Logo" height="80">
+            <div class="course-title">
+                <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ มหาวิทยาลัยนเรศวร</h2>
+            </div>
+        </div>
+        <div class="top-right">
+            <button id="backBtn" class="home-btn">กลับหน้าคลังข้อสอบ</button>
+            <button id="logoutBtn" class="logout-btn">ออกจากระบบ</button>
+        </div>
+    </header>
+
+    <main class="teacher-dashboard">
+        <h1 id="examsetTitle">ชุดข้อสอบ</h1>
+        <div id="errorBox" class="message error"></div>
+        <div id="question-list-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ลำดับ</th>
+                        <th class="question-col">คำถาม</th>
+                        <th>คำตอบที่ถูก</th>
+                        <th>ระดับความยาก</th>
+                        <th>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="question-table-body">
+                    <tr><td colspan="5" style="text-align: center;">กำลังโหลดรายการคำถาม...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        const tableBody = document.getElementById('question-table-body');
+        const teacherToken = localStorage.getItem('teacherToken');
+        const examsetId = new URLSearchParams(window.location.search).get('id');
+        
+        if (!teacherToken) {
+            window.location.href = 'teacher_login.html';
+        }
+
+        if (!examsetId) {
+            window.location.href = 'question_bank.html';
+        }
+
+        const difficultyMap = {
+            1: '<span class="difficulty-1">ง่าย</span>',
+            2: '<span class="difficulty-2">ปานกลาง</span>',
+            3: '<span class="difficulty-3">ยาก</span>'
+        };
+
+        async function loadExamsetQuestions() {
+            try {
+                const response = await fetch('/exam_project2/api/get_examset_questions.php', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${teacherToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ examset_id: examsetId })
+                });
+
+                if (!response.ok) {
+                    const errorResult = await response.json();
+                    throw new Error(errorResult.message || 'Token ไม่ถูกต้อง');
+                }
+
+                const result = await response.json();
+                if (!result.status || result.status === 'error') {
+                    throw new Error(result.message || 'ไม่สามารถโหลดข้อมูลได้');
+                }
+
+                document.getElementById('examsetTitle').textContent = result.title || `ชุดข้อสอบที่ ${examsetId}`;
+                
+                tableBody.innerHTML = '';
+                const questions = result.questions || [];
+                
+                if (questions.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ยังไม่มีคำถามในชุดข้อสอบนี้</td></tr>';
+                } else {
+                    questions.forEach((q, index) => {
+                        const row = tableBody.insertRow();
+                        row.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td>${q.question_text}</td>
+                            <td>${q.correct_choice}</td>
+                            <td>${difficultyMap[q.difficulty_level] || 'ไม่ระบุ'}</td>
+                            <td class="actions">
+                                <button class="btn-edit" onclick="editQuestion(${q.question_id})">แก้ไข</button>
+                                <button class="btn-delete" onclick="removeFromExamset(${q.question_id})">นำออก</button>
+                            </td>
+                        `;
+                    });
+                }
+            } catch (error) {
+                const errorBox = document.getElementById('errorBox');
+                errorBox.style.display = 'block';
+                errorBox.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ไม่พบข้อมูล</td></tr>';
+            }
+        }
+
+        function editQuestion(id) {
+            alert(`ฟังก์ชันแก้ไขยังไม่ได้ทำ: ${id}`);
+        }
+
+        async function removeFromExamset(questionId) {
+            if (!confirm('คุณแน่ใจหรือไม่ที่จะนำข้อสอบนี้ออกจากชุดข้อสอบ?')) return;
+            
+            try {
+                const response = await fetch('/exam_project2/api/remove_from_examset.php', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${teacherToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        examset_id: examsetId,
+                        question_id: questionId
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    alert(result.message || 'นำออกสำเร็จ');
+                    loadExamsetQuestions();
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                alert('เกิดข้อผิดพลาด: ' + error.message);
+            }
+        }
+
+        document.getElementById('backBtn').addEventListener('click', () => {
+            window.location.href = 'question_bank.html';
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('teacherToken');
+            window.location.href = 'teacher_login.html';
+        });
+
+        document.addEventListener('DOMContentLoaded', loadExamsetQuestions);
+    </script>
+</body>
+
+</html>
