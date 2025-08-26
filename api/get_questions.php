@@ -107,23 +107,23 @@ try {
     $target_difficulty = max(0.1, min(0.9, $target_difficulty));
 
     // ดึงข้อสอบที่ยังไม่ได้ตอบและมีความยากใกล้เคียงกับเป้าหมาย
-    $stmQ = $pdo->prepare("
+    $params = [$examset_id];
+    $sql = "
         SELECT q.question_id
         FROM question q
         JOIN exam_set_question esq ON esq.question_id = q.question_id
-        WHERE esq.examset_id = ?
-        AND q.question_id NOT IN (" . implode(',', array_fill(0, count($answered_ids), '?')) . ")
-        ORDER BY ABS(q.difficulty - ?) ASC
-        LIMIT ?
-    ");
-    
-    $params = [$examset_id];
-    foreach ($answered_ids as $aid) {
-        $params[] = $aid;
+        WHERE esq.examset_id = ?\n";
+    if (count($answered_ids) > 0) {
+        $in = implode(',', array_fill(0, count($answered_ids), '?'));
+        $sql .= "AND q.question_id NOT IN ($in)\n";
+        foreach ($answered_ids as $aid) {
+            $params[] = $aid;
+        }
     }
+    $sql .= "ORDER BY ABS(q.difficulty - ?) ASC\nLIMIT ?";
     $params[] = $target_difficulty;
     $params[] = $LIMIT - count($answered);
-    
+    $stmQ = $pdo->prepare($sql);
     $stmQ->execute($params);
     $remaining_ids = $stmQ->fetchAll(PDO::FETCH_COLUMN);
     $remaining = array_values($remaining_ids);

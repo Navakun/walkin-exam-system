@@ -55,9 +55,10 @@
       </div>
     </section>
     <section class="meta">
-  <div>รหัสนักศึกษา: <strong id="studentId">—</strong></div>
+      <div>รหัสนักศึกษา: <strong id="studentId">—</strong></div>
+      <div>ชื่อ-นามสกุล: <strong id="studentName">—</strong></div>
       <div>เริ่มทำ: <strong id="startTime">—</strong></div>
-      <div>ส่งข้อสอบ: <strong id="endTime">—</strong></div>
+      <div>เวลาที่ข้อสอบเสร็จ: <strong id="endTime">—</strong></div>
       <div>เวลาที่ใช้: <strong id="duration">—</strong></div>
     </section>
   </main>
@@ -149,26 +150,48 @@
           return;
         }
         
-        // แสดงคะแนน
-        document.getElementById('totalValue').textContent = data.data.total_questions || '0';
-        document.getElementById('correctValue').textContent = data.data.correct_count || '0';
+        // รองรับทั้งกรณี field อยู่ใน data หรือ root
+        const d = data.data || {};
+        // คะแนน/จำนวนข้อ
+        const total   = d.total_questions ?? data.total_questions ?? data.total ?? data.questions_total ?? null;
+        const correct = d.correct_count ?? data.correct_count ?? data.correct ?? data.corrects ?? null;
+        const wrong   = (total != null && correct != null) ? (total - correct) : (d.wrong_count ?? data.wrong_count ?? data.wrong ?? null);
+        // เวลาทำข้อสอบ
+        const startTime = d.start_time ?? data.start_time ?? d.started_at ?? data.started_at ?? null;
+        const endTime   = d.end_time ?? data.end_time ?? d.ended_at ?? data.ended_at ?? null;
+        // รหัสนักศึกษาและชื่อ-นามสกุล
+        const studentId = d.student_id ?? data.student_id ?? d.student ?? data.student ?? localStorage.getItem('student_id') ?? '—';
+        // ดึงชื่อ-นามสกุลจาก JWT token (localStorage)
+        function parseJwt(token) {
+          try { return JSON.parse(atob(token.split('.')[1])); } catch { return null; }
+        }
+        let studentName = '—';
+        const tokenStr = localStorage.getItem('studentToken');
+        if (tokenStr) {
+          const payload = parseJwt(tokenStr);
+          if (payload && payload.name) studentName = payload.name;
+        }
 
-        // รองรับชื่อฟิลด์ได้หลายแบบจาก API
-        const total   = data.total ?? data.total_questions ?? data.questions_total ?? null;
-        const correct = data.correct ?? data.correct_count ?? data.corrects ?? null;
-        const wrong   = data.wrong ?? data.wrong_count ?? ((total!=null && correct!=null) ? (total - correct) : null);
-        const score   = data.score ?? data.percentage ?? (total ? Math.round((correct/total)*100) : null);
-
-        // $('scoreValue').textContent   = (score != null) ? score : '—';
-        // $('scoreNote').textContent    = (score != null && total != null) ? '(อาจเป็นเปอร์เซ็นต์หรือคะแนนดิบ ตาม API)' : '';
+        // แสดงผล
         $('totalValue').textContent   = (total != null) ? total : '—';
         $('correctValue').textContent = (correct != null) ? correct : '—';
         $('wrongValue').textContent   = (wrong != null) ? wrong : '—';
-
-        $('studentId').textContent  = data.student_id ?? data.student ?? localStorage.getItem('student_id') ?? '—';
-  // ไม่ต้องแสดงชุดข้อสอบ
-        $('startTime').textContent  = data.start_time ?? data.started_at ?? '—';
-        $('endTime').textContent    = data.end_time ?? data.ended_at ?? '—';
+  $('studentId').textContent    = studentId;
+  $('studentName').textContent  = studentName;
+        // ฟังก์ชันแปลงวันที่เป็น dd/mm/yyyy HH:MM (ไม่มีวินาที)
+        function formatDateDMYHM(dt) {
+          if (!dt) return '—';
+          const d = parseDateStr(dt);
+          if (isNaN(d)) return '—';
+          const day = d.getUTCDate().toString().padStart(2, '0');
+          const month = (d.getUTCMonth() + 1).toString().padStart(2, '0');
+          const year = d.getUTCFullYear();
+          const hour = d.getUTCHours().toString().padStart(2, '0');
+          const min = d.getUTCMinutes().toString().padStart(2, '0');
+          return `${day}/${month}/${year} ${hour}:${min}`;
+        }
+        $('startTime').textContent    = startTime ? formatDateDMYHM(startTime) : '—';
+        $('endTime').textContent      = endTime ? formatDateDMYHM(endTime) : '—';
 
         // เวลาที่ใช้ (รองรับฟอร์แมตวันที่ MySQL)
         function parseDateStr(dt) {
@@ -179,16 +202,16 @@
           }
           return new Date(dt);
         }
-        if ((data.start_time || data.started_at) && (data.end_time || data.ended_at)) {
-          const st = parseDateStr(data.start_time || data.started_at);
-          const en = parseDateStr(data.end_time || data.ended_at);
+        if (startTime && endTime) {
+          const st = parseDateStr(startTime);
+          const en = parseDateStr(endTime);
           if (!isNaN(st) && !isNaN(en)) {
             $('duration').textContent = fmtDuration(en - st);
           } else {
             $('duration').textContent = '—';
           }
-        } else if (data.duration_ms) {
-          $('duration').textContent = fmtDuration(data.duration_ms);
+        } else if (d.duration_ms ?? data.duration_ms) {
+          $('duration').textContent = fmtDuration(d.duration_ms ?? data.duration_ms);
         } else {
           $('duration').textContent = '—';
         }

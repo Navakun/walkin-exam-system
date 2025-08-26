@@ -87,12 +87,21 @@
         window.location.href = 'teacher_login.html';
     }
 
+
     // [เพิ่ม] Object สำหรับแปลงตัวเลขระดับความยากเป็นข้อความสี
     const difficultyMap = {
         1: '<span class="difficulty-1">ง่าย</span>',
         2: '<span class="difficulty-2">ปานกลาง</span>',
         3: '<span class="difficulty-3">ยาก</span>'
     };
+
+    // ฟังก์ชันแปลง difficulty (decimal) เป็นระดับ 1,2,3
+    function getDifficultyLevel(difficulty) {
+        if (difficulty == null) return 0;
+        if (difficulty < 1.5) return 1;
+        if (difficulty < 2.5) return 2;
+        return 3;
+    }
 
     async function loadQuestions() {
         if (!teacherToken) {
@@ -130,25 +139,7 @@
             allQuestions.sort((a, b) => a.question_id - b.question_id);
             filterQuestions();
             
-            if (allQuestions.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ยังไม่มีคำถามในคลังข้อสอบ</td></tr>';
-            } else {
-                allQuestions.forEach(q => {
-                    const row = tableBody.insertRow();
-                    // [แก้ไข] ปรับการแสดงผลระดับความยากให้ใช้ difficultyMap
-                    row.innerHTML = `
-                        <td>${q.question_id}</td>
-                        <td>${q.question_text}</td>
-                        <td>${q.correct_choice}</td>
-                        <td>${difficultyMap[q.difficulty_level] || 'ไม่ระบุ'}</td>
-                        <td>${q.exam_set || '-'}</td>
-                        <td class="actions">
-                            <button class="btn-edit" onclick="editQuestion(${q.question_id})">แก้ไข</button>
-                            <button class="btn-delete" onclick="deleteQuestion(${q.question_id})">ลบ</button>
-                        </td>
-                    `;
-                });
-            }
+            // ไม่ต้องวน allQuestions.forEach ที่นี่ ให้ filterQuestions() เป็นตัวเดียวที่ render ข้อมูล
         } catch (error) {
             const errorBox = document.getElementById('errorBox');
             errorBox.style.display = 'block';
@@ -202,13 +193,8 @@
 
         let filteredQuestions = allQuestions;
         if (examsetId !== '0') {
-            filteredQuestions = allQuestions.filter(q => {
-                // ตรวจสอบว่าข้อสอบอยู่ในชุดที่เลือกหรือไม่
-                // แปลงเป็น string เพื่อเปรียบเทียบ เนื่องจาก select value เป็น string
-                return String(q.examset_id) === examsetId;
-            });
+            filteredQuestions = allQuestions.filter(q => String(q.examset_id) === examsetId);
         }
-        
         // Debug log
         console.log('Filtering for examset:', examsetId);
         console.log('Found questions:', filteredQuestions.length);
@@ -222,7 +208,7 @@
                     <td>${q.question_id}</td>
                     <td>${q.question_text}</td>
                     <td>${q.correct_choice}</td>
-                    <td>${difficultyMap[q.difficulty_level] || 'ไม่ระบุ'}</td>
+                    <td>${difficultyMap[getDifficultyLevel(q.difficulty)] || 'ไม่ระบุ'}</td>
                     <td>${q.examset_id ? 'ชุดที่ ' + q.examset_id : 'ไม่ได้อยู่ในชุดใด'}</td>
                     <td class="actions">
                         <button class="btn-edit" onclick="editQuestion(${q.question_id})">แก้ไข</button>

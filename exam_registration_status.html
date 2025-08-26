@@ -59,13 +59,10 @@
 
     <div class="container">
         <div class="d-flex align-items-center mb-3">
-      <i class="fas fa-2x text-primary me-2"></i>
-      <h2 class="mb-1">สถานะการลงทะเบียนสอบ</h2>
-    </div>
-        
-        <!-- แสดงข้อผิดพลาด -->
-        <div id="errorAlert" class="alert alert-danger hidden" role="alert" style="display: none;">
+            <i class="fas fa-2x text-primary me-2"></i>
+            <h2 class="mb-1">สถานะการลงทะเบียนสอบ</h2>
         </div>
+        <div id="errorAlert" class="alert alert-danger hidden" role="alert" style="display: none;"></div>
 
         <!-- ส่วนค้นหา -->
         <div class="search-section">
@@ -240,6 +237,13 @@
         function displayRegistrations(registrations) {
             const tbody = document.getElementById('registrationTable');
             tbody.innerHTML = '';
+
+            if (!registrations || registrations.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="6" class="text-center">ไม่มีข้อมูลการลงทะเบียนสอบ</td>`;
+                tbody.appendChild(tr);
+                return;
+            }
 
             registrations.forEach(reg => {
                 const tr = document.createElement('tr');

@@ -99,22 +99,30 @@ try {
     $label = strtoupper(substr(trim($label), 0, 1));
 
     // (7) บันทึกคำตอบ
-    $pdo->beginTransaction();
-    $stm = $pdo->prepare('SELECT answer_id FROM answer WHERE session_id = ? AND question_id = ? LIMIT 1');
-    $stm->execute([$session_id, $question_id]);
-    $ansId = $stm->fetchColumn();
+    $inTransaction = false;
+    try {
+        $pdo->beginTransaction();
+        $inTransaction = true;
+        $stm = $pdo->prepare('SELECT answer_id FROM answer WHERE session_id = ? AND question_id = ? LIMIT 1');
+        $stm->execute([$session_id, $question_id]);
+        $ansId = $stm->fetchColumn();
 
-    if ($ansId) {
-        $stm = $pdo->prepare('UPDATE answer SET selected_choice = ?, answered_at = NOW() WHERE answer_id = ?');
-        $stm->execute([$label, $ansId]);
-    } else {
-        $stm = $pdo->prepare('INSERT INTO answer (session_id, question_id, selected_choice, answered_at) VALUES (?, ?, ?, NOW())');
-        $stm->execute([$session_id, $question_id, $label]);
+        if ($ansId) {
+            $stm = $pdo->prepare('UPDATE answer SET selected_choice = ?, answered_at = NOW() WHERE answer_id = ?');
+            $stm->execute([$label, $ansId]);
+        } else {
+            $stm = $pdo->prepare('INSERT INTO answer (session_id, question_id, selected_choice, answered_at) VALUES (?, ?, ?, NOW())');
+            $stm->execute([$session_id, $question_id, $label]);
 
-        $pdo->prepare('UPDATE examsession SET questions_answered = questions_answered + 1 WHERE session_id = ?')
-            ->execute([$session_id]);
+            $pdo->prepare('UPDATE examsession SET questions_answered = questions_answered + 1 WHERE session_id = ?')
+                ->execute([$session_id]);
+        }
+        $pdo->commit();
+        $inTransaction = false;
+    } catch (Throwable $ex) {
+        if ($inTransaction && $pdo->inTransaction()) $pdo->rollBack();
+        throw $ex;
     }
-    $pdo->commit();
 
     // (8) ตรวจสอบจำนวนข้อที่ตอบและหาข้อถัดไป
     $LIMIT = 5;
@@ -160,7 +168,7 @@ try {
             WHERE session_id = ?
         ')->execute([$score, $session_id]);
 
-        $pdo->commit();
+    // No transaction needed for score update
         echo json_encode([
             'status' => 'finished',
             'message' => 'ทำข้อสอบครบแล้ว',
@@ -178,7 +186,7 @@ try {
     if (empty($remaining)) {
         $pdo->prepare('UPDATE examsession SET end_time = COALESCE(end_time, NOW()) WHERE session_id = ?')
             ->execute([$session_id]);
-        $pdo->commit();
+    // No transaction needed for end time update
         echo json_encode(['status' => 'finished', 'message' => 'ทำข้อสอบครบแล้ว']);
         exit;
     }

@@ -16,8 +16,8 @@ if (!isset($_GET['session_id'])) {
 $session_id = $_GET['session_id'];
 
 try {
-    // ดึงข้อมูล session เพื่อตรวจสอบว่าใช้ชุดข้อสอบใด
-    $stmtSession = $pdo->prepare("SELECT student_id, examset_id FROM examsession WHERE session_id = :session_id");
+    // ดึงข้อมูล session เพื่อตรวจสอบว่าใช้ชุดข้อสอบใด และเวลาเริ่ม/จบ
+    $stmtSession = $pdo->prepare("SELECT student_id, examset_id, start_time, end_time FROM examsession WHERE session_id = :session_id");
     $stmtSession->execute([':session_id' => $session_id]);
     $session = $stmtSession->fetch(PDO::FETCH_ASSOC);
 
@@ -29,24 +29,22 @@ try {
 
     $student_id = $session['student_id'];
     $examset_id = $session['examset_id'];
+    $start_time = $session['start_time'] ?? null;
+    $end_time = $session['end_time'] ?? null;
+
+    // ดึงคะแนนจาก field score ใน examsession
+    $stmtScore = $pdo->prepare("SELECT score, question_ids FROM examsession WHERE session_id = :session_id");
+    $stmtScore->execute([':session_id' => $session_id]);
+    $sessionData = $stmtScore->fetch(PDO::FETCH_ASSOC);
+    $score = isset($sessionData['score']) ? (int)$sessionData['score'] : null;
+    $question_ids = json_decode($sessionData['question_ids'], true);
+    $total_questions = is_array($question_ids) ? count($question_ids) : 5;
 
     // ดึงคำตอบทั้งหมดของนักศึกษาสำหรับ session นี้
     $stmtAnswers = $pdo->prepare("SELECT * FROM answer WHERE session_id = :session_id");
     $stmtAnswers->execute([':session_id' => $session_id]);
     $answers = $stmtAnswers->fetchAll(PDO::FETCH_ASSOC);
     $answer_count = count($answers);
-    
-    // นับจำนวนข้อที่ถูก
-    $correct_count = array_reduce($answers, function($carry, $answer) {
-        return $carry + ($answer['is_correct'] ? 1 : 0);
-    }, 0);
-
-    // ดึงจำนวนข้อสอบจาก question_ids ที่เก็บไว้ใน session
-    $stmtSession = $pdo->prepare("SELECT question_ids FROM examsession WHERE session_id = :session_id");
-    $stmtSession->execute([':session_id' => $session_id]);
-    $sessionData = $stmtSession->fetch(PDO::FETCH_ASSOC);
-    $question_ids = json_decode($sessionData['question_ids'], true);
-    $total_questions = 5; // กำหนดให้เป็น 5 ข้อตามโจทย์
 
     echo json_encode([
         'status' => 'success',
@@ -58,8 +56,10 @@ try {
             'total_questions' => $total_questions,
             'answers' => $answers,
             'answer_count' => $answer_count,
-            'correct_count' => $correct_count,
-            'completed' => $answer_count >= $total_questions
+            'correct_count' => $score,
+            'completed' => $answer_count >= $total_questions,
+            'start_time' => $start_time,
+            'end_time' => $end_time
         ]
     ]);
 } catch (Exception $e) {

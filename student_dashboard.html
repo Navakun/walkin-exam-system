@@ -32,6 +32,35 @@
     </div>
 
     <div class="card-list">
+  <a href="#" class="card" id="viewResultBtn">
+        <div class="card-icon">
+          <i class="fas fa-poll"></i>
+        </div>
+        <div class="card-content">
+          <h3>ดูผลคะแนน</h3>
+          <p>ตรวจสอบผลคะแนนสอบของคุณ</p>
+        </div>
+        <div class="card-arrow">
+          <i class="fas fa-chevron-right"></i>
+        </div>
+      </a>
+  <!-- ...existing cards... -->
+  <script>
+    // ...existing JS...
+
+    // ฟังก์ชันดูผลคะแนน
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('viewResultBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        const session_id = localStorage.getItem('session_id');
+        if (session_id) {
+          window.location.href = 'student_view_result.html';
+        } else {
+          alert('ยังไม่มีข้อมูลผลสอบ กรุณาทำข้อสอบให้เสร็จก่อน');
+        }
+      });
+    });
+  </script>
   <a href="register_exam.html" class="card">
         <div class="card-icon">
           <i class="fas fa-calendar-alt"></i>

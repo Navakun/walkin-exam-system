@@ -30,6 +30,17 @@
             </div>
         </div>
     </div>
+    <!-- Modal แจ้งเตือนเสร็จสิ้นข้อสอบ -->
+<div id="examFinishedModal" class="confirm-modal" style="display:none;">
+    <div class="modal-content">
+        <h2 style="color:#2563eb; margin-bottom:16px;">ทำข้อสอบเสร็จสิ้น!</h2>
+        <p id="examFinishedMsg" style="font-size:1.1em; margin-bottom:24px;">คุณได้ทำข้อสอบครบทุกข้อแล้ว<br>กรุณากดปุ่มด้านล่างเพื่อดำเนินการต่อ</p>
+        <div class="modal-buttons">
+            <button class="modal-btn confirm" id="goToResultBtn">ดูผลสอบ</button>
+            <button class="modal-btn cancel" onclick="closeExamFinishedModal()">ปิด</button>
+        </div>
+    </div>
+</div>
 
     <main id="exam-main" class="exam-container">
         <div class="exam-header">
@@ -139,8 +150,7 @@ async function initExamSession() {
             const choicesContainer = document.getElementById('choices-container');
             const nextBtn = document.getElementById('next-btn');
 
-
-            // อัพเดทความคืบหน้า
+            // อัพเดทความคืบหน้า (progress)
             if (data.progress) {
                 currentQuestionNumber = data.progress.current || currentQuestionNumber;
                 totalQuestions = data.progress.total || totalQuestions;
@@ -221,6 +231,13 @@ async function initExamSession() {
             const selected = document.querySelector('input[name="choice"]:checked');
             if (!selected) { alert('กรุณาเลือกคำตอบ'); return; }
 
+            // ป้องกัน session_id หรือ question_id ว่าง
+            if (!currentSessionId || !currentQuestionId) {
+                alert('เกิดข้อผิดพลาด: session หรือ question ไม่ถูกต้อง กรุณารีเฟรชหน้า');
+                console.error('Missing session_id or question_id', { currentSessionId, currentQuestionId });
+                return;
+            }
+
             nextBtn.disabled = true;
             nextBtn.textContent = 'กำลังโหลด...';
 
@@ -230,6 +247,8 @@ async function initExamSession() {
                 question_id: currentQuestionId,
                 selected_choice_id: selected.value
             };
+            // log payload
+            console.log('submit payload', payload);
 
             try {
                 const resp = await fetch('api/submit_answer.php', {
@@ -261,34 +280,46 @@ async function initExamSession() {
                     nextBtn.textContent = 'ข้อถัดไป';
                     nextBtn.disabled = false;
                 } else if (result.status === 'finished') {
-                    alert(result.message || 'ทำข้อสอบครบแล้ว');
-                    window.location.href = 'student_result.html?session_id=' + currentSessionId;
+                    showExamFinishedModal(result.message || 'ทำข้อสอบครบแล้ว');
                 } else {
                     throw new Error(result.message || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์');
                 }
-            } catch (err) {
+            }
+            catch (err) {
                 alert(err.message || 'ส่งคำตอบไม่สำเร็จ');
                 nextBtn.textContent = 'ข้อถัดไป';
                 nextBtn.disabled = false;
             }
         }
 
-        function startTimer(durationInSeconds) {
-            const timerElement = document.getElementById('timer');
-            let remaining = durationInSeconds;
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                const m = Math.floor(remaining / 60);
-                const s = (remaining % 60).toString().padStart(2, '0');
-                timerElement.textContent = `${m}:${s}`;
-                remaining--;
-                if (remaining < 0) {
-                    clearInterval(timerInterval);
-                    alert('หมดเวลาทำข้อสอบ!');
-                    window.location.href = 'student_result.html?session_id=' + currentSessionId;
-                }
-            }, 1000);
-        }
+    function startTimer(durationInSeconds) {
+        const timerElement = document.getElementById('timer');
+        let remaining = durationInSeconds;
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            const m = Math.floor(remaining / 60);
+            const s = (remaining % 60).toString().padStart(2, '0');
+            timerElement.textContent = `${m}:${s}`;
+            remaining--;
+            if (remaining < 0) {
+                clearInterval(timerInterval);
+                showExamFinishedModal('หมดเวลาทำข้อสอบ!');
+            }
+        }, 1000);
+    }
+
+    function showExamFinishedModal(msg) {
+        document.getElementById('examFinishedMsg').innerHTML = msg + '<br>กรุณากดปุ่มด้านล่างเพื่อดำเนินการต่อ';
+        document.getElementById('examFinishedModal').style.display = 'flex';
+        document.getElementById('goToResultBtn').onclick = function() {
+            // ใช้ session_id จาก localStorage หรือ window.currentSessionId
+            var sessionId = window.currentSessionId || localStorage.getItem('session_id') || '';
+            window.location.href = 'student_result.html?session_id=' + sessionId;
+        };
+    }
+    function closeExamFinishedModal() {
+        document.getElementById('examFinishedModal').style.display = 'none';
+    }
 
         // ป้องกันการออกจากหน้าโดยไม่ตั้งใจ
         // เพิ่มการจัดการการกด Back บน browser
