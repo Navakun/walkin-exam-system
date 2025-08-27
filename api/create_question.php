@@ -32,8 +32,11 @@ try {
 // --- สิ้นสุดการตรวจสอบ Token ---
 
 
-// --- 2. รับข้อมูลจาก Frontend ---
-$data = json_decode(file_get_contents("php://input"), true);
+
+$raw = file_get_contents("php://input");
+error_log("RAW BODY: " . $raw);
+$data = json_decode($raw, true);
+error_log("DECODED DATA: " . print_r($data, true));
 
 if (
     !isset($data['question_text']) ||
@@ -42,7 +45,7 @@ if (
     !isset($data['difficulty_level'])
 ) {
     http_response_code(400);
-    echo json_encode(["status" => "error", "message" => "ข้อมูลที่ส่งมาไม่ครบถ้วน"]);
+    echo json_encode(["status" => "error", "message" => "ข้อมูลที่ส่งมาไม่ครบถ้วน", "debug_raw" => $raw, "debug_data" => $data]);
     exit();
 }
 
@@ -51,38 +54,30 @@ $choices = $data['choices'];
 $correctChoice = $data['correct_choice'];
 $difficultyLevel = $data['difficulty_level'];
 
-// --- 3. บันทึกข้อมูลลงฐานข้อมูลด้วย Transaction ---
-$conn->begin_transaction();
-
+// --- 3. บันทึกข้อมูลลงฐานข้อมูลด้วย Transaction (PDO) ---
+$pdo->beginTransaction();
 try {
     // ขั้นตอนที่ 1: เพิ่มคำถามลงในตาราง Question
-    $sqlInsertQuestion = "INSERT INTO Question (question_text, correct_choice, difficulty_level) VALUES (?, ?, ?)";
-    $stmtQuestion = $conn->prepare($sqlInsertQuestion);
-    $stmtQuestion->bind_param("ssi", $questionText, $correctChoice, $difficultyLevel);
-    $stmtQuestion->execute();
-    
+    $sqlInsertQuestion = "INSERT INTO Question (question_text, correct_choice, difficulty) VALUES (?, ?, ?)";
+    $stmtQuestion = $pdo->prepare($sqlInsertQuestion);
+    $stmtQuestion->execute([$questionText, $correctChoice, $difficultyLevel]);
     // ดึง question_id ของคำถามที่เพิ่งสร้าง
-    $newQuestionId = $conn->insert_id;
+    $newQuestionId = $pdo->lastInsertId();
 
     // ขั้นตอนที่ 2: เพิ่มตัวเลือกทั้งหมดลงในตาราง Choice
     $sqlInsertChoice = "INSERT INTO Choice (question_id, label, content) VALUES (?, ?, ?)";
-    $stmtChoice = $conn->prepare($sqlInsertChoice);
-
+    $stmtChoice = $pdo->prepare($sqlInsertChoice);
     foreach ($choices as $label => $content) {
-        $stmtChoice->bind_param("iss", $newQuestionId, $label, $content);
-        $stmtChoice->execute();
+        $stmtChoice->execute([$newQuestionId, $label, $content]);
     }
 
     // ถ้าทุกอย่างสำเร็จ ให้ยืนยันการทำรายการ
-    $conn->commit();
+    $pdo->commit();
     echo json_encode(["status" => "success", "message" => "เพิ่มคำถามสำเร็จ"]);
-
 } catch (Exception $e) {
     // ถ้ายกเลิก ให้ย้อนกลับทั้งหมด
-    $conn->rollback();
+    $pdo->rollBack();
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage()]);
 }
-
-$conn->close();
 ?>

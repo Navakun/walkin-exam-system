@@ -57,7 +57,7 @@
 
     <label for="difficultyLevel" style="margin-top:10px;">ระดับความยาก:</label>
     <select id="difficultyLevel" name="difficulty_level" class="difficulty-select" required>
-      <option value="1">ง่าย</option>
+        <option value="1">ง่าย</option>
       <option value="2">ปานกลาง</option>
       <option value="3">ยาก</option>
     </select>
@@ -67,65 +67,94 @@
 </main>
 
 <script>
-  const questionForm = document.getElementById('questionForm');
-  const teacherToken = localStorage.getItem('teacherToken');
+(() => {
+  const form = document.getElementById('questionForm');
+  const token = localStorage.getItem('teacherToken');
+  const params = new URLSearchParams(location.search);
+  const editId = params.get('edit') || localStorage.getItem('editQuestionId') || null;
 
-  // ตรวจสอบ Token ก่อน
-  if (!teacherToken) {
+  if (!token) {
     alert('กรุณาเข้าสู่ระบบสำหรับอาจารย์ก่อน');
-    window.location.href = 'teacher_login.html';
+    location.href = 'teacher_login.html';
+    return;
   }
 
-  // ส่งฟอร์ม
-  questionForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
+  document.addEventListener('DOMContentLoaded', init);
 
-    const formData = new FormData(questionForm);
-    const data = {
-      question_text: formData.get('question_text'),
-      choices: {
-        A: formData.get('choices[A]'),
-        B: formData.get('choices[B]'),
-        C: formData.get('choices[C]'),
-        D: formData.get('choices[D]')
-      },
-      correct_choice: formData.get('correct_choice'),
-      difficulty_level: formData.get('difficulty_level')
-    };
+  async function init() {
+    // โหมดแก้ไข → โหลดข้อมูลคำถาม
+    if (!editId) return;
+
+    document.title = 'แก้ไขคำถาม';
+    const h1 = document.querySelector('h1');
+    if (h1) h1.textContent = 'แก้ไขคำถาม';
+    form.querySelector('button[type="submit"]').textContent = 'บันทึกการแก้ไข';
 
     try {
-      const response = await fetch('api/create_question.php', {
+      const res = await fetch('api/get_single_question.php?question_id=' + encodeURIComponent(editId), {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const payload = await res.json();
+      if (!res.ok || payload.status !== 'success') throw new Error(payload.message || 'โหลดข้อมูลคำถามไม่สำเร็จ');
+
+      const q = payload.data;
+      form.question_text.value = q.question_text || '';
+      form['choices[A]'].value = q.choices?.A ?? '';
+      form['choices[B]'].value = q.choices?.B ?? '';
+      form['choices[C]'].value = q.choices?.C ?? '';
+      form['choices[D]'].value = q.choices?.D ?? '';
+      form.correct_choice.value = q.correct_choice || 'A';
+      form.difficulty_level.value = String(q.difficulty_level ?? 1);
+    } catch (err) {
+      alert('โหลดข้อมูลคำถามล้มเหลว: ' + err.message);
+    }
+  }
+
+  form.addEventListener('submit', onSubmit);
+  async function onSubmit(e) {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const payload = {
+      question_id: editId ? Number(editId) : undefined,
+      question_text: fd.get('question_text'),
+      choices: {
+        A: fd.get('choices[A]'),
+        B: fd.get('choices[B]'),
+        C: fd.get('choices[C]'),
+        D: fd.get('choices[D]')
+      },
+      correct_choice: fd.get('correct_choice'),
+      difficulty_level: Number(fd.get('difficulty') || 1),
+    };
+
+    const endpoint = editId ? 'api/update_question.php' : 'api/create_question.php';
+    try {
+      const r = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + teacherToken
+          Authorization: 'Bearer ' + token
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(payload)
       });
+      const res = await r.json();
+      if (!r.ok || res.status !== 'success') throw new Error(res.message || 'บันทึกไม่สำเร็จ');
 
-      const result = await response.json();
-
-      if (response.ok) {
-        alert('เพิ่มคำถามสำเร็จ!');
-        window.location.href = 'question_bank.html';
-      } else {
-        throw new Error(result.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
-      }
-    } catch (error) {
-      alert(`เกิดข้อผิดพลาด: ${error.message}`);
+      alert(editId ? 'บันทึกการแก้ไขสำเร็จ' : 'เพิ่มคำถามสำเร็จ');
+      localStorage.removeItem('editQuestionId');
+      location.href = 'question_bank.html';
+    } catch (err) {
+      alert('เกิดข้อผิดพลาด: ' + err.message);
     }
-  });
+  }
 
-  // ปุ่มกลับ
-  document.getElementById('backBtn').addEventListener('click', () => {
-    window.location.href = 'question_bank.html';
-  });
-
-  // ปุ่ม Logout
-  document.getElementById('logoutBtn').addEventListener('click', () => {
+  document.getElementById('backBtn').onclick = () => (location.href = 'question_bank.html');
+  document.getElementById('logoutBtn').onclick = () => {
     localStorage.removeItem('teacherToken');
-    window.location.href = 'teacher_login.html';
-  });
+    location.href = 'teacher_login.html';
+  };
+})();
 </script>
+
 </body>
 </html>

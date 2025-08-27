@@ -24,11 +24,8 @@ try {
         throw new Exception('Invalid examset ID');
     }
 
-    $conn = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
     // Get examset title first
-    $stmt = $conn->prepare("SELECT title FROM exam_sets WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT title FROM exam_sets WHERE id = ?");
     $stmt->execute([$examset_id]);
     $examset = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -37,7 +34,7 @@ try {
     }
 
     // Get questions in the examset
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT q.*, eq.examset_id 
         FROM questions q
         INNER JOIN examset_questions eq ON q.question_id = eq.question_id

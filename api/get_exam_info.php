@@ -13,11 +13,8 @@ if ($exam_id <= 0) {
 }
 
 try {
-    $conn = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    // ดึงข้อมูลการสอบ
-    $stmt = $conn->prepare("
+    // ดึงข้อมูลการสอบด้วย $pdo จาก config/db.php
+    $stmt = $pdo->prepare("
         SELECT 
             es.id,
             es.title,

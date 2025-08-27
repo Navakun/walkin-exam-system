@@ -45,84 +45,121 @@
         </div>
     </main>
     <script>
-    const teacherToken = localStorage.getItem('teacherToken');
-    const tableBody = document.getElementById('examset-table-body');
-    if (!teacherToken) {
-        window.location.href = 'teacher_login.html';
-    }
-    async function loadExamsets() {
-        tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
-        try {
-            const response = await fetch('/exam_project2/api/get_examsets.php', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${teacherToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            const result = await response.json();
-            console.log('API get_examsets.php result:', result);
-            tableBody.innerHTML = '';
-            if (!result.status || result.status === 'error') {
-                throw new Error(result.message || 'ไม่สามารถโหลดข้อมูลได้');
-            }
-            const examsets = result.examsets || [];
-            console.log('examsets:', examsets);
-            if (examsets.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">ยังไม่มีชุดข้อสอบ</td></tr>';
-            } else {
-                examsets.sort((a, b) => a.examset_id - b.examset_id);
-                examsets.forEach(es => {
-                    const row = tableBody.insertRow();
-                    row.innerHTML = `
-                        <td>${es.examset_id}</td>
-                        <td>${es.title || '-'}</td>
-                        <td>${es.question_count || 0}</td>
-                        <td class="actions">
-                            <button class="btn-edit" onclick="editExamset(${es.examset_id})">แก้ไข</button>
-                            <button class="btn-delete" onclick="deleteExamset(${es.examset_id})">ลบ</button>
-                        </td>
-                    `;
-                });
-            }
-        } catch (error) {
-            document.getElementById('errorBox').style.display = 'block';
-            document.getElementById('errorBox').textContent = 'เกิดข้อผิดพลาด: ' + error.message;
-        }
-    }
-    function editExamset(id) {
-        alert('ฟังก์ชันแก้ไขชุดข้อสอบยังไม่ได้ทำ: ' + id);
-    }
-    async function deleteExamset(id) {
-        if (!confirm('คุณแน่ใจหรือไม่ที่จะลบชุดข้อสอบ ID: ' + id + '?')) return;
-        try {
-            const response = await fetch('/exam_project2/api/delete_examset.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + teacherToken },
-                body: JSON.stringify({ examset_id: id })
-            });
-            const result = await response.json();
-            if (response.ok) {
-                alert(result.message);
-                loadExamsets();
-            } else {
-                throw new Error(result.message);
-            }
-        } catch (error) {
-            alert('เกิดข้อผิดพลาด: ' + error.message);
-        }
-    }
-    document.getElementById('addExamsetBtn').addEventListener('click', () => {
-        alert('ฟังก์ชันสร้างชุดข้อสอบใหม่ยังไม่ได้ทำ');
+const teacherToken = localStorage.getItem('teacherToken');
+const tableBody = document.getElementById('examset-table-body');
+if (!teacherToken) { location.href = 'teacher_login.html'; }
+
+// >>> ปรับพาธฐาน API ให้สะดวก (ถ้าระบบคุณอยู่ /walkin-exam-system ให้แก้เป็นนั้น)
+const API_BASE = '/exam_project2/api';
+
+async function loadExamsets() {
+  tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
+  try {
+    const r = await fetch(`${API_BASE}/get_examsets.php`, {
+      headers: { 'Authorization': `Bearer ${teacherToken}` }
     });
-    document.getElementById('backBtn').addEventListener('click', () => {
-        window.location.href = 'teacher_dashboard.html';
+    const result = await r.json();
+    if (!r.ok || result.status !== 'success') throw new Error(result.message || 'ไม่สามารถโหลดข้อมูลได้');
+    const examsets = result.examsets || [];
+    tableBody.innerHTML = '';
+    if (!examsets.length) {
+      tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">ยังไม่มีชุดข้อสอบ</td></tr>';
+      return;
+    }
+    // เรียง id จากน้อยไปมาก (หรือจะสลับก็ได้)
+    examsets.sort((a,b)=> a.examset_id - b.examset_id);
+    for (const es of examsets) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${es.examset_id}</td>
+        <td>${es.title || '-'}</td>
+        <td>${es.question_count ?? 0}</td>
+        <td class="actions">
+          <button class="btn-edit" onclick="editExamset(${es.examset_id})">แก้ไข</button>
+          <button class="btn-delete" onclick="deleteExamset(${es.examset_id})">ลบ</button>
+        </td>`;
+      tableBody.appendChild(tr);
+    }
+  } catch (err) {
+    const box = document.getElementById('errorBox');
+    box.style.display = 'block';
+    box.textContent = 'เกิดข้อผิดพลาด: ' + err.message;
+  }
+}
+
+// ---------- ใหม่: สร้างชุดข้อสอบ ----------
+document.getElementById('addExamsetBtn').addEventListener('click', async () => {
+  const title = (prompt('กรอกชื่อชุดข้อสอบใหม่:') || '').trim();
+  if (!title) return;
+  try {
+    const r = await fetch(`${API_BASE}/create_examset.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${teacherToken}`
+      },
+      body: JSON.stringify({ title })
     });
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-        localStorage.removeItem('teacherToken');
-        window.location.href = 'teacher_login.html';
+    const res = await r.json();
+    if (!r.ok || res.status !== 'success') throw new Error(res.message || 'สร้างชุดข้อสอบไม่สำเร็จ');
+    alert('สร้างชุดข้อสอบสำเร็จ (ID: ' + res.examset_id + ')');
+    loadExamsets();
+  } catch (e) { alert('ผิดพลาด: ' + e.message); }
+});
+
+// ---------- ใหม่: แก้ไขชื่อชุดข้อสอบ ----------
+async function editExamset(id) {
+  try {
+    // ดึงข้อมูลเดิม
+    const r = await fetch(`${API_BASE}/get_examsets.php?examset_id=` + encodeURIComponent(id), {
+      headers: { 'Authorization': `Bearer ${teacherToken}` }
     });
-    document.addEventListener('DOMContentLoaded', loadExamsets);
-    </script>
+    const data = await r.json();
+    if (!r.ok || data.status !== 'success') throw new Error(data.message || 'โหลดข้อมูลไม่สำเร็จ');
+
+    const current = data.data?.title || '';
+    const title = (prompt('แก้ไขชื่อชุดข้อสอบ:', current) || '').trim();
+    if (!title || title === current) return;
+
+    const r2 = await fetch(`${API_BASE}/update_examset.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${teacherToken}`
+      },
+      body: JSON.stringify({ examset_id: id, title })
+    });
+    const res2 = await r2.json();
+    if (!r2.ok || res2.status !== 'success') throw new Error(res2.message || 'บันทึกไม่สำเร็จ');
+
+    alert('บันทึกการแก้ไขสำเร็จ');
+    loadExamsets();
+  } catch (e) { alert('ผิดพลาด: ' + e.message); }
+}
+
+// ---------- เดิม: ลบชุดข้อสอบ (คงไว้ แค่ใช้ API_BASE) ----------
+async function deleteExamset(id) {
+  if (!confirm('คุณแน่ใจหรือไม่ที่จะลบชุดข้อสอบ ID: ' + id + '?')) return;
+  try {
+    const response = await fetch(`${API_BASE}/delete_examset.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + teacherToken },
+      body: JSON.stringify({ examset_id: id })
+    });
+    const result = await response.json();
+    if (!response.ok || result.status !== 'success') throw new Error(result.message || 'ลบไม่สำเร็จ');
+    alert('ลบชุดข้อสอบสำเร็จ');
+    loadExamsets();
+  } catch (error) {
+    alert('เกิดข้อผิดพลาด: ' + error.message);
+  }
+}
+
+document.getElementById('backBtn').addEventListener('click', () => { location.href = 'teacher_dashboard.html'; });
+document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.removeItem('teacherToken'); location.href = 'teacher_login.html'; });
+
+document.addEventListener('DOMContentLoaded', loadExamsets);
+</script>
+
 </body>
 </html>

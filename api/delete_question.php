@@ -42,26 +42,17 @@ if (!isset($data->question_id)) {
 
 $questionId = $data->question_id;
 
-// --- 3. ทำการลบข้อมูล ---
+// --- 3. ทำการลบข้อมูล (PDO) ---
 try {
     $sql = "DELETE FROM Question WHERE question_id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $questionId);
-
-    if ($stmt->execute()) {
-        if ($stmt->affected_rows > 0) {
-            echo json_encode(['status' => 'success', 'message' => 'ลบคำถามสำเร็จ']);
-        } else {
-            http_response_code(404);
-            echo json_encode(['status' => 'error', 'message' => 'ไม่พบคำถามที่ต้องการลบ']);
-        }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$questionId]);
+    if ($stmt->rowCount() > 0) {
+        echo json_encode(['status' => 'success', 'message' => 'ลบคำถามสำเร็จ']);
     } else {
-        throw new Exception('เกิดข้อผิดพลาดในการลบข้อมูล');
+        http_response_code(404);
+        echo json_encode(['status' => 'error', 'message' => 'ไม่พบคำถามที่ต้องการลบ']);
     }
-
-    $stmt->close();
-    $conn->close();
-
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

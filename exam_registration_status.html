@@ -161,10 +161,6 @@
             setTimeout(() => {
                 errorAlert.style.display = 'none';
             }, 5000);
-            if (apiResult.status !== 'success') {
-                document.getElementById("errorAlert").style.display = "block";
-                document.getElementById("errorAlert").textContent = apiResult.message || "เกิดข้อผิดพลาด";
-            }
         }
 
         // โหลดข้อมูลการลงทะเบียน
@@ -218,62 +214,78 @@
             }
         }
 
-        // แสดงข้อมูลในตาราง
-        // Helper to format date as dd/mm/yy
-        function formatDate(dateStr) {
-            const d = new Date(dateStr);
-            if (isNaN(d)) return dateStr;
-            const day = String(d.getDate()).padStart(2, '0');
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const year = String(d.getFullYear()).slice();
-            return `${day}/${month}/${year}`;
-        }
-        // Helper to format time as HH:MM (no seconds)
-        function formatTime(timeStr) {
-            if (!timeStr) return '';
-            return timeStr.split(':').slice(0,2).join(':');
-        }
+                // Helper to format date as dd/mm/yy
+                function formatDate(dateStr) {
+                        const d = new Date(dateStr);
+                        if (isNaN(d)) return dateStr;
+                        const day = String(d.getDate()).padStart(2, '0');
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const year = String(d.getFullYear()).slice();
+                        return `${day}/${month}/${year}`;
+                }
+                // Helper to format time as HH:MM (no seconds)
+                function formatTime(timeStr) {
+                        if (!timeStr) return '';
+                        return timeStr.split(':').slice(0,2).join(':');
+                }
 
-        function displayRegistrations(registrations) {
-            const tbody = document.getElementById('registrationTable');
-            tbody.innerHTML = '';
+                        // 1) สรุปสถานะจากเรกคอร์ด 1 แถว
+                        function computeStatus(reg) {
+                            return Number(reg.has_completed) === 1 ? 'completed' : 'registered';
+                        }
 
-            if (!registrations || registrations.length === 0) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td colspan="6" class="text-center">ไม่มีข้อมูลการลงทะเบียนสอบ</td>`;
-                tbody.appendChild(tr);
-                return;
-            }
+                        // 2) แปลงเป็นข้อความที่ต้องการแสดง (โชว์ attempt)
+                        function statusText(reg) {
+                            if (Number(reg.has_completed) === 1) {
+                                return reg.last_attempt ? `สอบแล้ว (ครั้งที่ ${reg.last_attempt})` : 'สอบแล้ว';
+                            }
+                            return reg.next_attempt ? `ลงทะเบียนแล้ว (จะเป็นครั้งที่ ${reg.next_attempt})` : 'ลงทะเบียนแล้ว';
+                        }
 
-            registrations.forEach(reg => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${reg.student_id}</td>
-                    <td>${reg.student_name}</td>
-                    <td>${formatDate(reg.exam_date)}</td>
-                    <td>${formatTime(reg.exam_time)}</td>
-                    <td>${reg.exam_title}</td>
-                    <td>
-                        <span class="status-badge ${reg.status}">
-                            ${getStatusText(reg.status)}
-                        </span>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
+                        // 3) เรนเดอร์ตาราง
+                        function displayRegistrations(registrations) {
+                            const tbody = document.getElementById('registrationTable');
+                            tbody.innerHTML = '';
 
-        // แปลงสถานะเป็นข้อความภาษาไทย
-        function getStatusText(status) {
-            const statusMap = {
-                'registered': 'ลงทะเบียนแล้ว',
-                'completed': 'สอบเสร็จสิ้น',
-                'cancelled': 'ยกเลิก',
-                'absent': 'ขาดสอบ',
-                'finished': 'สอบเสร็จแล้ว'
-            };
-            return statusMap[status] || status;
-        }
+                            if (!registrations || registrations.length === 0) {
+                                tbody.innerHTML = `<tr><td colspan="6" class="text-center">ไม่มีข้อมูลการลงทะเบียนสอบ</td></tr>`;
+                                return;
+                            }
+
+                            // ---- เรียงคนที่ "ลงทะเบียนล่าสุด" ก่อน ----
+                        const getRegTime = (r) =>
+                            (r.registered_at || r.created_at || r.booking_time || r.booked_at || r.updated_at || '').replace(' ', 'T');
+
+                        registrations.sort((a, b) => {
+                            const tb = new Date(getRegTime(b)), ta = new Date(getRegTime(a));
+                            if (!isNaN(tb) && !isNaN(ta)) return tb - ta; // ล่าสุดก่อน
+                            // fallback: ถ้าไม่มีเวลาลงทะเบียน ให้เดาจาก id หรือวันสอบ
+                            const idB = Number(b.booking_id || b.session_id || 0);
+                            const idA = Number(a.booking_id || a.session_id || 0);
+                            if (idB !== idA) return idB - idA;
+                            const kB = new Date(`${b.exam_date} ${b.exam_time || '00:00'}`);
+                            const kA = new Date(`${a.exam_date} ${a.exam_time || '00:00'}`);
+                            return kB - kA;
+                        });
+                        // ---------------------------------------------
+
+                            const rowsHtml = registrations.map(reg => {
+                                const status = computeStatus(reg);
+                                const text = statusText(reg);
+                                const cls = `status-badge ${status}`;
+                                return `
+                                    <tr>
+                                        <td>${reg.student_id}</td>
+                                        <td>${reg.student_name}</td>
+                                        <td>${formatDate(reg.exam_date)}</td>
+                                        <td>${formatTime(reg.exam_time)}</td>
+                                        <td>${reg.exam_title}</td>
+                                        <td><span class="${cls}">${text}</span></td>
+                                    </tr>`;
+                            }).join('');
+
+                            tbody.innerHTML = rowsHtml;
+                        }
 
         // ค้นหาการลงทะเบียน
         function searchRegistrations() {
@@ -309,7 +321,7 @@
             });
         }
 
-        // ดูรายละเอียด
+        // ดูรายละเอียด (แสดง attempt_no ด้วย)
         async function viewDetails(bookingId) {
             try {
                 const token = localStorage.getItem('teacherToken');
@@ -328,13 +340,15 @@
                     throw new Error(data.message);
                 }
 
-                // แสดงรายละเอียดในรูปแบบที่ต้องการ
+                // แสดงรายละเอียดในรูปแบบที่ต้องการ (โชว์ attempt_no ถ้ามี)
+                const attemptNo = data.details?.attempt_no ?? '-';
                 alert(`
                     รหัสนิสิต: ${data.details.student_id}
                     ชื่อ-นามสกุล: ${data.details.student_name}
                     วันที่สอบ: ${formatDate(data.details.exam_date)}
                     เวลา: ${formatTime(data.details.exam_time)}
                     หัวข้อสอบ: ${data.details.exam_title}
+                    ครั้งที่สอบ: ${attemptNo}
                     สถานะ: ${getStatusText(data.details.status)}
                 `);
 

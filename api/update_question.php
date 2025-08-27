@@ -51,35 +51,31 @@ $questionId = $data['question_id'];
 $questionText = $data['question_text'];
 $choices = $data['choices'];
 $correctChoice = $data['correct_choice'];
-$difficultyLevel = $data['difficulty_level'];
+$difficulty = $data['difficulty_level'];
 // --- สิ้นสุดการรับและตรวจสอบข้อมูล ---
 
 
-// --- 3. บันทึกข้อมูลด้วย Transaction (ส่วนนี้ถูกต้องแล้ว) ---
-$conn->begin_transaction();
+// --- 3. บันทึกข้อมูลด้วย Transaction (PDO) ---
+$pdo->beginTransaction();
 try {
-    // 1. อัปเดตตาราง Question
-    $sqlUpdateQuestion = "UPDATE Question SET question_text = ?, correct_choice = ?, difficulty_level = ? WHERE question_id = ?";
-    $stmtQuestion = $conn->prepare($sqlUpdateQuestion);
-    $stmtQuestion->bind_param("ssii", $questionText, $correctChoice, $difficultyLevel, $questionId);
-    $stmtQuestion->execute();
+    // 1. อัปเดตตาราง question
+    $sqlUpdateQuestion = "UPDATE question SET question_text = ?, correct_choice = ?, difficulty = ? WHERE question_id = ?";
+    $stmtQuestion = $pdo->prepare($sqlUpdateQuestion);
+    $stmtQuestion->execute([$questionText, $correctChoice, $difficulty, $questionId]);
 
-    // 2. อัปเดตตาราง Choice
-    $sqlUpdateChoice = "UPDATE Choice SET content = ? WHERE question_id = ? AND label = ?";
-    $stmtChoice = $conn->prepare($sqlUpdateChoice);
+    // 2. อัปเดตตาราง choice
+    $sqlUpdateChoice = "UPDATE choice SET content = ? WHERE question_id = ? AND label = ?";
+    $stmtChoice = $pdo->prepare($sqlUpdateChoice);
     foreach ($choices as $label => $content) {
-        $stmtChoice->bind_param("sis", $content, $questionId, $label);
-        $stmtChoice->execute();
+        $stmtChoice->execute([$content, $questionId, $label]);
     }
 
-    $conn->commit();
+    $pdo->commit();
     echo json_encode(["status" => "success", "message" => "แก้ไขคำถามสำเร็จ"]);
 
 } catch (Exception $e) {
-    $conn->rollback();
+    $pdo->rollBack();
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()]);
 }
-
-$conn->close();
 ?>

@@ -152,9 +152,10 @@
         window.location.href = 'add_question.html';
     });
 
-    function editQuestion(id) { 
-        // ในอนาคตจะเปลี่ยนเป็นการเปิดหน้าแก้ไข
-        alert(`ฟังก์ชันแก้ไขยังไม่ได้ทำ: ${id}`); 
+    function editQuestion(id) {
+        // เก็บ id ลง localStorage เพื่อให้ add_question.html รู้ว่าเป็นโหมดแก้ไข
+        localStorage.setItem('editQuestionId', id);
+        window.location.href = `add_question.html?edit=${id}`;
     }
 
     async function deleteQuestion(id) {

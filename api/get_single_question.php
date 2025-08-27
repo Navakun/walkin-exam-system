@@ -7,13 +7,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-register_shutdown_function(function () {
-  $e = error_get_last();
-  if ($e && in_array($e['type'], [E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR])) {
-    http_response_code(500);
-    echo json_encode(['status'=>'error','message'=>'SERVER_FATAL','detail'=>$e['message']]);
-  }
-});
+require_once __DIR__ . '/../config/db.php';
 
 function getBearerToken(): ?string {
   $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? ($_SERVER['Authorization'] ?? '');
@@ -29,44 +23,56 @@ function getBearerToken(): ?string {
 }
 
 try {
-  // 1) include DB
-  $dbPath = __DIR__ . '/../config/db.php';
-  if (!file_exists($dbPath)) throw new RuntimeException('db.php not found');
-  require_once $dbPath; // ต้องประกาศ $pdo (PDO MySQL, DB: walkin_exam_db)
-  if (!isset($pdo)) throw new RuntimeException('PDO $pdo not defined');
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  // 2) Auth (ใช้ token ครู)
+  // Auth (ใช้ token ครู)
   $token = getBearerToken();
   if (!$token || strlen($token) < 16) {
     http_response_code(401);
     echo json_encode(['status'=>'error','message'=>'UNAUTHORIZED']);
     exit;
   }
-  // (ถ้าจะตรวจ token จริง ให้เช็คใน DB/Redis ตรงนี้)
 
-  // 3) ดึงผลสอบ (join ตาม schema)
-  $sql = "
-    SELECT
-      s.session_id,
-      st.student_id,
-      st.name        AS student_name,
-      es.title       AS exam_title,
-      sess.start_time,
-      sess.end_time,
-      sess.score
-    FROM examsession sess
-    JOIN student st   ON st.student_id = sess.student_id
-    JOIN examset es   ON es.examset_id = sess.examset_id
-    ORDER BY sess.start_time DESC, sess.session_id DESC
-  ";
+  // รับ question_id จาก query string
+  $qid = isset($_GET['question_id']) ? (int)$_GET['question_id'] : 0;
+  if ($qid <= 0) {
+    http_response_code(400);
+    echo json_encode(['status'=>'error','message'=>'missing question_id']);
+    exit;
+  }
 
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+  // ดึงข้อมูลคำถาม
+  $stmQ = $pdo->prepare('SELECT question_id, question_text, correct_choice, difficulty FROM question WHERE question_id = ?');
+  $stmQ->execute([$qid]);
+  $q = $stmQ->fetch(PDO::FETCH_ASSOC);
+  if (!$q) {
+    http_response_code(404);
+    echo json_encode(['status'=>'error','message'=>'QUESTION_NOT_FOUND']);
+    exit;
+  }
 
-  echo json_encode(['status'=>'success','results'=>$rows], JSON_UNESCAPED_UNICODE);
+  // ดึง choices
+  $stmC = $pdo->prepare('SELECT label, content FROM choice WHERE question_id = ? ORDER BY label ASC');
+  $stmC->execute([$qid]);
+  $choices = [];
+  while ($c = $stmC->fetch(PDO::FETCH_ASSOC)) {
+    $choices[$c['label']] = $c['content'];
+  }
+
+  // คืนข้อมูลในรูปแบบที่ JS ต้องการ
+  echo json_encode([
+    'status' => 'success',
+    'data' => [
+      'question_id'     => (int)$q['question_id'],
+      'question_text'   => $q['question_text'],
+      'choices'         => $choices,
+      'correct_choice'  => $q['correct_choice'],
+      'difficulty'      => (int)$q['difficulty'],
+    ]
+  ], JSON_UNESCAPED_UNICODE);
 
 } catch (Throwable $e) {
-  error_log('[get_all_results] '.$e->getMessage());
+  error_log('[get_single_question] '.$e->getMessage());
   http_response_code(500);
   echo json_encode(['status'=>'error','message'=>$e->getMessage()]);
 }
