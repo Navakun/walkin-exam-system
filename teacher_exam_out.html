@@ -247,7 +247,7 @@
                 };
                 return {
                     id: s.id ?? s.slot_id,
-                    date: s.slot_date ?? '',
+                    date: s.slot_date ?? '',  // แทนที่จะเป็น null
                     start: s.start_time ?? '',
                     end: s.end_time ?? '',
                     capacity: parseInt(s.max_seats) || 0,
@@ -258,6 +258,66 @@
                     createdBy: s.created_by || 'Unknown'
                 };
             }
+
+            async function loadTimeSlots() {
+                showSpinner();
+                try {
+                    const res = await fetch('api/get_available_slots.php', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const text = await res.text();
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                        console.log("📦 data.slots", data.slots);
+                    } catch { data = null; }
+
+                    if (!res.ok || !data || data.status !== 'success') {
+                        console.error('get_available_slots ERROR:', res.status, data || text);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'โหลดช่วงเวลาไม่สำเร็จ',
+                            text: (data && (data.error_code || data.message)) || `HTTP_${res.status}`
+                        });
+                        return;
+                    }
+
+                    const rawSlots = data.slots || [];
+                    console.table(rawSlots.map(normalizeSlot), ['id', 'date', 'end']);
+
+                    function filterAvailableSlots(slots) {
+                        return slots
+                            .map(normalizeSlot)
+                            .filter(slot => {
+                                const endDateTime = new Date(`${slot.date}T${slot.end}`);
+                                return endDateTime > Date.now();
+                            });
+                    }
+
+                    const slotsToRender = filterAvailableSlots(rawSlots);
+                    console.log("📊 slots ที่จะ render:", slotsToRender);
+                    console.table(slotsToRender, ['id', 'date', 'end']);
+
+                    const now = new Date();
+                    const normalizedSlots = rawSlots
+
+                        .map(normalizeSlot)
+                        .filter(slot => {
+                            if (!slot.date || !slot.end) return true;  // แสดงทุก slot ที่ไม่ครบข้อมูล
+                            const endDate = new Date(`${slot.date}T${slot.end}`);
+                            return !isNaN(endDate) && endDate > new Date(); // แสดงเฉพาะ slot ที่ยังไม่หมดเวลา
+                        })
+                    // .filter(slot => slot.date && slot.end && new Date(`${slot.date}T${slot.end}`) > now); // ✅ เงื่อนไขใหม่
+                    normalizedSlots.forEach((s, i) => console.log(`🔍 Slot[${i}]`, s));
+                    displayTimeSlots(normalizedSlots);
+
+                } catch (e) {
+                    console.error(e);
+                    Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: e.message });
+                }
+                hideSpinner();
+            }
+
 
             function displayTimeSlots(slots) {
                 timeSlotsList.innerHTML = '';
@@ -299,45 +359,12 @@
                 });
             }
 
-            async function loadTimeSlots() {
-                showSpinner();
-                try {
-                    const res = await fetch('api/get_available_slots.php', {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    const text = await res.text();
-                    let data;
-                    try {
-                        data = JSON.parse(text);
-                        console.log("📦 data.slots", data.slots);
-                    } catch { data = null; }
-
-                    if (!res.ok || !data || data.status !== 'success') {
-                        console.error('get_available_slots ERROR:', res.status, data || text);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'โหลดช่วงเวลาไม่สำเร็จ',
-                            text: (data && (data.error_code || data.message)) || `HTTP_${res.status}`
-                        });
-                        return;
-                    }
-
-                    const rawSlots = data.slots || [];
-
-                    const now = new Date();
-                    const normalizedSlots = rawSlots
-                        .map(normalizeSlot)
-                        .filter(slot => new Date(`${slot.date}T${slot.end}`) > now);
-
-                    normalizedSlots.forEach((s, i) => console.log(`🔍 Slot[${i}]`, s));
-                    displayTimeSlots(normalizedSlots);
-
-                } catch (e) {
-                    console.error(e);
-                    Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: e.message });
-                }
-                hideSpinner();
+            function isSlotUpcoming(slot) {
+                const slotEndDateTime = new Date(`${slot.date}T${slot.end}`);
+                const now = new Date();
+                return slotEndDateTime > now;
             }
+
 
             async function addSlot(event) {
                 event.preventDefault();
