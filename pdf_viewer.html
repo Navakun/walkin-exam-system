@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Viewer + อ่านออกเสียง</title>
+  <style>
+    #canvasContainer { position: relative; width: 100%; height: 80vh; overflow: auto; background: #ccc; }
+    canvas { display: block; margin: 10px auto; border: 1px solid #000; }
+    .toolbar { padding: 10px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.location.href='teacher_open_materials.html'">← กลับ</button>
+    <button id="speakBtn">🔊 อ่านออกเสียงเนื้อหา</button>
+  </div>
+  <div id="canvasContainer"></div>
+
+  <!-- PDF.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.worker.min.js';
+
+    const query = new URLSearchParams(window.location.search);
+    const filename = query.get('file');
+    if (!filename) {
+        alert('ไม่พบไฟล์ที่ต้องการเปิด');
+        window.location.href = 'teacher_open_materials.html';
+        return;
+    }
+    const pdfUrl = `uploads/materials/${filename}`;
+    const container = document.getElementById('canvasContainer');
+    let fullText = '';
+
+    (async () => {
+      const loadingTask = pdfjsLib.getDocument(pdfUrl);
+      const pdf = await loadingTask.promise;
+      const totalPages = pdf.numPages;
+      for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        container.appendChild(canvas);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+        const content = await page.getTextContent();
+        const pageText = content.items.map(item => item.str).join(' ');
+        fullText += pageText + '\n\n';
+      }
+    })();
+
+    document.getElementById('speakBtn').addEventListener('click', () => {
+      if (!fullText) return alert('กำลังเตรียมเนื้อหา PDF กรุณารอสักครู่');
+      const utterance = new SpeechSynthesisUtterance(fullText);
+      utterance.lang = 'th-TH';
+      utterance.rate = 1;
+      speechSynthesis.speak(utterance);
+    });
+  </script>
+</body>
+</html>
