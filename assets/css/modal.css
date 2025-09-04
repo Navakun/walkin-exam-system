@@ -1,0 +1,68 @@
+/* Modal Styles */
+.modal .modal-header {
+    border-radius: 0.3rem 0.3rem 0 0;
+}
+
+.modal .modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-body .icon-large {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+}
+
+.modal .btn-close-white {
+    filter: brightness(0) invert(1);
+}
+
+/* Animation */
+.modal.fade .modal-dialog {
+    transform: scale(0.8);
+    transition: transform 0.3s ease-in-out;
+}
+
+.modal.show .modal-dialog {
+    transform: scale(1);
+}
+
+/* Success Modal */
+.modal-success-icon {
+    color: #198754;
+    animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Error Modal */
+.modal-error-icon {
+    color: #dc3545;
+    animation: shakeX 0.8s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* Animations */
+@keyframes bounceIn {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes shakeX {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-10px);
+    }
+    75% {
+        transform: translateX(10px);
+    }
+}

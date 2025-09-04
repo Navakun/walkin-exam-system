@@ -3,66 +3,79 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="icon" href="favicon.ico"/>
   <title>เพิ่มคำถามใหม่</title>
-  <link rel="stylesheet" href="style.css"/>
-  <style>
-    .teacher-dashboard{
-      padding:20px;max-width:1200px;margin:auto;background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.1)
-    }
-    form{display:flex;flex-direction:column;gap:15px}
-    form label{font-weight:bold}
-    form input[type="text"],form textarea,form select{
-      width:200px;padding:10px;border-radius:5px;border:1px solid #ddd;font-size:1.05em
-    }
-    .difficulty-select{width:200px;font-size:1.05em}
-    form button{align-self:flex-start}
-  </style>
+  <link rel="icon" href="favicon.ico" />
+  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/teacher.css">
+  <link rel="stylesheet" href="assets/css/addquestion.css">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
+
 <header>
-  <img src="nulogo.png" alt="Logo" height="80"/>
+  <div class="logo-text">
+    <img src="nulogo.png" alt="Logo" height="60">
     <div class="course-title">
-        <h2>เพิ่มคำถามใหม่</h2>
+      <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ<br>มหาวิทยาลัยนเรศวร</h2>
     </div>
+  </div>
   <div class="top-right">
-    <button id="backBtn" class="action-button">กลับคลังข้อสอบ</button>
-    <button id="logoutBtn" class="logout-btn">ออกจากระบบ</button>
+    <button id="backBtn" class="home-btn"><i class="fas fa-arrow-left"></i> คลังข้อสอบ</button>
+    <button id="logoutBtn" class="logout-btn"><i class="fas fa-sign-out-alt"></i> ออกจากระบบ</button>
   </div>
 </header>
 
 <main class="teacher-dashboard">
-  <h1 style="color:#2563eb;margin-bottom:10px;">เพิ่มคำถามใหม่</h1>
-  <div style="margin-bottom:24px;color:#555;font-size:1.1em;">กรุณากรอกข้อมูลให้ครบถ้วนทุกช่อง</div>
+  <div class="page-header">
+    <h1>เพิ่มคำถามใหม่</h1>
+    <div class="subtext">กรุณากรอกข้อมูลให้ครบถ้วนทุกช่อง เพื่อความถูกต้องของข้อสอบ</div>
+  </div>
 
-  <form id="questionForm" style="background:#f8f9fa;border-radius:12px;box-shadow:0 2px 8px rgba(30,41,59,0.06);padding:32px 24px;max-width:600px;margin:auto;">
-    <label for="questionText">คำถาม:</label>
-    <textarea id="questionText" name="question_text" rows="3" required style="font-size:1.1em;"></textarea>
-
-    <label style="margin-top:10px;">ตัวเลือก:</label>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <input type="text" name="choices[A]" placeholder="ตัวเลือก A" required />
-      <input type="text" name="choices[B]" placeholder="ตัวเลือก B" required />
-      <input type="text" name="choices[C]" placeholder="ตัวเลือก C" required />
-      <input type="text" name="choices[D]" placeholder="ตัวเลือก D" required />
+  <form id="questionForm">
+    <div class="form-group">
+      <label for="questionText"><i class="fas fa-question-circle"></i> คำถาม:</label>
+      <textarea id="questionText" name="question_text" rows="3" required placeholder="พิมพ์คำถามของคุณที่นี่..."></textarea>
     </div>
 
-    <label for="correctChoice" style="margin-top:10px;">คำตอบที่ถูกต้อง:</label>
-    <select id="correctChoice" name="correct_choice" required>
-      <option value="A">A</option>
-      <option value="B">B</option>
-      <option value="C">C</option>
-      <option value="D">D</option>
-    </select>
+    <div class="form-group">
+      <label><i class="fas fa-list-ol"></i> ตัวเลือก:</label>
+      <div class="choice-grid">
+        <p><i class="fas fa-chevron-right"></i> A</p>
+        <input type="text" name="choices[A]" placeholder="ตัวเลือก A" required />
+        <p><i class="fas fa-chevron-right"></i> B</p>
+        <input type="text" name="choices[B]" placeholder="ตัวเลือก B" required />
+        <p><i class="fas fa-chevron-right"></i> C</p>
+        <input type="text" name="choices[C]" placeholder="ตัวเลือก C" required />
+        <p><i class="fas fa-chevron-right"></i> D</p>
+        <input type="text" name="choices[D]" placeholder="ตัวเลือก D" required />
+      </div>
+    </div>
 
-    <label for="difficultyLevel" style="margin-top:10px;">ระดับความยาก:</label>
-    <select id="difficultyLevel" name="difficulty_level" class="difficulty-select" required>
-        <option value="1">ง่าย</option>
-      <option value="2">ปานกลาง</option>
-      <option value="3">ยาก</option>
-    </select>
+    <div class="form-group">
+      <label for="correctChoice"><i class="fas fa-check-circle"></i> คำตอบที่ถูกต้อง:</label>
+      <select id="correctChoice" name="correct_choice" required>
+        <option value="" disabled selected>เลือกคำตอบที่ถูกต้อง</option>
+        <option value="A">ตัวเลือก A</option>
+        <option value="B">ตัวเลือก B</option>
+        <option value="C">ตัวเลือก C</option>
+        <option value="D">ตัวเลือก D</option>
+      </select>
+    </div>
 
-    <button type="submit" class="action-button" style="margin-top:18px;font-size:1.1em;padding:12px 32px;">บันทึกคำถาม</button>
+    <div class="form-group">
+      <label for="difficultyLevel"><i class="fas fa-signal"></i> ระดับความยาก:</label>
+      <select id="difficultyLevel" name="difficulty_level" required>
+        <option value="" disabled selected>เลือกระดับความยาก</option>
+        <option value="easy">ง่าย</option>
+        <option value="medium">ปานกลาง</option>
+        <option value="hard">ยาก</option>
+      </select>
+    </div>
+
+    <button type="submit" class="action-button">
+      <i class="fas fa-save"></i> บันทึกคำถาม
+    </button>
   </form>
 </main>
 
@@ -70,52 +83,16 @@
 (() => {
   const form = document.getElementById('questionForm');
   const token = localStorage.getItem('teacherToken');
-  const params = new URLSearchParams(location.search);
-  const editId = params.get('edit') || localStorage.getItem('editQuestionId') || null;
-
   if (!token) {
     alert('กรุณาเข้าสู่ระบบสำหรับอาจารย์ก่อน');
     location.href = 'teacher_login.html';
     return;
   }
 
-  document.addEventListener('DOMContentLoaded', init);
-
-  async function init() {
-    // โหมดแก้ไข → โหลดข้อมูลคำถาม
-    if (!editId) return;
-
-    document.title = 'แก้ไขคำถาม';
-    const h1 = document.querySelector('h1');
-    if (h1) h1.textContent = 'แก้ไขคำถาม';
-    form.querySelector('button[type="submit"]').textContent = 'บันทึกการแก้ไข';
-
-    try {
-      const res = await fetch('api/get_single_question.php?question_id=' + encodeURIComponent(editId), {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      const payload = await res.json();
-      if (!res.ok || payload.status !== 'success') throw new Error(payload.message || 'โหลดข้อมูลคำถามไม่สำเร็จ');
-
-      const q = payload.data;
-      form.question_text.value = q.question_text || '';
-      form['choices[A]'].value = q.choices?.A ?? '';
-      form['choices[B]'].value = q.choices?.B ?? '';
-      form['choices[C]'].value = q.choices?.C ?? '';
-      form['choices[D]'].value = q.choices?.D ?? '';
-      form.correct_choice.value = q.correct_choice || 'A';
-      form.difficulty_level.value = String(q.difficulty_level ?? 1);
-    } catch (err) {
-      alert('โหลดข้อมูลคำถามล้มเหลว: ' + err.message);
-    }
-  }
-
-  form.addEventListener('submit', onSubmit);
-  async function onSubmit(e) {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(form);
     const payload = {
-      question_id: editId ? Number(editId) : undefined,
       question_text: fd.get('question_text'),
       choices: {
         A: fd.get('choices[A]'),
@@ -124,12 +101,11 @@
         D: fd.get('choices[D]')
       },
       correct_choice: fd.get('correct_choice'),
-      difficulty_level: Number(fd.get('difficulty') || 1),
+      difficulty_level: Number(fd.get('difficulty_level') || 1),
     };
 
-    const endpoint = editId ? 'api/update_question.php' : 'api/create_question.php';
     try {
-      const r = await fetch(endpoint, {
+      const r = await fetch('api/create_question.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -140,13 +116,12 @@
       const res = await r.json();
       if (!r.ok || res.status !== 'success') throw new Error(res.message || 'บันทึกไม่สำเร็จ');
 
-      alert(editId ? 'บันทึกการแก้ไขสำเร็จ' : 'เพิ่มคำถามสำเร็จ');
-      localStorage.removeItem('editQuestionId');
+      alert('เพิ่มคำถามสำเร็จ');
       location.href = 'question_bank.html';
     } catch (err) {
       alert('เกิดข้อผิดพลาด: ' + err.message);
     }
-  }
+  });
 
   document.getElementById('backBtn').onclick = () => (location.href = 'question_bank.html');
   document.getElementById('logoutBtn').onclick = () => {

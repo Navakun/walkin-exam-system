@@ -1,0 +1,181 @@
+/*
+    File: teacher.css
+    Description: Styles for Teacher Dashboard, Question Bank, and other teacher-specific views.
+*/
+
+.teacher-dashboard {
+    padding: 30px;
+    max-width: 1200px;
+    margin: 40px auto;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.teacher-dashboard h1 {
+    margin-top: 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 1rem;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.actions button {
+    margin-right: 5px;
+    padding: 8px 16px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    color: white;
+    font-weight: 500;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+}
+
+.actions button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.actions button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.btn-create {
+    background-color: #2196F3;
+    border: 1px solid #1e88e5;
+    font-size: 1em;
+    padding: 10px 20px;
+    border-radius: 5px;
+    color: white;
+    font-weight: 500;
+}
+
+.btn-create:hover {
+    background-color: #1976D2;
+}
+
+.btn-edit {
+    background-color: #f39821;
+    border: 1px solid #e7901c;
+    margin-bottom: 5px;
+}
+
+.btn-edit:hover {
+    background-color: #e7ab29;
+}
+
+.btn-add {
+    background-color: #4CAF50;
+    border: 1px solid #43a047;
+    font-size: 1em;
+    padding: 10px 20px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    color: white;
+}
+
+.btn-add:hover {
+    background-color: #388E3C;
+}
+
+.btn-delete {
+    background-color: #f44336;
+    border: 1px solid #e53935;
+}
+
+.btn-delete:hover {
+    background-color: #d32f2f;
+}
+
+/* เพิ่ม style สำหรับปุ่มอื่นๆ */
+.home-btn, .logout-btn {
+    padding: 8px 16px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    color: white;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-left: 10px;
+}
+
+.home-btn {
+    background-color: #2196F3;
+    border: 1px solid #1e88e5;
+}
+
+.home-btn:hover {
+    background-color: #1976D2;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.logout-btn {
+    background-color: #e60303;
+    border: 1px solid #ecd7d7;
+}
+
+.logout-btn:hover {
+    background-color: #da5757;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* ระดับความยาก */
+.difficulty-1, .difficulty-2, .difficulty-3 {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 1em;
+    display: inline-block;
+    text-align: center;
+    min-width: 85px;
+    align-content: center;
+}
+
+.difficulty-1 {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.difficulty-2 {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+
+.difficulty-3 {
+    background: #ffebee;
+    color: #c62828;
+}
+
+/* ป้องกันไม่ให้โดนหัวตาราง */
+tbody .status-full {
+    background-color: #f8d7da !important;
+}
+
+tbody .status-available {
+    background-color: #d0f1d8 !important;
+}
+
+/* ปรับหัวตารางให้ชัดเจน */
+thead tr {
+    background-color: #f1f1f1 !important;
+}
+

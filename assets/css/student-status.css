@@ -1,0 +1,114 @@
+.table-container {
+    margin-top: 20px;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+tr {
+    border-bottom: 1px solid #eee;
+}
+
+tr:hover {
+    background: #e9e3e3;
+}
+
+th, td {
+    padding: 12px 15px;
+    text-align: left;
+}
+
+th {
+    background: #f2f2f2;
+}
+
+.search-section {
+margin: 20px 0;
+padding: 15px;
+background: #f8f9fa;
+border-radius: 8px;
+}
+
+.search-filters {
+display: flex;
+gap: 10px;
+align-items: center;
+flex-wrap: wrap;
+}
+
+.search-filters input {
+min-width: 200px;
+max-width: 400px;
+}
+
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.9em;
+    display: inline-block;
+    text-align: center;
+    min-width: 100px;
+}
+
+.registered { background: #e3f2fd; color: #1976d2; }
+.completed { background: #e8f5e9; color: #2e7d32; }
+.cancelled { background: #ffebee; color: #c62828; }
+.absent { background: #fff3e0; color: #ef6c00; }
+.finished { background: #e8f5e9; color: #2e7d32; }
+.table-container {
+        margin-top: 20px;
+        overflow-x: auto;
+}
+
+/* Common button styles */
+.home-btn, .logout-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    min-width: 120px;
+    height: 40px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95em;
+    transition: all 0.2s ease;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 0 5px;
+    color: #fff;
+}
+
+.home-btn:hover, .logout-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.home-btn:active, .logout-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.home-btn {
+    background: #007bff;
+}
+
+.home-btn:hover {
+    background: #0056b3;
+}
+
+.logout-btn {
+    background: #dc3545;
+}
+
+.logout-btn:hover {
+    background: #c82333;
+}
+
+.logout-btn:active {
+    background: #bd2130;
+}

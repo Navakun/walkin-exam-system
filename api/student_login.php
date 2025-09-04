@@ -1,82 +1,115 @@
 <?php
-// แสดง error ชั่วคราวระหว่างดีบัก
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
-require_once '../vendor/autoload.php';
-use Firebase\JWT\JWT;
+declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-header('Pragma: no-cache');
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
 
-register_shutdown_function(function () {
-  $e = error_get_last();
-  if ($e && in_array($e['type'], [E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR])) {
-    http_response_code(500);
-    echo json_encode(['status'=>'error','message'=>'SERVER_FATAL','detail'=>$e['message']]);
-  }
-});
+function json_out(array $o, int $code = 200): void {
+    http_response_code($code);
+    echo json_encode($o, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+$err = null;
 
 try {
-  // 1) DB
-  $dbPath = __DIR__ . '/../config/db.php';
-  if (!file_exists($dbPath)) throw new RuntimeException('db.php not found: '.$dbPath);
-  require_once $dbPath;           // ต้องนิยาม $pdo
-  if (!isset($pdo)) throw new RuntimeException('PDO $pdo not defined');
+    // 1) DB
+    require_once __DIR__ . '/../config/db.php';
+    if (!isset($pdo)) { $err = 'PDO_NOT_SET'; throw new RuntimeException('PDO not set'); }
 
-  // 2) รับ JSON
-  $raw = file_get_contents('php://input');
-  $input = json_decode($raw, true);
-  if (!is_array($input)) {
-    http_response_code(400);
-    echo json_encode(['status'=>'error','message'=>'INVALID_JSON_BODY']); exit;
-  }
+    // 2) composer autoload
+    $autoload = __DIR__ . '/../vendor/autoload.php';
+    if (!is_file($autoload)) { $err = 'NO_AUTOLOAD'; throw new RuntimeException('vendor/autoload.php missing'); }
+    require_once $autoload;
 
-  $student_id = trim((string)($input['student_id'] ?? ''));
-  $password   = trim((string)($input['password'] ?? ''));
-  if ($student_id === '' || $password === '') {
-    http_response_code(400);
-    echo json_encode(['status'=>'error','message'=>'MISSING_FIELDS']); exit;
-  }
+    // 3) jwt helper (มี getJwtKey())
+    $jwtHelper = __DIR__ . '/helpers/jwt_helper.php';
+    if (!is_file($jwtHelper)) { $err = 'NO_JWT_HELPER'; throw new RuntimeException('jwt_helper missing'); }
+    require_once $jwtHelper;
 
-  // 3) คิวรีตามสคีมาที่ใช้อยู่ (table: student, cols: student_id, name, password)
-  $stmt = $pdo->prepare('SELECT student_code, fullname, password_hash FROM Student WHERE student_code = ? LIMIT 1');
-  $stmt->execute([$student_id]);
-  $row = $stmt->fetch();
+    // 4) อ่าน input: รองรับ JSON และ FormData
+    $raw = file_get_contents('php://input');
+    $data = $raw ? json_decode($raw, true) : null;
 
-  if (!$row) {
-    http_response_code(401);
-    echo json_encode(['status'=>'error','message'=>'USER_NOT_FOUND']); exit;
-  }
+    $student_id = '';
+    $password   = '';
 
-  // 4) ตรวจรหัสผ่าน
-  if (!password_verify($password, $row['password_hash'])) {
-    http_response_code(401);
-    echo json_encode(['status'=>'error','message'=>'INVALID_PASSWORD']); exit;
-  }
+    if (is_array($data)) {
+        // จากหน้า student_login.html จะส่ง { student_id, password }
+        $student_id = trim((string)($data['student_id'] ?? ''));
+        $password   = (string)($data['password'] ?? '');
+        // เผื่อบางที่ใช้ email แทน student_id
+        if ($student_id === '' && !empty($data['email'])) {
+            $student_id = trim((string)$data['email']);
+        }
+    }
+    if ($student_id === '' && !empty($_POST)) {
+        $student_id = trim((string)($_POST['student_id'] ?? $_POST['email'] ?? ''));
+        $password   = (string)($_POST['password'] ?? '');
+    }
 
-  // 5) สำเร็จ → สร้าง JWT token
-  require_once '../vendor/autoload.php';
+    if ($student_id === '' || $password === '') {
+        json_out(['status'=>'error','message'=>'MISSING_FIELDS','error_code'=>'MISSING_FIELDS'], 400);
+    }
 
-  $secret_key = "d57a9c8e90f6fcb62f0e05e01357ed9cfb50a3b1e121c84a3cdb3fae8a1c71ef";
-  $payload = [
-      'student_id' => $row['student_code'],
-      'name' => $row['fullname'],
-      'role' => 'student',
-      'iat' => time(),
-      'exp' => time() + (60 * 60) // 1 hour expiration
-  ];
+    // 5) ดึงข้อมูลนักศึกษา (ลองหาโดย student_id หรือ email)
+    $sql = "
+        SELECT student_id, name, email, password
+        FROM student
+        WHERE student_id = ? OR email = ?
+        LIMIT 1
+    ";
+    $stmt = $pdo->prepare($sql);
+    if (!$stmt) { $err = 'PREPARE_FAIL'; throw new RuntimeException('prepare failed'); }
 
-  $token = JWT::encode($payload, $secret_key, 'HS256');
-  
-  echo json_encode([
-    'status'  => 'success',
-    'token'   => $token,
-    'student' => ['id' => $row['student_code'], 'name' => $row['fullname']]
-  ], JSON_UNESCAPED_UNICODE);
+    if (!$stmt->execute([$student_id, $student_id])) {
+        $ei = $stmt->errorInfo();
+        $err = 'EXECUTE_FAIL';
+        throw new RuntimeException('execute failed: '.($ei[2] ?? 'unknown'));
+    }
+
+    $student = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$student) {
+        json_out(['status'=>'error','message'=>'USER_NOT_FOUND','error_code'=>'USER_NOT_FOUND'], 401);
+    }
+
+    // 6) ตรวจรหัสผ่าน (รองรับทั้งแบบแฮชและ plaintext ระหว่างพัฒนา)
+    $stored = (string)$student['password'];
+    $isHash = str_starts_with($stored, '$2y$') || str_starts_with($stored, '$argon2i$') || str_starts_with($stored, '$argon2id$');
+    $ok = $isHash ? password_verify($password, $stored) : hash_equals($stored, $password);
+
+    if (!$ok) {
+        json_out(['status'=>'error','message'=>'INVALID_PASSWORD','error_code'=>'INVALID_PASSWORD'], 401);
+    }
+
+    // 7) ออก JWT
+    if (!function_exists('getJwtKey')) { $err = 'JWT_HELPER_NOT_LOADED'; throw new RuntimeException('getJwtKey missing'); }
+    $secret = getJwtKey();
+
+    if (!class_exists(\Firebase\JWT\JWT::class)) { $err = 'JWT_CLASS_MISSING'; throw new RuntimeException('JWT class missing'); }
+
+    $payload = [
+        'student_id' => (string)$student['student_id'],
+        'name'       => (string)$student['name'],
+        'email'      => (string)($student['email'] ?? ''),
+        'iat'        => time(),
+        'exp'        => time() + 86400, // อายุ 1 วัน
+    ];
+    $token = \Firebase\JWT\JWT::encode($payload, $secret, 'HS256');
+
+    // รูปแบบผลลัพธ์ให้ตรงกับหน้าเว็บ (เรียก result.student.id)
+    json_out([
+        'status'  => 'success',
+        'token'   => $token,
+        'student' => [
+            'id'    => $student['student_id'], // << สำคัญ: ต้องมี key ชื่อ id
+            'name'  => $student['name'],
+            'email' => $student['email'] ?? null,
+        ],
+    ]);
 
 } catch (Throwable $e) {
-  http_response_code(500);
-  echo json_encode(['status'=>'error','message'=>$e->getMessage()]);
+    error_log('student_login error ['.($err ?? 'UNSPECIFIED').']: '.$e->getMessage());
+    json_out(['status'=>'error','message'=>'SERVER_FATAL','error_code'=>$err ?? 'UNSPECIFIED'], 500);
 }

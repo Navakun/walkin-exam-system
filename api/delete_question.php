@@ -12,7 +12,9 @@ include '../config/db.php';
 
 // --- 1. ตรวจสอบ Token ของอาจารย์ ---
 $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-$secret_key = "d57a9c8e90f6fcb62f0e05e01357ed9cfb50a3b1e121c84a3cdb3fae8a1c71ef"; // <-- ใช้ Key ของ "อาจารย์"
+if (empty($jwt_key)) {
+    throw new Exception('JWT key not configured');
+}
 
 if (!$authHeader) {
     http_response_code(401);
@@ -23,7 +25,7 @@ if (!$authHeader) {
 list($jwt) = sscanf($authHeader, 'Bearer %s');
 
 try {
-    $decoded = JWT::decode($jwt, new Key($secret_key, 'HS256'));
+    $decoded = JWT::decode($jwt, new Key($jwt_key, 'HS256'));
 } catch (Exception $e) {
     http_response_code(401);
     echo json_encode(["status" => "error", "message" => "Token ไม่ถูกต้อง: " . $e->getMessage()]);

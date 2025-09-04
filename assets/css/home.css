@@ -1,0 +1,97 @@
+/* =================================
+   8. Homepage Styles (สำหรับ homepage.html)
+   ================================= */
+.home-content {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 20px;
+}
+
+.welcome-box {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.welcome-box h1 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-size: 2em;
+}
+
+.welcome-box h2 {
+    color: #7f8c8d;
+    margin-bottom: 30px;
+    font-size: 1.5em;
+}
+
+.info-section {
+    margin: 30px 0;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    text-align: left;
+}
+
+.info-section h3 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+}
+
+.info-section p {
+    margin: 8px 0;
+    color: #34495e;
+}
+
+.action-buttons {
+    margin-top: 30px;
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.primary-btn, .secondary-btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.primary-btn {
+    background: #3498db;
+    color: white;
+}
+
+.secondary-btn {
+    background: #95a5a6;
+    color: white;
+}
+
+.primary-btn:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
+.secondary-btn:hover {
+    background: #7f8c8d;
+    transform: translateY(-2px);
+}
+
+.login-btn, .teacher-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    margin-left: 10px;
+    color: white;
+}
+
+.login-btn {
+    background: #3498db;
+}
+
+.teacher-btn {
+    background: #95a5a6;
+}

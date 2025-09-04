@@ -1,4 +1,6 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 header('Content-Type: application/json; charset=utf-8');
 require_once '../config/db.php';
 
@@ -17,13 +19,38 @@ $token = $matches[1];
 try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    // ดึงข้อมูลคำถามทั้งหมด
-    $stmt = $pdo->prepare("
-        SELECT q.question_id, q.question_text, q.correct_choice, q.difficulty_level, esq.examset_id
-        FROM question q
-        LEFT JOIN exam_set_question esq ON q.question_id = esq.question_id
-        ORDER BY q.question_id ASC
-    ");
+    // ตรวจสอบชื่อ column ที่มีอยู่ในตาราง
+    $stmt = $pdo->prepare("DESCRIBE question");
+    $stmt->execute();
+    $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    // สร้าง SQL query ตาม columns ที่มีอยู่จริง
+    $sql = "SELECT q.question_id, q.question_text, q.correct_choice";
+    
+    if (in_array('difficulty', $columns)) {
+        $sql .= ", q.difficulty";
+    } else if (in_array('item_difficulty', $columns)) {
+        $sql .= ", q.item_difficulty";
+    }
+    
+    if (in_array('discrimination', $columns)) {
+        $sql .= ", q.discrimination";
+    }
+    if (in_array('total_attempts', $columns)) {
+        $sql .= ", q.total_attempts";
+    }
+    if (in_array('correct_attempts', $columns)) {
+        $sql .= ", q.correct_attempts";
+    }
+    if (in_array('avg_response_time', $columns)) {
+        $sql .= ", q.avg_response_time";
+    }
+    
+    $sql .= " FROM question q ORDER BY q.question_id ASC";
+    
+    error_log("SQL Query: " . $sql); // Log the query for debugging
+    
+    $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $questions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

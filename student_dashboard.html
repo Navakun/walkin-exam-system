@@ -4,11 +4,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>แผงควบคุมนิสิต</title>
+  <title>หน้าหลัก</title>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/student.css">
+  <link rel="stylesheet" href="assets/css/student-dashboard.css">
   <link rel="icon" href="favicon.ico">
+  <!-- SweetAlert2 -->
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </head>
 
 <body>
@@ -27,41 +33,12 @@
 
   <main class="dashboard">
     <div class="welcome-banner">
-      <h2><i class="fas fa-graduation-cap"></i> แผงควบคุมนิสิต</h2>
+      <h2><i class="fas fa-graduation-cap"></i>หน้าหลัก</h2>
       <p class="welcome-text">ยินดีต้อนรับสู่ระบบจัดการการสอบออนไลน์</p>
     </div>
 
     <div class="card-list">
-  <a href="#" class="card" id="viewResultBtn">
-        <div class="card-icon">
-          <i class="fas fa-poll"></i>
-        </div>
-        <div class="card-content">
-          <h3>ดูผลคะแนน</h3>
-          <p>ตรวจสอบผลคะแนนสอบของคุณ</p>
-        </div>
-        <div class="card-arrow">
-          <i class="fas fa-chevron-right"></i>
-        </div>
-      </a>
-  <!-- ...existing cards... -->
-  <script>
-    // ...existing JS...
-
-    // ฟังก์ชันดูผลคะแนน
-    document.addEventListener('DOMContentLoaded', function() {
-      document.getElementById('viewResultBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        const session_id = localStorage.getItem('session_id');
-        if (session_id) {
-          window.location.href = 'student_view_result.html';
-        } else {
-          alert('ยังไม่มีข้อมูลผลสอบ กรุณาทำข้อสอบให้เสร็จก่อน');
-        }
-      });
-    });
-  </script>
-  <a href="register_exam.html" class="card">
+      <a href="register_exam.html" class="card">
         <div class="card-icon">
           <i class="fas fa-calendar-alt"></i>
         </div>
@@ -73,7 +50,7 @@
           <i class="fas fa-chevron-right"></i>
         </div>
       </a>
-      
+
       <a href="student_registration_status.html" class="card">
         <div class="card-icon">
           <i class="fas fa-list-check"></i>
@@ -87,7 +64,7 @@
         </div>
       </a>
 
-      <a href="student_exam.html" class="card" onclick="handleStartExam()">
+      <a href="student_exam.html" class="card" onclick="handleStartExam(event)">
         <div class="card-icon">
           <i class="fas fa-edit"></i>
         </div>
@@ -99,12 +76,64 @@
           <i class="fas fa-chevron-right"></i>
         </div>
       </a>
+
+      <a href="#" class="card" id="viewResultBtn">
+        <div class="card-icon">
+          <i class="fas fa-poll"></i>
+        </div>
+        <div class="card-content">
+          <h3>ดูผลคะแนน</h3>
+          <p>ตรวจสอบผลคะแนนสอบของคุณ</p>
+        </div>
+        <div class="card-arrow">
+          <i class="fas fa-chevron-right"></i>
+        </div>
+      </a>
+
+      <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          document.getElementById('viewResultBtn').addEventListener('click', function (e) {
+            e.preventDefault();
+            const session_id = localStorage.getItem('session_id');
+            if (session_id) {
+              window.location.href = 'student_view_result.html';
+            } else {
+              Swal.fire({
+                icon: 'warning',
+                title: 'ไม่พบข้อมูลการสอบ',
+                text: 'คุณยังไม่มีข้อมูลการสอบที่สามารถดูผลคะแนนได้',
+                confirmButtonText: 'ตกลง',
+                confirmButtonColor: '#3085d6',
+                customClass: {
+                  popup: 'rounded-4 shadow-lg'
+                }
+              });
+            }
+          });
+        });
+      </script>
     </div>
   </main>
-  
+
   <footer class="dashboard-footer">
     <p>© 2025 ระบบจัดการการสอบออนไลน์ มหาวิทยาลัยนเรศวร</p>
   </footer>
+
+  <!-- Logout Confirmation Modal -->
+  <div class="logout-confirm-modal" id="logoutModal">
+    <div class="logout-modal-content">
+      <h3><i class="fas fa-sign-out-alt"></i>ยืนยันการออกจากระบบ</h3>
+      <p>คุณต้องการออกจากระบบหรือไม่?</p>
+      <div class="logout-modal-buttons">
+        <button class="modal-btn cancel" id="cancelLogout">
+          <i class="fas fa-times"></i>ยกเลิก
+        </button>
+        <button class="modal-btn confirm" id="confirmLogout">
+          <i class="fas fa-check"></i>ยืนยัน
+        </button>
+      </div>
+    </div>
+  </div>
 
   <script>
     function parseJwt(token) {
@@ -123,7 +152,7 @@
 
     const token = localStorage.getItem('studentToken');
     if (!token) {
-  window.location.href = 'student_login.html';
+      window.location.href = 'student_login.html';
     } else {
       const payload = parseJwt(token);
       if (payload && payload.name) {
@@ -135,29 +164,41 @@
       }
     }
 
-    function handleStartExam() {
-    const session_id = localStorage.getItem('session_id');
-    const examset_id = localStorage.getItem('examset_id');
+    function handleStartExam(e) {
+      if (e) e.preventDefault(); // กัน <a> พาไปหน้าอื่น
 
-    if (session_id && examset_id) {
-      window.location.href = 'student_exam.html';
-    } else {
-      alert('คุณยังไม่ได้ลงทะเบียนสอบ กรุณาลงทะเบียนก่อนเข้าสอบ');
-      window.location.href = 'register_exam.html';
+      const session_id = localStorage.getItem('session_id');
+      const examset_id = localStorage.getItem('examset_id');
+
+      if (session_id && examset_id) {
+        // พร้อมสอบ → ไปหน้าสอบได้
+        window.location.href = 'student_exam.html';
+      } else {
+        // ยังไม่ลงทะเบียน → แจ้งเตือนอย่างเดียว และ "ไม่" redirect
+        Swal.fire({
+          icon: 'warning',
+          title: 'ยังไม่ได้ลงทะเบียนสอบ',
+          text: 'กรุณาลงทะเบียนก่อนเข้าสอบ',
+          confirmButtonText: 'ตกลง',
+          confirmButtonColor: '#3085d6',
+          customClass: {
+            popup: 'rounded-4 shadow-lg'
+          }
+        });
+        // จบเลย ไม่ต้องเปลี่ยนหน้า
+      }
     }
-  }
-
-document.getElementById('logoutBtn').addEventListener('click', () => {
-  if (confirm('คุณต้องการออกจากระบบหรือไม่?')) {
-    localStorage.clear();
-  window.location.href = 'student_login.html';
-  }
-});
-
     document.getElementById('logoutBtn').addEventListener('click', () => {
-      localStorage.removeItem('studentToken');
-      localStorage.removeItem('studentId');
-  window.location.href = 'student_login.html';
+      document.getElementById('logoutModal').style.display = 'flex';
+    });
+
+    document.getElementById('cancelLogout').addEventListener('click', () => {
+      document.getElementById('logoutModal').style.display = 'none';
+    });
+
+    document.getElementById('confirmLogout').addEventListener('click', () => {
+      localStorage.clear();
+      window.location.href = 'student_login.html';
     });
   </script>
 </body>

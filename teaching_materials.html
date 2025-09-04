@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/teacher.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="icon" href="favicon.ico">
+</head>
+
+<body>
+    <header>
+        <div class="logo-text">
+            <img src="nulogo.png" alt="Logo" height="80">
+            <div class="course-title">
+                <h2>จัดการสื่อการสอน</h2>
+            </div>
+        </div>
+        <div class="top-right">
+            <a href="teacher_dashboard.html" class="btn btn-outline-primary me-2">
+                <i class="fas fa-home"></i> กลับหน้าหลัก
+            </a>
+            <button id="logoutBtn" class="logout-btn">ออกจากระบบ</button>
+        </div>
+    </header>
+
+    <main class="container mt-4">
+        <div class="row">
+            <div class="col-md-12 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">อัพโหลดสื่อการสอน</h5>
+                        <form id="uploadForm">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">ชื่อเรื่อง</label>
+                                <input type="text" class="form-control" id="title" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="form-label">คำอธิบาย</label>
+                                <textarea class="form-control" id="description" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="file" class="form-label">ไฟล์ (PDF เท่านั้น)</label>
+                                <input type="file" class="form-control" id="file" accept=".pdf,.ppt,.pptx,.doc,.docx"
+                                    required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> อัพโหลด
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">รายการสื่อการสอน</h5>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>ชื่อเรื่อง</th>
+                                        <th>คำอธิบาย</th>
+                                        <th>วันที่อัพโหลด</th>
+                                        <th>ขนาดไฟล์</th>
+                                        <th>จำนวนดาวน์โหลด</th>
+                                        <th>การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="materialsList">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('teacherToken');
+            if (!token) {
+                window.location.href = 'teacher_login.html';
+                return;
+            }
+
+            // จัดการปุ่มออกจากระบบ
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                localStorage.removeItem('teacherToken');
+                localStorage.removeItem('instructor_name');
+                window.location.href = 'teacher_login.html';
+            });
+
+            loadMaterials();
+
+            document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const token = localStorage.getItem('teacherToken');
+                if (!token) {
+                    alert('หมดเซสชัน กรุณาเข้าสู่ระบบใหม่');
+                    location.href = 'teacher_login.html';
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('title', document.getElementById('title').value.trim());
+                formData.append('description', document.getElementById('description').value.trim());
+                const file = document.getElementById('file').files[0];
+                if (!file) { alert('กรุณาเลือกไฟล์'); return; }
+                formData.append('file', file);
+
+                try {
+                    const res = await fetch('api/upload_material.php', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }, // อย่าตั้ง Content-Type เอง
+                        body: formData,
+                        cache: 'no-store'
+                    });
+
+                    const text = await res.text();
+                    console.log('[upload] raw response:', text);
+                    let data;
+                    try { data = JSON.parse(text); } catch { data = { status: 'error', message: text || 'Invalid JSON' }; }
+
+                    if (!res.ok || data.status !== 'success') {
+                        alert(data.message || `อัปโหลดล้มเหลว (HTTP ${res.status})`);
+                        return;
+                    }
+
+                    alert('อัปโหลดสำเร็จ');
+                    e.target.reset();
+                    loadMaterials();
+                } catch (err) {
+                    console.error('Upload failed:', err);
+                    alert('เกิดข้อผิดพลาดในการอัพโหลด');
+                }
+            });
+        });
+
+        async function loadMaterials() {
+            try {
+                const res = await fetch('api/get_materials.php', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('teacherToken')}`
+                    }
+                });
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    console.error('Server error:', text);
+                    throw new Error('Server returned ' + res.status);
+                }
+
+                const data = await res.json();
+
+                const tbody = document.getElementById('materialsList');
+                tbody.innerHTML = '';
+
+                if (data.status === 'success') {
+                    data.materials.forEach(material => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                    <td>${material.title}</td>
+                    <td>${material.description || '-'}</td>
+                    <td>${new Date(material.upload_date).toLocaleDateString('th-TH')}</td>
+                    <td>${formatFileSize(material.file_size)}</td>
+                    <td>${material.download_count}</td>
+                    <td>
+                        <a href="uploads/materials/${material.file_path}" class="btn btn-sm btn-primary" target="_blank">
+                            <i class="fas fa-download"></i>
+                        </a>
+                        <button onclick="deleteMaterial(${material.material_id})" class="btn btn-sm btn-danger">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">ไม่พบข้อมูล</td></tr>';
+                }
+            } catch (err) {
+                console.error('Error in loadMaterials:', err);
+                document.getElementById('materialsList').innerHTML =
+                    '<tr><td colspan="6" class="text-center text-danger">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+            }
+        }
+
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        async function deleteMaterial(id) {
+            if (!confirm('ต้องการลบสื่อการสอนนี้หรือไม่?')) return;
+
+            try {
+                const response = await fetch('api/delete_material.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('teacherToken')}`
+                    },
+                    body: JSON.stringify({ material_id: id })
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    alert('ลบสำเร็จ');
+                    loadMaterials();
+                } else {
+                    alert(data.message || 'เกิดข้อผิดพลาด');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('เกิดข้อผิดพลาดในการลบ');
+            }
+        }
+    </script>
+</body>
+
+</html>

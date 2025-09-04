@@ -42,34 +42,37 @@ try {
   }
 
   // ดึงข้อมูลคำถาม
+
   $stmQ = $pdo->prepare('SELECT question_id, question_text, correct_choice, difficulty FROM question WHERE question_id = ?');
   $stmQ->execute([$qid]);
-  $q = $stmQ->fetch(PDO::FETCH_ASSOC);
-  if (!$q) {
+  $question = $stmQ->fetch(PDO::FETCH_ASSOC);
+  if (!$question) {
     http_response_code(404);
     echo json_encode(['status'=>'error','message'=>'QUESTION_NOT_FOUND']);
     exit;
   }
 
   // ดึง choices
-  $stmC = $pdo->prepare('SELECT label, content FROM choice WHERE question_id = ? ORDER BY label ASC');
-  $stmC->execute([$qid]);
-  $choices = [];
-  while ($c = $stmC->fetch(PDO::FETCH_ASSOC)) {
-    $choices[$c['label']] = $c['content'];
+  $stmt_choices = $pdo->prepare("SELECT label, content FROM choice WHERE question_id = ? ORDER BY label ASC");
+  $stmt_choices->execute([$qid]);
+  $choices = $stmt_choices->fetchAll(PDO::FETCH_ASSOC);
+
+  $choices_map = [];
+  foreach ($choices as $choice) {
+      $choices_map[$choice['label']] = $choice['content'];
   }
 
-  // คืนข้อมูลในรูปแบบที่ JS ต้องการ
+  // คืนข้อมูลในรูปแบบที่ JS ต้องการ (data.data.*)
   echo json_encode([
-    'status' => 'success',
-    'data' => [
-      'question_id'     => (int)$q['question_id'],
-      'question_text'   => $q['question_text'],
-      'choices'         => $choices,
-      'correct_choice'  => $q['correct_choice'],
-      'difficulty'      => (int)$q['difficulty'],
-    ]
-  ], JSON_UNESCAPED_UNICODE);
+      "status" => "success",
+      "data" => [
+          "question_id" => (int)$question["question_id"],
+          "question_text" => $question["question_text"],
+          "correct_choice" => $question["correct_choice"],
+          "difficulty" => is_numeric($question["difficulty"]) ? floatval($question["difficulty"]) : null,
+          "choices" => $choices_map
+      ]
+  ]);
 
 } catch (Throwable $e) {
   error_log('[get_single_question] '.$e->getMessage());

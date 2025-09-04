@@ -1,0 +1,96 @@
+/*
+    File: main.css
+    Description: General & Reusable Styles used across the entire website.
+*/
+
+:root {
+    --primary-color: #2563eb;
+    --secondary-color: #3b82f6;
+    --success-color: #22c55e;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --info-color: #3b82f6;
+    --light-color: #f3f4f6;
+    --dark-color: #1f2937;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Sarabun', 'Kanit', 'Prompt', 'Arial', sans-serif;
+    background: #f3f4f6;
+    color: #1f2937;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Optional Video Background */
+#bg-video {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    transform: translateX(-50%) translateY(-50%);
+    z-index: -1;
+    filter: brightness(0.6);
+    pointer-events: none;
+}
+
+header {
+    background: #ffffff;
+    border-bottom: 1px solid #ddd;
+    padding: 16px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo-text {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.logo-text h2 {
+    font-size: 18px;
+    margin: 0;
+    color: #333;
+    text-align: left;
+}
+
+.top-right {
+    display: flex;
+    gap: 10px;
+}
+
+.logout-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.home-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #28a745;
+    color: white !important;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    margin-right: 15px;
+}

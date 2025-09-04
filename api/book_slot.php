@@ -28,11 +28,13 @@ if (!preg_match('/Bearer\s+(.*)$/i', $auth_header, $matches)) {
 }
 
 $token = $matches[1];
-$secret_key = "d57a9c8e90f6fcb62f0e05e01357ed9cfb50a3b1e121c84a3cdb3fae8a1c71ef";
 
 try {
+    if (empty($jwt_key)) {
+        throw new Exception('JWT key not configured');
+    }
     error_log("Decoding token...");
-    $decoded = JWT::decode($token, new Key($secret_key, 'HS256'));
+    $decoded = JWT::decode($token, new Key($jwt_key, 'HS256'));
     error_log("Decoded token: " . print_r($decoded, true));
     
     if (!isset($decoded->student_id)) {

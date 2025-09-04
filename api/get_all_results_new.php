@@ -23,10 +23,13 @@ try {
     }
 
     $token = $matches[1];
-    $secret_key = "d57a9c8e90f6fcb62f0e05e01357ed9cfb50a3b1e121c84a3cdb3fae8a1c71ef";
+
+    if (empty($jwt_key)) {
+        throw new Exception('JWT key not configured');
+    }
 
     // ตรวจสอบ token
-    $decoded = JWT::decode($token, new Key($secret_key, 'HS256'));
+    $decoded = JWT::decode($token, new Key($jwt_key, 'HS256'));
     
     // ตรวจสอบว่าเป็น token ของอาจารย์
     if (!isset($decoded->role) || $decoded->role !== 'teacher') {

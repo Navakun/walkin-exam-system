@@ -6,7 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>หน้าทำข้อสอบ</title>
     <link rel="icon" type="image/png" href="nulogo.png">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/student.css">
+    <link rel="stylesheet" href="assets/css/student-exam.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 
 
@@ -22,11 +25,18 @@
 
     <div id="exitConfirmModal" class="confirm-modal">
         <div class="modal-content">
-            <h3>ยืนยันการออกจากการสอบ</h3>
-            <p>คุณแน่ใจหรือไม่ว่าต้องการออกจากการสอบ?<br>คำตอบที่ยังไม่ได้ส่งจะไม่ถูกบันทึก</p>
+            <h3><i class="fas fa-exclamation-triangle"></i> ยืนยันการออกจากการสอบ</h3>
+            <p>
+                <strong>คำเตือน:</strong> คุณกำลังจะออกจากการสอบ<br>
+                คำตอบที่ยังไม่ได้ส่งจะไม่ถูกบันทึก และไม่สามารถกลับมาทำต่อได้
+            </p>
             <div class="modal-buttons">
-                <button class="modal-btn cancel" onclick="hideExitConfirmation()">ยกเลิก</button>
-                <button class="modal-btn confirm" onclick="confirmExit()">ยืนยันการออก</button>
+                <button class="modal-btn cancel" onclick="hideExitConfirmation()">
+                    <i class="fas fa-times"></i> ยกเลิก
+                </button>
+                <button class="modal-btn confirm" onclick="confirmExit()">
+                    <i class="fas fa-sign-out-alt"></i> ยืนยันการออก
+                </button>
             </div>
         </div>
     </div>

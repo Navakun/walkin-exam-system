@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>รายงานสถิติการทำข้อสอบ</title>
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/teacher.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <div class="logo-text">
+            <img src="nulogo.png" alt="Logo" height="80">
+            <div class="course-title">
+                <h2>รายงานสถิติการทำข้อสอบ</h2>
+            </div>
+        </div>
+        <div class="top-right">
+            <a href="teacher_dashboard.html" class="home-btn">
+                <i class="fas fa-home"></i> หน้าหลัก
+            </a>
+            <button onclick="logout()" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+            </button>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="stats-container">
+            <div class="stats-header">
+                <h2>ภาพรวมการทำข้อสอบ</h2>
+                <div class="filter-section">
+                    <label>
+                        <i class="fas fa-calendar"></i>
+                        ช่วงวันที่:
+                        <input type="date" id="startDate">
+                        ถึง
+                        <input type="date" id="endDate">
+                    </label>
+                    <button onclick="updateStats()" class="btn-refresh">
+                        <i class="fas fa-sync"></i> อัพเดท
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats-summary">
+                <div class="stat-card">
+                    <h3>จำนวนผู้เข้าสอบ</h3>
+                    <div id="totalStudents" class="stat-value">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>คะแนนเฉลี่ย</h3>
+                    <div id="averageScore" class="stat-value">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>คะแนนสูงสุด</h3>
+                    <div id="maxScore" class="stat-value">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>คะแนนต่ำสุด</h3>
+                    <div id="minScore" class="stat-value">0</div>
+                </div>
+            </div>
+
+            <div class="charts-container">
+                <div class="chart-section">
+                    <h3>การกระจายคะแนน</h3>
+                    <canvas id="scoreDistribution"></canvas>
+                </div>
+                <div class="chart-section">
+                    <h3>อัตราการตอบถูกแยกตามระดับความยาก</h3>
+                    <canvas id="difficultyStats"></canvas>
+                </div>
+            </div>
+
+            <div class="question-stats">
+                <h3>สถิติรายข้อ</h3>
+                <div class="table-container">
+                    <table id="questionTable">
+                        <thead>
+                            <tr>
+                                <th>ข้อที่</th>
+                                <th>ความยาก</th>
+                                <th>จำนวนคนตอบถูก</th>
+                                <th>เปอร์เซ็นต์ความถูกต้อง</th>
+                                <th>รายละเอียด</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <style>
+        .stats-container {
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .filter-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-section {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .btn-refresh {
+            padding: 8px 16px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-refresh:hover {
+            background: #218838;
+        }
+    </style>
+
+    <script>
+        // ตรวจสอบการล็อกอิน
+        const token = localStorage.getItem('teacherToken');
+        if (!token) {
+            location.href = 'teacher_login.html';
+        }
+
+        function logout() {
+            localStorage.removeItem('teacherToken');
+            localStorage.removeItem('instructor_id');
+            localStorage.removeItem('instructor_name');
+            location.href = 'teacher_login.html';
+        }
+
+        // ตั้งค่าวันที่เริ่มต้น
+        const today = new Date();
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+
+        document.getElementById('startDate').value = thirtyDaysAgo.toISOString().split('T')[0];
+        document.getElementById('endDate').value = today.toISOString().split('T')[0];
+
+        async function updateStats() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            try {
+                const response = await fetch('api/get_exam_stats.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ startDate, endDate })
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    updateSummary(data.summary);
+                    updateCharts(data.charts);
+                    updateQuestionTable(data.questions);
+                } else {
+                    alert('เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + data.message);
+                }
+            } catch (err) {
+                console.error('Error:', err);
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+            }
+        }
+
+        function updateSummary(summary) {
+            document.getElementById('totalStudents').textContent = summary.total_students;
+            document.getElementById('averageScore').textContent = summary.average_score.toFixed(2);
+            document.getElementById('maxScore').textContent = summary.max_score;
+            document.getElementById('minScore').textContent = summary.min_score;
+        }
+
+        function updateCharts(chartData) {
+            // แผนภูมิการกระจายคะแนน
+            new Chart(document.getElementById('scoreDistribution'), {
+                type: 'bar',
+                data: {
+                    labels: chartData.score_distribution.labels,
+                    datasets: [{
+                        label: 'จำนวนนิสิต',
+                        data: chartData.score_distribution.data,
+                        backgroundColor: '#007bff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+
+            // แผนภูมิอัตราการตอบถูกตามระดับความยาก
+            new Chart(document.getElementById('difficultyStats'), {
+                type: 'bar',
+                data: {
+                    labels: ['ง่าย', 'ปานกลาง', 'ยาก'],
+                    datasets: [{
+                        label: 'เปอร์เซ็นต์การตอบถูก',
+                        data: [
+                            chartData.difficulty_stats.easy,
+                            chartData.difficulty_stats.medium,
+                            chartData.difficulty_stats.hard
+                        ],
+                        backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: value => value + '%'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateQuestionTable(questions) {
+            const tbody = document.getElementById('questionTable').querySelector('tbody');
+            tbody.innerHTML = '';
+
+            questions.forEach((q, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${getDifficultyText(q.difficulty)}</td>
+                    <td>${q.correct_count}</td>
+                    <td>${(q.correct_percentage * 100).toFixed(1)}%</td>
+                    <td>
+                        <button onclick="showQuestionDetails(${q.id})" class="btn-details">
+                            <i class="fas fa-info-circle"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getDifficultyText(difficulty) {
+            const diffMap = {
+                'easy': 'ง่าย',
+                'medium': 'ปานกลาง',
+                'hard': 'ยาก'
+            };
+            return diffMap[difficulty] || difficulty;
+        }
+
+        function showQuestionDetails(questionId) {
+            // TODO: แสดงรายละเอียดข้อสอบในป็อปอัพ
+        }
+
+        // โหลดข้อมูลครั้งแรก
+        updateStats();
+    </script>
+</body>
+</html>

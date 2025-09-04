@@ -1,26 +1,39 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 header('Content-Type: application/json; charset=utf-8');
+
+require_once 'helpers/jwt_helper.php';
 require_once '../config/db.php';
 
 // ตรวจสอบ Authorization
 $headers = getallheaders();
-if (!isset($headers['Authorization'])) {
-    http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => 'No token provided']);
-    exit;
-}
+$normalized_headers = array_change_key_case($headers, CASE_UPPER);
+$auth_header = $normalized_headers['AUTHORIZATION'] ?? '';
 
-$auth_header = $headers['Authorization'];
-if (!preg_match('/Bearer\s+(.*)$/i', $auth_header, $matches)) {
+if (empty($auth_header) || !preg_match('/Bearer\s+(.*)$/i', $auth_header, $matches)) {
     http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => 'Invalid token format']);
+    echo json_encode(['status' => 'error', 'message' => 'กรุณาเข้าสู่ระบบ']);
     exit;
 }
 
 $token = $matches[1];
-// TODO: ตรวจสอบ token กับฐานข้อมูล
 
 try {
+    // ตรวจสอบ token
+    $decoded = verifyJwtToken($token);
+    if (!$decoded || !isset($decoded->user_id)) {
+        http_response_code(401);
+        echo json_encode(['status' => 'error', 'message' => 'Invalid token']);
+        exit;
+    }
+
+    // Get database connection
+    $pdo = pdo();
+
+    // Get all examsets with question count
     // Get all examsets with question count
     $stmt = $pdo->prepare("
         SELECT 

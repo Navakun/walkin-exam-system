@@ -4,14 +4,21 @@
 <head>
     <meta charset="UTF-8">
     <title>เข้าสู่ระบบอาจารย์</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="assets/css/login.css">
+    <link rel="stylesheet" href="assets/css/teacher.css">
+    <link rel="stylesheet" href="assets/css/main.css">
     <link rel="icon" href="data:,"> <!-- กัน 404 favicon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1">    
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
+<style>
+    .teacherLoginForm {
+        font-family: 'Sarabun', sans-serif;
+    }
+</style>
 
 <body>
-    
+
     <header>
         <div class="logo-text">
             <img src="nulogo.png" alt="Logo" height="80">
@@ -40,12 +47,13 @@
     <script>
         document.getElementById('teacherLoginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+
             const errorBox = document.getElementById('errorMessage');
             errorBox.textContent = '';
 
             const data = Object.fromEntries(new FormData(e.currentTarget).entries());
             try {
-                const resp = await fetch('api/teacher_login_new.php', {
+                const resp = await fetch('api/teacher_login.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data),

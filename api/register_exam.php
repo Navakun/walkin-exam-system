@@ -1,105 +1,136 @@
-
 <?php
-// DEBUG: แสดง error ทุกอย่าง
-ini_set('display_errors', 1);
+declare(strict_types=1);
+
+/**
+ * api/get_available_slots.php
+ * ส่งรายการช่วงเวลาที่ลงทะเบียนสอบได้ (ของนิสิตที่ล็อกอิน) เป็น JSON ล้วน ๆ
+ */
+
+header('Content-Type: application/json; charset=utf-8');
+ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
-require_once '../config/db.php';
-// require '../auth.php';
-require_once '../vendor/autoload.php';
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
+/* ---------- helpers ---------- */
+function json_fail(int $status, string $msg, array $extra = []): void {
+    http_response_code($status);
+    echo json_encode(['status' => 'error', 'message' => $msg] + $extra, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+function json_ok(array $payload): void {
+    echo json_encode(['status' => 'success'] + $payload, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+function getAuthHeader(): string {
+    if (function_exists('getallheaders')) {
+        $h = getallheaders();
+        if (isset($h['Authorization'])) return $h['Authorization'];
+        if (isset($h['authorization'])) return $h['authorization'];
+    }
+    return $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+}
 
-// ฟังก์ชันตรวจสอบ JWT (ย้ายมาไว้ที่นี่โดยตรง)
-if (!function_exists('validateJWT')) {
-    function validateJWT($token) {
-        $secretKey = 'd57a9c8e90f6fcb62f0e05e01357ed9cfb50a3b1e121c84a3cdb3fae8a1c71ef'; // ใช้ key เดียวกับ student_login_new.php
-        try {
-            $decoded = JWT::decode($token, new Key($secretKey, 'HS256'));
-            return (array)$decoded;
-        } catch (Exception $e) {
-            return false;
+try {
+    /* ---------- bootstrap ---------- */
+    $root = dirname(__DIR__);
+
+    // composer autoload (สำหรับ firebase/php-jwt)
+    $autoload = $root . '/vendor/autoload.php';
+    if (!is_file($autoload)) {
+        error_log('NO_AUTOLOAD: ' . $autoload);
+        json_fail(500, 'SERVER_ERROR', ['error_code' => 'NO_AUTOLOAD']);
+    }
+    require_once $autoload;
+
+    // DB
+    $dbFile = $root . '/config/db.php';
+    if (!is_file($dbFile)) {
+        error_log('NO_DB: ' . $dbFile);
+        json_fail(500, 'SERVER_ERROR', ['error_code' => 'NO_DB']);
+    }
+    require_once $dbFile;
+    if (!isset($pdo) || !($pdo instanceof PDO)) {
+        error_log('PDO_NOT_SET');
+        json_fail(500, 'SERVER_ERROR', ['error_code' => 'PDO_NOT_SET']);
+    }
+
+    // JWT helper
+    $jwtHelper = $root . '/api/helpers/jwt_helper.php';
+    if (!is_file($jwtHelper)) {
+        error_log('NO_JWT_HELPER: ' . $jwtHelper);
+        json_fail(500, 'SERVER_ERROR', ['error_code' => 'NO_JWT_HELPER']);
+    }
+    require_once $jwtHelper;
+
+    // ถ้ายังไม่มี verifyJwtToken() ให้สร้าง wrapper ที่เรียก decodeToken()
+    if (!function_exists('verifyJwtToken')) {
+        function verifyJwtToken(string $token, array $requiredClaims = []) {
+            if (!function_exists('decodeToken')) {
+                error_log('decodeToken() not found');
+                return null;
+            }
+            $decoded = decodeToken($token);
+            if (!$decoded) return null;
+            foreach ($requiredClaims as $c) {
+                if (!isset($decoded->$c)) return null;
+            }
+            return $decoded;
         }
     }
-}
 
-header("Content-Type: application/json");
+    /* ---------- auth ---------- */
+    $auth = getAuthHeader();
+    if (!preg_match('/^Bearer\s+(.+)$/i', $auth, $m)) {
+        json_fail(401, 'Unauthorized', ['error_code' => 'NO_BEARER']);
+    }
+    $token = $m[1];
 
-// ตรวจสอบ JWT token
-$headers = apache_request_headers();
-$authHeader = $headers['Authorization'] ?? '';
-if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-    $token = $matches[1];
-    $decoded = validateJWT($token);
+    $decoded = verifyJwtToken($token, ['student_id']);
     if (!$decoded) {
-        http_response_code(401);
-        echo json_encode(["status" => "error", "message" => "Invalid token"]);
-        exit;
+        json_fail(401, 'Unauthorized', ['error_code' => 'BAD_TOKEN']);
     }
-} else {
-    http_response_code(401);
-    echo json_encode(["status" => "error", "message" => "No token provided"]);
-    exit;
-}
+    $student_id = (string)$decoded->student_id;
 
-// รับ JSON input
-$data = json_decode(file_get_contents("php://input"), true);
-$student_id = $data['student_id'] ?? null;
-$slot_id = $data['slot_id'] ?? null;
-$examset_id = $data['examset_id'] ?? null;
+    /* ---------- query slots ---------- */
+    /**
+     * สมมติ schema:
+     *   exam_slots(slot_id PK, slot_date DATE, slot_start TIME, slot_end TIME, capacity INT, booked INT)
+     * - แสดงเฉพาะวันที่ >= วันนี้
+     * - คำนวณที่นั่งคงเหลือ remaining = capacity - booked
+     * ปรับชื่อตาราง/คอลัมน์ตามฐานข้อมูลจริงของคุณได้เลย
+     */
+    $sql = "
+        SELECT
+            s.slot_id,
+            s.slot_date,
+            s.slot_start,
+            s.slot_end,
+            s.capacity,
+            s.booked,
+            (s.capacity - s.booked) AS remaining
+        FROM exam_slots s
+        WHERE s.slot_date >= CURDATE()
+        ORDER BY s.slot_date ASC, s.slot_start ASC
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-// ตรวจสอบข้อมูล
-if (!$student_id || !$slot_id || !$examset_id) {
-    http_response_code(400);
-    echo json_encode(["status" => "error", "message" => "Missing required fields"]);
-    exit;
-}
+    // แปลงชนิดข้อมูลให้ชัดเจน
+    $slots = array_map(static function(array $r): array {
+        return [
+            'slot_id'   => (int)$r['slot_id'],
+            'slot_date' => (string)$r['slot_date'],
+            'slot_start'=> (string)$r['slot_start'],
+            'slot_end'  => (string)$r['slot_end'],
+            'capacity'  => isset($r['capacity']) ? (int)$r['capacity'] : null,
+            'booked'    => isset($r['booked']) ? (int)$r['booked'] : null,
+            'remaining' => isset($r['remaining']) ? (int)$r['remaining'] : null,
+        ];
+    }, $rows);
 
-// Ensure all IDs are integer for binding
-$student_id = (int)$student_id;
-$slot_id = (int)$slot_id;
-$examset_id = (int)$examset_id;
+    json_ok(['slots' => $slots]);
 
-// (ยกเลิกการตรวจสอบซ้ำ: อนุญาตให้จองซ้ำได้)
-
-// ตรวจสอบจำนวนคนที่ลงทะเบียนแล้วใน slot นี้
-try {
-    $slotCheckStmt = $conn->prepare("SELECT COUNT(*) as count FROM exambooking WHERE slot_id = ?");
-    if (!$slotCheckStmt) throw new Exception('Prepare failed: ' . $conn->error);
-    $slotCheckStmt->bind_param("i", $slot_id);
-    $slotCheckStmt->execute();
-    $slotCount = $slotCheckStmt->get_result()->fetch_assoc()['count'];
-
-    $maxStmt = $conn->prepare("SELECT max_seats FROM exam_slots WHERE id = ?");
-    if (!$maxStmt) throw new Exception('Prepare failed: ' . $conn->error);
-    $maxStmt->bind_param("i", $slot_id);
-    $maxStmt->execute();
-    $maxSeats = $maxStmt->get_result()->fetch_assoc()['max_seats'];
-
-    if ($slotCount >= $maxSeats) {
-        http_response_code(409);
-        echo json_encode(["status" => "error", "message" => "This slot is already full"]);
-        exit;
-    }
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(["status" => "error", "message" => "DB error: ".$e->getMessage()]);
-    exit;
+    error_log('get_available_slots FATAL: ' . $e->getMessage());
+    json_fail(500, 'SERVER_ERROR', ['error_code' => 'UNSPECIFIED']);
 }
-
-// บันทึกลงทะเบียนสอบ
-try {
-    $stmt = $conn->prepare("INSERT INTO exambooking (student_id, examset_id, slot_id, scheduled_at, status) VALUES (?, ?, ?, NOW(), 'registered')");
-    if (!$stmt) throw new Exception('Prepare failed: ' . $conn->error);
-    $stmt->bind_param("iii", $student_id, $examset_id, $slot_id);
-    if ($stmt->execute()) {
-        echo json_encode(["status" => "success", "message" => "Booking successful"]);
-    } else {
-        throw new Exception($stmt->error);
-    }
-} catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(["status" => "error", "message" => "DB error: ".$e->getMessage()]);
-    exit;
-}
-?>
