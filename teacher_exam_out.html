@@ -259,7 +259,7 @@
                 };
             }
 
-            async function loadTimeSlots() {
+            async function loadTimeSlots(data) {
                 showSpinner();
                 try {
                     const res = await fetch('api/get_available_slots.php', {
@@ -283,39 +283,34 @@
                     }
 
                     const rawSlots = data.slots || [];
-                    console.table(rawSlots.map(normalizeSlot), ['id', 'date', 'end']);
+                    console.log("📦 rawSlots", rawSlots);
+
 
                     function filterAvailableSlots(slots) {
                         return slots
                             .map(normalizeSlot)
                             .filter(slot => {
-                                const endDateTime = new Date(`${slot.date}T${slot.end}`);
-                                return endDateTime > Date.now();
+                                const slotEnd = new Date(`${slot.date}T${slot.end}`);
+                                // ถ้าข้ามวัน เช่น end = '00:06:00' < start = '11:00:00'
+                                if (slot.end < slot.start) {
+                                    slotEnd.setDate(slotEnd.getDate() + 1);
+                                }
+                                return slotEnd > new Date();
                             });
                     }
 
                     const slotsToRender = filterAvailableSlots(rawSlots);
                     console.log("📊 slots ที่จะ render:", slotsToRender);
-                    console.table(slotsToRender, ['id', 'date', 'end']);
+                    console.table(slotsToRender, ['id', 'date', 'start', 'end']);
 
-                    const now = new Date();
-                    const normalizedSlots = rawSlots
-
-                        .map(normalizeSlot)
-                        .filter(slot => {
-                            if (!slot.date || !slot.end) return true;  // แสดงทุก slot ที่ไม่ครบข้อมูล
-                            const endDate = new Date(`${slot.date}T${slot.end}`);
-                            return !isNaN(endDate) && endDate > new Date(); // แสดงเฉพาะ slot ที่ยังไม่หมดเวลา
-                        })
-                    // .filter(slot => slot.date && slot.end && new Date(`${slot.date}T${slot.end}`) > now); // ✅ เงื่อนไขใหม่
-                    normalizedSlots.forEach((s, i) => console.log(`🔍 Slot[${i}]`, s));
-                    displayTimeSlots(normalizedSlots);
+                    slotsToRender.forEach((s, i) => console.log(`🔍 Slot[${i}]`, s));
+                    displayTimeSlots(slotsToRender);
 
                 } catch (e) {
                     console.error(e);
                     Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: e.message });
                 }
-                hideSpinner();
+                hideSpinner();  
             }
 
 

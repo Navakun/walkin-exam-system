@@ -52,20 +52,30 @@
     <h3>เลือกช่วงเวลาสอบ</h3>
     <div id="loading" class="alert alert-info" style="display: none;">กำลังโหลดข้อมูล...</div>
     <div class="table-responsive">
-      <table class="table table-bordered align-middle text-center" id="slotTable">
+      <table id="slot-table" class="table table-bordered text-center table-striped">
         <thead class="table-light">
           <tr>
             <th>ช่วงเวลาเปิดลงทะเบียน</th>
-            <th>วันที่สอบ</th>
+            <th>วันทีสอบ</th>
             <th>เวลาเริ่มสอบ</th>
             <th>จำนวนที่นั่งทั้งหมด</th>
             <th>จำนวนคนที่ลงทะเบียนแล้ว</th>
             <th>ที่นั่งว่าง</th>
+            <th>สถานะ</th>
             <th>ดำเนินการ</th>
           </tr>
         </thead>
-        <tbody id="slotList"></tbody>
+        <tbody id="slotList">
+          <tr>
+            <td colspan="8" class="text-center">กำลังโหลดข้อมูล...</td>
+          </tr>
+        </tbody>
       </table>
+
+      <div id="loading" style="display:none;" class="text-center my-3">
+        <div class="spinner-border text-primary" role="status"></div>
+        <div class="mt-2">กำลังโหลดข้อมูล...</div>
+      </div>
     </div>
   </div>
 
@@ -174,111 +184,168 @@
     }
 
     async function loadExamSlots() {
-      console.log('DEBUG: token', token);
-      console.log('DEBUG: student_id', student_id);
       if (!token || !student_id) {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('slotList').innerHTML = '<div class="alert alert-danger">กรุณาเข้าสู่ระบบใหม่อีกครั้ง</div>';
+        document.getElementById('slotList').innerHTML =
+          '<div class="alert alert-danger">กรุณาเข้าสู่ระบบใหม่อีกครั้ง</div>';
         return;
       }
 
-      document.getElementById('loading').style.display = 'block';
-
       try {
         const res = await fetch('/walkin-exam-system/api/get_available_slots.php', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
 
-        console.log('DEBUG: fetch status', res.status);
-        let text = await res.text();
-        console.log('DEBUG: fetch response text', text);
-
+        const text = await res.text();
         let result;
         try {
           result = JSON.parse(text);
-        } catch (e) {
+        } catch {
           result = { status: 'error', message: 'Invalid JSON', raw: text };
         }
 
         const list = document.getElementById('slotList');
         list.innerHTML = '';
-        document.getElementById('loading').style.display = 'none';
 
-        // ✅ ถ้าโหลดสำเร็จและมีข้อมูล
-        if (result.status === 'success' && result.slots && result.slots.length > 0) {
+        if (result.status === 'success' && Array.isArray(result.slots)) {
+          const now = new Date();
 
-          // ✅ ฟังก์ชันแปลงชื่อเดือนเป็นภาษาไทย
-          function formatThaiDate(dateStr) {
+          // แปลงชื่อเดือนเป็นไทย
+          const formatThaiDate = (dateStr) => {
+            const d = new Date(dateStr);
             const months = [
               '', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
               'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
             ];
-            const d = new Date(dateStr);
             const day = d.getDate();
             const month = d.getMonth() + 1;
             const year = d.getFullYear() + 543;
             return `${day} ${months[month]} ${year}`;
-          }
+          };
 
-          // ✅ ฟังก์ชันตัดเวลาให้เหลือ HH:MM
-          function formatTimeHM(timeStr) {
-            return timeStr ? timeStr.slice(0, 5) : '';
-          }
+          const formatTime = (t) => t?.slice(0, 5) || '';
+
+          let renderedCount = 0;
 
           result.slots.forEach(slot => {
-            // ✅ ถ้ามี reg_open/close → เช็คว่าเปิดหรือยัง
-            if (slot.reg_open_at && slot.reg_close_at) {
-              const now = new Date();
-              const open = new Date(slot.reg_open_at.replace(' ', 'T'));
-              const close = new Date(slot.reg_close_at.replace(' ', 'T'));
-              if (!(open <= now && now <= close)) return; // ❌ ข้าม slot ที่ยังไม่เปิด
-            }
+            const regOpen = new Date(slot.reg_open_at.replace(' ', 'T'));
+            const regClose = new Date(slot.reg_close_at.replace(' ', 'T'));
+            const examEnd = new Date(`${slot.slot_date}T${slot.end_time}`);
+
+            console.log("DEBUG slot:", slot.reg_close_at, new Date(slot.reg_close_at));
+
+            const isRegistering = now >= regOpen && now <= regClose;
+            const isFutureExam = examEnd > now;
+
+            // DEBUG: แสดงทุก slot ไม่ต้องเช็คหมดเวลา
+            //if (!isRegistering || !isFutureExam) return; // ❗ ข้าม slot ที่ไม่อยู่ในเงื่อนไข
 
             const total = slot.max_seats || 0;
             const booked = slot.booked_count || 0;
             const available = total - booked;
-            const tr = document.createElement('tr');
+
             const disabled = available <= 0;
 
-            // ✅ สีแถวเทาอ่อนถ้าเต็ม
+            const tr = document.createElement('tr');
             tr.className = disabled ? 'text-muted' : '';
 
             tr.innerHTML = `
-          <td>${formatThaiDate(slot.reg_open_at)} - ${formatThaiDate(slot.reg_close_at)}</td>
-          <td>${formatThaiDate(slot.slot_date)}</td>
-          <td>${formatTimeHM(slot.start_time)} - ${formatTimeHM(slot.end_time)}</td>
-          <td>${total}</td>
-          <td>${booked}</td>
-          <td>
-            <span class="badge ${disabled ? 'bg-danger' : 'bg-success'} rounded-pill">
-              ${available}
-            </span>
-          </td>
-          <td>
-            <button class="btn ${disabled ? 'btn-secondary' : 'btn-success'}"
-                    ${disabled ? 'disabled' : `onclick="openModal(${slot.id}, '${slot.slot_date}', '${slot.start_time} - ${slot.end_time}', ${slot.examset_id})"`}>
-              ${disabled ? '<i class="fas fa-ban me-2"></i>เต็มแล้ว' : '<i class="fas fa-check-circle me-2"></i>ลงทะเบียน'}
-            </button>
-          </td>
-        `;
+            <td>${formatThaiDate(slot.reg_open_at)} - ${formatThaiDate(slot.reg_close_at)}</td>
+            <td>${formatThaiDate(slot.slot_date)}</td>
+            <td>${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}</td>
+            <td>${total}</td>
+            <td>${booked}</td>
+            <td>
+              <span class="badge ${disabled ? 'bg-danger' : 'bg-success'} rounded-pill">
+                ${available}
+              </span>
+            </td>
+            <td>
+              <button class="btn ${disabled ? 'btn-secondary' : 'btn-success'}"
+                      ${disabled ? 'disabled' : `onclick="registerSlot(${slot.id})"`}>
+                ${disabled ? '<i class="fas fa-ban me-2"></i>เต็มแล้ว' : '<i class="fas fa-check-circle me-2"></i>ลงทะเบียน'}
+              </button>
+            </td>
+          `;
+
             list.appendChild(tr);
+            renderedCount++;
           });
 
-          // ✅ ถ้าไม่มี slot ที่เปิดเลย
-          if (!list.hasChildNodes()) {
-            list.innerHTML = `<div class="alert alert-warning">ยังไม่มีช่วงเวลาที่เปิดให้ลงทะเบียน</div>`;
+          if (renderedCount === 0) {
+            list.innerHTML = `<tr><td colspan="7" class="text-center text-muted">ยังไม่มีช่วงเวลาที่เปิดให้ลงทะเบียน</td></tr>`;
           }
-
         } else {
-          list.innerHTML = `<div class="alert alert-warning">${result.message || 'ยังไม่มีช่วงเวลาที่เปิดให้ลงทะเบียน'}</div>`;
+          list.innerHTML = `<tr><td colspan="7" class="text-danger text-center">โหลดข้อมูลไม่สำเร็จ: ${result.message || 'ไม่พบข้อมูล'}</td></tr>`;
         }
 
       } catch (err) {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('slotList').innerHTML = '<div class="alert alert-danger">เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + err + '</div>';
-        console.log('DEBUG: fetch error', err);
+        console.error('loadExamSlots error', err);
+        document.getElementById('slotList').innerHTML =
+          '<tr><td colspan="7" class="text-danger text-center">เกิดข้อผิดพลาดในการเชื่อมต่อ</td></tr>';
       }
     }
+
+    async function registerSlot(slotId, slotLabel) {
+      const token = localStorage.getItem("studentToken");
+      if (!token) {
+        Swal.fire({
+          icon: "error",
+          title: "ไม่พบ token",
+          text: "กรุณาเข้าสู่ระบบใหม่อีกครั้ง",
+        });
+        return;
+      }
+
+      // ยืนยันก่อน
+      const result = await Swal.fire({
+        title: "ยืนยันการลงทะเบียน",
+        text: `คุณต้องการลงทะเบียนในรอบ: ${slotLabel} หรือไม่?`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "ใช่, ลงทะเบียน",
+        cancelButtonText: "ยกเลิก",
+      });
+
+      if (!result.isConfirmed) return;
+
+      try {
+        const response = await fetch("api/book_slot.php", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ slot_id: slotId })
+        });
+
+        const data = await response.json();
+        if (data.status === "success") {
+          Swal.fire({
+            icon: "success",
+            title: "ลงทะเบียนสำเร็จ",
+            text: `คุณได้ลงทะเบียนในรอบ: ${slotLabel}`,
+          });
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "เกิดข้อผิดพลาด",
+            text: data.message || "ไม่สามารถลงทะเบียนได้",
+          });
+        }
+      } catch (error) {
+        console.error("registerSlot error", error);
+        Swal.fire({
+          icon: "error",
+          title: "ลงทะเบียนไม่สำเร็จ",
+          text: error.message,
+        });
+      }
+    }
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadExamSlots();
+    });
 
     function openModal(slotId, date, time, examsetId) {
       document.getElementById('modalDate').textContent = new Date(date).toLocaleDateString('th-TH');
@@ -437,6 +504,7 @@
       }
       loadExamSlots();
     });
+
   </script>
 </body>
 
