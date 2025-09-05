@@ -25,39 +25,22 @@ if (!preg_match('/Bearer\s+(.*)$/i', $auth_header, $matches)) {
     exit;
 }
 
-$token = $matches[1];
-
 try {
-    if (empty($jwt_key)) {
-        throw new Exception('JWT key not configured');
-    }
-    // ตรวจสอบ token
-    $decoded = JWT::decode($token, new Key($jwt_key, 'HS256'));
+    $decoded = decodeToken($token); // ✅ ใช้ helper จาก jwt_helper.php
     
-    // ตรวจสอบว่าเป็น token ของอาจารย์
-    if (!isset($decoded->role) || $decoded->role !== 'teacher') {
-        http_response_code(401);
-        echo json_encode(['status' => 'error', 'message' => 'ไม่มีสิทธิ์เข้าถึง']);
-        exit;
-    }
-
-    // ตรวจสอบว่า token ยังไม่หมดอายุ
-    if (isset($decoded->exp) && $decoded->exp < time()) {
-        http_response_code(401);
-        echo json_encode(['status' => 'error', 'message' => 'Token หมดอายุ']);
-        exit;
+    if (!$decoded || !isset($decoded['role']) || $decoded['role'] !== 'teacher') {
+        throw new Exception('ไม่มีสิทธิ์เข้าถึง');
     }
 
     echo json_encode([
         'status' => 'success',
         'message' => 'Token ถูกต้อง',
         'data' => [
-            'id' => $decoded->id,
-            'name' => $decoded->name,
-            'role' => $decoded->role
+            'id' => $decoded['id'] ?? null,
+            'name' => $decoded['name'] ?? null,
+            'role' => $decoded['role']
         ]
     ]);
-
 } catch (Exception $e) {
     http_response_code(401);
     echo json_encode([
