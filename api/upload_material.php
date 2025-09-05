@@ -99,7 +99,7 @@ try {
     }
     $safeBase = pathinfo($origName, PATHINFO_FILENAME);
     $safeBase = preg_replace('/[^A-Za-z0-9_\-ก-ฮะ-๙]+/u', '_', $safeBase);
-    $filename = date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . ($safeBase ? "_$safeBase" : '') . $ext;
+    $filename = date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . ($safeBase ? "_$safeBase" : '') . '.' . $ext;
 
     $absPath = $absDir . '/' . $filename;
     $relPath = $filename; // ใน DB เก็บชื่อไฟล์ แล้วหน้าเว็บ prefix ด้วย uploads/materials/

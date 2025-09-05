@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="icon" href="favicon.ico">
+    <link rel="icon" href="data:,"> <!-- กัน 404 favicon -->
     <style>
         .viewer-container {
             width: 100%;
@@ -178,7 +179,7 @@
 
                 const data = await response.json();
                 const list = document.getElementById('materialsList');
-                
+
                 if (data.status === 'success' && Array.isArray(data.materials)) {
                     list.innerHTML = data.materials.map(material => `
                         <div class="col">
@@ -205,7 +206,7 @@
                 }
             } catch (error) {
                 console.error('Error loading materials:', error);
-                document.getElementById('materialsList').innerHTML = 
+                document.getElementById('materialsList').innerHTML =
                     '<div class="col-12 text-center text-danger">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
             }
         }

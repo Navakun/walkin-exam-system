@@ -9,6 +9,10 @@
     <link rel="stylesheet" href="assets/css/teacher.css">
     <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="icon" href="favicon.ico">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <title>จัดการสื่อการสอน</title>
+
 </head>
 
 <body>
@@ -200,31 +204,56 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        async function deleteMaterial(id) {
-            if (!confirm('ต้องการลบสื่อการสอนนี้หรือไม่?')) return;
+        async function deleteMaterial(material_id) {
+            const confirm = await Swal.fire({
+                title: 'คุณแน่ใจหรือไม่?',
+                text: 'ต้องการลบสื่อการสอนนี้ใช่หรือไม่',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'ใช่, ลบเลย',
+                cancelButtonText: 'ยกเลิก'
+            });
+
+            if (!confirm.isConfirmed) return;
 
             try {
-                const response = await fetch('api/delete_material.php', {
+                const token = localStorage.getItem('teacherToken');
+                if (!token) {
+                    Swal.fire({ icon: 'error', title: 'หมดเซสชัน', text: 'กรุณาเข้าสู่ระบบใหม่' });
+                    window.location.href = 'teacher_login.html';
+                    return;
+                }
+
+                const res = await fetch('api/delete_material.php', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('teacherToken')}`
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ material_id: id })
+                    body: JSON.stringify({ material_id })
                 });
 
-                const data = await response.json();
-                if (data.status === 'success') {
-                    alert('ลบสำเร็จ');
-                    loadMaterials();
-                } else {
-                    alert(data.message || 'เกิดข้อผิดพลาด');
+                const text = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Invalid JSON: ' + text);
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('เกิดข้อผิดพลาดในการลบ');
+
+                if (!res.ok || data.status !== 'success') {
+                    throw new Error(data.message || 'ลบไม่สำเร็จ');
+                }
+
+                Swal.fire({ icon: 'success', title: 'ลบแล้ว', timer: 1500 });
+                loadMaterials();
+            } catch (err) {
+                console.error('❌ Delete error:', err);
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
             }
+
         }
+
     </script>
 </body>
 

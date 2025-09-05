@@ -1,6 +1,8 @@
 <?php
 require_once '../config/db.php';
-require_once 'helpers/encode.php';
+require_once 'helpers/auth_helper.php';  // ✅ แก้ตรงนี้
+
+header('Content-Type: application/json; charset=utf-8');
 
 // ตรวจสอบว่าเป็น POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -11,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // ตรวจสอบ token
 $headers = getallheaders();
-if (!isset($headers['Authorization']) || empty($headers['Authorization'])) {
+if (!isset($headers['Authorization'])) {
     http_response_code(401);
     echo json_encode(['status' => 'error', 'message' => 'No token provided']);
     exit;
@@ -20,7 +22,8 @@ if (!isset($headers['Authorization']) || empty($headers['Authorization'])) {
 $token = str_replace('Bearer ', '', $headers['Authorization']);
 try {
     $decoded = decodeToken($token);
-    $instructor_id = $decoded->instructor_id;
+    $instructor_id = $decoded->instructor_id ?? null;
+    if (!$instructor_id) throw new Exception('Invalid token payload');
 } catch (Exception $e) {
     http_response_code(401);
     echo json_encode(['status' => 'error', 'message' => 'Invalid token']);
@@ -29,50 +32,39 @@ try {
 
 // รับข้อมูล material_id
 $data = json_decode(file_get_contents('php://input'), true);
-if (!isset($data['material_id'])) {
+$material_id = $data['material_id'] ?? null;
+if (!$material_id) {
     echo json_encode(['status' => 'error', 'message' => 'Material ID is required']);
     exit;
 }
 
-$material_id = $data['material_id'];
-
 try {
-    // ดึงข้อมูลไฟล์ก่อนลบ
-    $stmt = $conn->prepare("SELECT file_path FROM teaching_materials WHERE material_id = ? AND instructor_id = ?");
-    $stmt->bind_param("is", $material_id, $instructor_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $material = $result->fetch_assoc();
+    // ดึงชื่อไฟล์
+    $stmt = $pdo->prepare("SELECT file_path FROM teaching_materials WHERE material_id = ? AND instructor_id = ?");
+    $stmt->execute([$material_id, $instructor_id]);
+    $material = $stmt->fetch();
 
     if (!$material) {
         echo json_encode(['status' => 'error', 'message' => 'Material not found or unauthorized']);
         exit;
     }
 
-    // ลบไฟล์
+    // ลบไฟล์จริง
     $filePath = '../uploads/materials/' . $material['file_path'];
-    if (file_exists($filePath)) {
+    if (is_file($filePath)) {
         unlink($filePath);
     }
 
-    // ลบข้อมูลจากฐานข้อมูล
-    $stmt = $conn->prepare("DELETE FROM teaching_materials WHERE material_id = ? AND instructor_id = ?");
-    $stmt->bind_param("is", $material_id, $instructor_id);
-    
-    if ($stmt->execute()) {
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Material deleted successfully'
-        ]);
-    } else {
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'Failed to delete material'
-        ]);
-    }
-} catch (Exception $e) {
+    // ลบจากฐานข้อมูล
+    $stmt = $pdo->prepare("DELETE FROM teaching_materials WHERE material_id = ? AND instructor_id = ?");
+    $stmt->execute([$material_id, $instructor_id]);
+
+    echo json_encode(['status' => 'success', 'message' => 'Material deleted successfully']);
+} catch (Throwable $e) {
+    http_response_code(500);
     echo json_encode([
         'status' => 'error',
-        'message' => 'Database error: ' . $e->getMessage()
+        'message' => 'Server error',
+        'debug' => $e->getMessage()
     ]);
 }
