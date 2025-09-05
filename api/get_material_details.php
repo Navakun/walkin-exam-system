@@ -5,25 +5,25 @@ ini_set('display_errors', 1);
 
 header('Content-Type: application/json');
 
-// ตรวจสอบไฟล์ที่จำเป็น
+// ตรวจสอบและโหลดไฟล์ที่จำเป็น
 $requiredFiles = [
-    'helpers/auth_helper.php',
-    '../config/db.php'
+    __DIR__ . '/helpers/auth_helper.php',
+    __DIR__ . '/../config/db.php'
 ];
 
 foreach ($requiredFiles as $file) {
-    if (!file_exists(__DIR__ . '/' . $file)) {
+    if (!file_exists($file)) {
+        error_log("Missing required file: $file");
         http_response_code(500);
         echo json_encode([
             'status' => 'error',
-            'message' => "Missing required file: $file"
+            'message' => "Missing required file: " . basename($file)
         ]);
         exit;
     }
 }
 
-require_once __DIR__ . '/../helpers/auth_helper.php';
-require_once __DIR__ . '/../helpers/jwt_helper.php';
+require_once __DIR__ . '/helpers/auth_helper.php';
 require_once __DIR__ . '/../config/db.php';
 
 try {

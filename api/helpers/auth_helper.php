@@ -55,3 +55,38 @@ function decode_jwt($jwt_token) {
         throw new Exception('JWT ไม่ถูกต้อง: ' . $e->getMessage());
     }
 }
+
+/**
+ * ดึง JWT token จาก Authorization Header
+ */
+function getBearerToken(): ?string {
+    // Debug: บันทึก headers ทั้งหมด
+    error_log('Headers ทั้งหมด: ' . print_r(getallheaders(), true));
+    error_log('$_SERVER: ' . print_r($_SERVER, true));
+
+    // ลองใช้ getallheaders() ก่อน
+    if (function_exists('getallheaders')) {
+        $headers = getallheaders();
+        // ตรวจสอบทั้งตัวพิมพ์ใหญ่และเล็ก
+        foreach(['Authorization', 'authorization'] as $key) {
+            if (isset($headers[$key])) {
+                $auth = $headers[$key];
+                error_log("พบ token ใน header '$key': $auth");
+                return trim(str_replace('Bearer', '', $auth));
+            }
+        }
+    }
+
+    // ถ้าไม่พบใน headers ให้ลองหาใน $_SERVER
+    $serverKeys = ['HTTP_AUTHORIZATION', 'REDIRECT_HTTP_AUTHORIZATION'];
+    foreach ($serverKeys as $key) {
+        if (isset($_SERVER[$key])) {
+            $auth = $_SERVER[$key];
+            error_log("พบ token ใน $_SERVER[$key]: $auth");
+            return trim(str_replace('Bearer', '', $auth));
+        }
+    }
+
+    error_log('ไม่พบ token ในทุกตำแหน่ง');
+    return null;
+}
