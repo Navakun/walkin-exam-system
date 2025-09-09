@@ -61,7 +61,7 @@ $difficultyLevel = $data['difficulty_level'];
 $pdo->beginTransaction();
 try {
     // ขั้นตอนที่ 1: เพิ่มคำถามลงในตาราง Question
-    $sqlInsertQuestion = "INSERT INTO Question (question_text, correct_choice, difficulty) VALUES (?, ?, ?)";
+    $sqlInsertQuestion = "INSERT INTO Question (question_text, correct_choice, item_difficulty) VALUES (?, ?, ?)";
     $stmtQuestion = $pdo->prepare($sqlInsertQuestion);
     $stmtQuestion->execute([$questionText, $correctChoice, $difficultyLevel]);
     // ดึง question_id ของคำถามที่เพิ่งสร้าง

@@ -1,109 +1,127 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PDF Viewer + อ่านออกเสียง</title>
-  <link rel="icon" href="favicon.ico" type="image/x-icon" />
-  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
   <style>
-    body { font-family: sans-serif; }
-    .toolbar { padding: 10px; text-align: center; background: #eee; position: sticky; top: 0; z-index: 10; }
-    .toolbar button, .toolbar select, .toolbar input[type="range"] { margin: 0 6px; }
-    #canvasContainer { width: 100%; height: 75vh; overflow: auto; background: #ccc; }
+    #canvasContainer { position: relative; width: 100%; height: 80vh; overflow: auto; background: #ccc; }
     canvas { display: block; margin: 10px auto; border: 1px solid #000; }
-    .highlight { background: yellow; }
+    .toolbar { padding: 10px; text-align: center; }
+    .tts-controls { margin-top: 10px; display: flex; justify-content: center; gap: 10px; }
   </style>
 </head>
 <body>
   <div class="toolbar">
     <button onclick="window.location.href='teacher_open_materials.html'">← กลับ</button>
-    <button id="playBtn">▶ อ่าน</button>
-    <button id="pauseBtn">⏸ หยุดชั่วคราว</button>
-    <button id="stopBtn">⏹ หยุด</button>
-    <label>ความเร็ว: <input id="rateSlider" type="range" min="0.5" max="2" step="0.1" value="1"> <span id="rateVal">1.0</span>x</label>
+    <div class="tts-controls">
+      <button id="speakBtn">อ่านออกเสียง</button>
+      <button id="pauseBtn">หยุดชั่วคราว</button>
+      <button id="resumeBtn">อ่านต่อ</button>
+      <button id="stopBtn">หยุด</button>
+      <label>ความเร็ว: <input type="range" id="rateSlider" min="0.5" max="2" step="0.1" value="1"></label>
+    </div>
   </div>
   <div id="canvasContainer"></div>
 
+  <!-- PDF.js & Tesseract.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.worker.min.js';
+
     const query = new URLSearchParams(window.location.search);
     const filename = query.get('file');
+    if (!filename) {
+      alert('ไม่พบไฟล์ที่ต้องการเปิด');
+      window.location.href = 'teacher_open_materials.html';
+    }
     const pdfUrl = `uploads/materials/${filename}`;
     const container = document.getElementById('canvasContainer');
+
     let fullText = '';
     let utterance;
-    let isSpeaking = false;
 
-    const voices = speechSynthesis.getVoices();
-    let thaiVoice = voices.find(v => v.lang === 'th-TH') || null;
-    if (!thaiVoice) {
-      speechSynthesis.onvoiceschanged = () => {
-        thaiVoice = speechSynthesis.getVoices().find(v => v.lang === 'th-TH');
-        if (!thaiVoice) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'ไม่พบเสียงภาษาไทย',
-            text: 'กรุณาติดตั้งเสียงพูดภาษาไทยในระบบก่อนใช้งานฟีเจอร์นี้'
-          });
-        }
-      }
+    const synth = window.speechSynthesis;
+    let voices = [];
+
+    function getThaiVoice() {
+      voices = synth.getVoices();
+      return voices.find(v => v.lang.startsWith('th')) || null;
     }
 
-    async function loadPDF() {
-      const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
+    async function extractTextWithFallback(page, canvas) {
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+      if (pageText.trim()) return pageText;
+
+      console.warn('ใช้ OCR เพราะไม่พบข้อความในหน้า PDF');
+      const dataUrl = canvas.toDataURL('image/png');
+      const result = await Tesseract.recognize(dataUrl, 'tha+eng');
+      return result.data.text || '';
+    }
+
+    (async () => {
+      const loadingTask = pdfjsLib.getDocument(pdfUrl);
+      const pdf = await loadingTask.promise;
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const viewport = page.getViewport({ scale: 1.5 });
+
         const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        const context = canvas.getContext('2d');
         canvas.width = viewport.width;
         canvas.height = viewport.height;
+
         container.appendChild(canvas);
-        await page.render({ canvasContext: ctx, viewport }).promise;
+        await page.render({ canvasContext: context, viewport }).promise;
 
-        const content = await page.getTextContent();
-        const pageText = content.items.map(item => item.str).join(' ');
-        fullText += pageText + '\n\n';
+        const text = await extractTextWithFallback(page, canvas);
+        fullText += text + '\n\n';
       }
-    }
+    })();
 
-    async function speakPDF() {
-      if (!fullText.trim()) {
-        Swal.fire({ icon: 'info', title: 'ยังไม่มีข้อความ', text: 'กรุณารอสักครู่ ข้อมูล PDF กำลังโหลด' });
-        return;
-      }
+    document.getElementById('speakBtn').addEventListener('click', () => {
+      const thaiVoice = getThaiVoice();
       if (!thaiVoice) {
-        Swal.fire({ icon: 'warning', title: 'ไม่พบเสียงภาษาไทย', text: 'กรุณาติดตั้งเสียงพูดภาษาไทยในระบบ' });
+        Swal.fire({
+          icon: 'warning',
+          title: 'ไม่พบเสียงภาษาไทย',
+          text: 'กรุณาติดตั้งเสียงพูดภาษาไทยในระบบก่อนใช้งานฟีเจอร์นี้',
+          confirmButtonText: 'OK'
+        });
         return;
       }
+      if (!fullText.trim()) {
+        Swal.fire('กรุณารอสักครู่', 'กำลังเตรียมข้อความจาก PDF', 'info');
+        return;
+      }
+      if (synth.speaking) synth.cancel();
       utterance = new SpeechSynthesisUtterance(fullText);
       utterance.voice = thaiVoice;
       utterance.lang = 'th-TH';
       utterance.rate = parseFloat(document.getElementById('rateSlider').value);
-      utterance.onend = () => { isSpeaking = false; };
-      speechSynthesis.speak(utterance);
-      isSpeaking = true;
-    }
+      synth.speak(utterance);
+    });
 
-    document.getElementById('playBtn').onclick = () => {
-      if (!isSpeaking) speakPDF();
-      else speechSynthesis.resume();
-    };
-    document.getElementById('pauseBtn').onclick = () => speechSynthesis.pause();
-    document.getElementById('stopBtn').onclick = () => {
-      speechSynthesis.cancel();
-      isSpeaking = false;
-    };
-    document.getElementById('rateSlider').oninput = (e) => {
-      document.getElementById('rateVal').textContent = e.target.value;
-    }
+    document.getElementById('pauseBtn').onclick = () => synth.pause();
+    document.getElementById('resumeBtn').onclick = () => synth.resume();
+    document.getElementById('stopBtn').onclick = () => synth.cancel();
 
-    loadPDF();
+    document.getElementById('rateSlider').addEventListener('input', () => {
+      if (utterance && synth.speaking) {
+        synth.cancel();
+      }
+    });
+
+    // Preload voices
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = getThaiVoice;
+    }
   </script>
 </body>
 </html>

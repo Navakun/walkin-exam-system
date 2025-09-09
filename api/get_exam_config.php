@@ -1,6 +1,10 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+header('Content-Type: application/json; charset=utf-8');
+
 require_once '../config/db.php';
-require_once 'helpers/encode.php';
+require_once '../helpers/encode.php';
 
 header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
