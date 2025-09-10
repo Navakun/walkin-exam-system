@@ -48,9 +48,11 @@ try {
             es.reg_open_at,
             es.reg_close_at,
             es.created_by,
-            COUNT(r.id) AS booked_count
+            COUNT(DISTINCT r.id) AS booked_count,
+            e.title AS examset_title
         FROM exam_slots es
         LEFT JOIN exam_slot_registrations r ON r.slot_id = es.id
+        LEFT JOIN examset e ON es.examset_id = e.examset_id
         GROUP BY es.id
         ORDER BY es.slot_date, es.start_time
     ");
@@ -60,6 +62,7 @@ try {
 
     echo json_encode([
         'status' => 'success',
+        'now' => date('Y-m-d H:i:s'),
         'slots' => $slots
     ]);
 } catch (Exception $e) {

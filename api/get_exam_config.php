@@ -4,7 +4,7 @@ error_reporting(E_ALL);
 header('Content-Type: application/json; charset=utf-8');
 
 require_once '../config/db.php';
-require_once '../helpers/encode.php';
+require_once 'helpers/jwt_helper.php';
 
 header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -27,7 +27,7 @@ if (strpos($auth_header, 'Bearer ') !== 0) {
 $token = substr($auth_header, 7);
 try {
     $decoded = verifyJwtToken($token);
-    if (!$decoded || !isset($decoded->instructor_id)) {
+    if (!$decoded || !isset($decoded['instructor_id'])) {
         throw new Exception('Invalid token');
     }
 } catch (Exception $e) {
@@ -51,7 +51,7 @@ try {
     }
 
     echo json_encode($result);
-} catch(PDOException $e) {
+} catch (PDOException $e) {
     http_response_code(500);
     echo json_encode([
         'status' => 'error',

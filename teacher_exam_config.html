@@ -90,6 +90,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const response = await fetch('api/get_exam_config.php', {
+                    
                     headers: {
                         'Authorization': `Bearer ${teacherToken}`
                     }
