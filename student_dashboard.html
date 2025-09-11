@@ -164,28 +164,77 @@
       }
     }
 
-    function handleStartExam(e) {
-      if (e) e.preventDefault(); // กัน <a> พาไปหน้าอื่น
+    async function handleStartExam(e) {
+      if (e) e.preventDefault();
 
-      const session_id = localStorage.getItem('session_id');
+      const token = localStorage.getItem('studentToken');
       const examset_id = localStorage.getItem('examset_id');
+      const booking_id = localStorage.getItem('booking_id');
 
-      if (session_id && examset_id) {
-        // พร้อมสอบ → ไปหน้าสอบได้
-        window.location.href = 'student_exam.html';
-      } else {
-        // ยังไม่ลงทะเบียน → แจ้งเตือนอย่างเดียว และ "ไม่" redirect
+      // ตรวจสอบข้อมูลที่จำเป็น
+      if (!token || !examset_id) {
         Swal.fire({
           icon: 'warning',
           title: 'ยังไม่ได้ลงทะเบียนสอบ',
           text: 'กรุณาลงทะเบียนก่อนเข้าสอบ',
           confirmButtonText: 'ตกลง',
-          confirmButtonColor: '#3085d6',
-          customClass: {
-            popup: 'rounded-4 shadow-lg'
+          confirmButtonColor: '#3085d6'
+        });
+        return;
+      }
+
+      try {
+        // แสดง loading
+        Swal.fire({
+          title: 'กำลังเตรียมข้อสอบ...',
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          didOpen: () => {
+            Swal.showLoading();
           }
         });
-        // จบเลย ไม่ต้องเปลี่ยนหน้า
+
+        // ดึง student_id จาก token
+        const payload = parseJwt(token);
+        if (!payload?.student_id) {
+          throw new Error('ข้อมูลผู้ใช้ไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่');
+        }
+
+        // เรียก API start_exam.php
+        const response = await fetch('api/start_exam.php', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            student_id: payload.student_id,
+            examset_id: parseInt(examset_id)
+          })
+        });
+
+        const result = await response.json();
+        console.log('Start exam response:', result);
+
+        if (response.ok && result.status === 'success') {
+          // บันทึกข้อมูล session
+          localStorage.setItem('session_id', result.session_id);
+          
+          // ไปที่หน้าสอบ
+          window.location.href = 'student_exam.html';
+        } else {
+          throw new Error(result.message || 'ไม่สามารถเริ่มการสอบได้');
+        }
+
+      } catch (error) {
+        console.error('Error starting exam:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: error.message,
+          confirmButtonText: 'ตกลง',
+          confirmButtonColor: '#3085d6'
+        });
       }
     }
     document.getElementById('logoutBtn').addEventListener('click', () => {

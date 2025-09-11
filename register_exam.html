@@ -318,15 +318,15 @@
         return;
       }
 
-      // สร้างข้อความแสดงรายละเอียดการสอบ
+      // แสดงข้อความรอบสอบ
       const slotDateText = `วันที่ ${formatThaiDate(slotDate)} เวลา ${formatTime(startTime)} - ${formatTime(endTime)} น.`;
 
       const result = await Swal.fire({
         title: "ยืนยันการลงทะเบียน",
         html: `คุณต้องการลงทะเบียนรอบสอบนี้หรือไม่?<br><br>
-              <div class="text-start" style="display:inline-block;">
-                <strong>${slotDateText}</strong>
-              </div>`,
+          <div class="text-start" style="display:inline-block;">
+            <strong>${slotDateText}</strong>
+          </div>`,
         icon: "question",
         showCancelButton: true,
         confirmButtonText: "ยืนยัน",
@@ -369,6 +369,7 @@
         });
       }
     }
+
 
 
     document.addEventListener('DOMContentLoaded', () => {

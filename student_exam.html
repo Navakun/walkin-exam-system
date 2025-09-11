@@ -100,25 +100,33 @@
 
         // ฟังก์ชันเริ่ม session การสอบ
 async function initExamSession() {
-    const token = localStorage.getItem('studentToken');
-    if (!token) {
-        throw new Error('กรุณาเข้าสู่ระบบก่อน');
-    }
-
-    const payload = parseJwt(token);
-    if (!payload || !payload.student_id) {
-        throw new Error('ข้อมูลผู้ใช้ไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่');
-    }
-
-    const examset_id = localStorage.getItem('examset_id');
-    if (!examset_id) {
-        localStorage.removeItem('session_id'); // ลบ session เก่าถ้ามี
-        window.location.href = 'register_exam.html';
-        return;
-    }
-
     try {
-        const response = await fetch('/exam_project2/api/start_exam.php', {
+        const token = localStorage.getItem('studentToken');
+        if (!token) {
+            throw new Error('กรุณาเข้าสู่ระบบก่อน');
+        }
+
+        const payload = parseJwt(token);
+        if (!payload || !payload.student_id) {
+            throw new Error('ข้อมูลผู้ใช้ไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่');
+        }
+
+        const examset_id = localStorage.getItem('examset_id');
+        const session_id = localStorage.getItem('session_id');
+
+        if (!examset_id) {
+            // ถ้าไม่มี examset_id ให้กลับไปหน้าลงทะเบียน
+            localStorage.removeItem('session_id');
+            window.location.href = 'register_exam.html';
+            return null;
+        }
+
+        if (session_id) {
+            // ถ้ามี session อยู่แล้ว ให้ใช้อันเดิม
+            return { session_id, examset_id };
+        }
+
+        const response = await fetch('api/start_exam.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -126,20 +134,23 @@ async function initExamSession() {
             },
             body: JSON.stringify({
                 examset_id: parseInt(examset_id),
-                student_id: payload.student_id  // ✅ FIXED LINE
+                student_id: payload.student_id
             })
         });
 
-        const data = await response.json();
-        if (data.status !== 'success') {
-            throw new Error(data.message || 'ไม่สามารถเริ่มการสอบได้');
+        const result = await response.json();
+        console.log('Start exam response:', result);  // Debug log
+
+        if (result.status === 'success' && result.session_id) {
+            // บันทึกข้อมูล session
+            localStorage.setItem('session_id', result.session_id);
+            return result;
+        } else {
+            throw new Error(result.message || 'ไม่สามารถเริ่มการสอบได้');
         }
 
-        // บันทึกข้อมูล session
-        localStorage.setItem('session_id', data.session_id);
-        return data;
     } catch (error) {
-        console.error('Error starting exam:', error);
+        console.error('Error in initExamSession:', error);
         throw error;
     }
 }
@@ -147,11 +158,46 @@ async function initExamSession() {
 
 
         // ฟังก์ชันสำหรับเริ่มการสอบ (เรียกจากหน้าอื่น)
-        function startExam(sessionId, examsetId, bookingId) {
-            localStorage.setItem('session_id', sessionId);
-            localStorage.setItem('examset_id', examsetId);
-            localStorage.setItem('booking_id', bookingId);
-                window.location.href = 'student_result.html?session_id=' + sessionId;
+        async function startExam(sessionId, examsetId, bookingId) {
+            try {
+                // เช็คว่ามี token หรือไม่
+                const token = localStorage.getItem('studentToken');
+                if (!token) {
+                    throw new Error('กรุณาเข้าสู่ระบบก่อน');
+                }
+
+                // บันทึกข้อมูลลง localStorage
+                localStorage.setItem('session_id', sessionId);
+                localStorage.setItem('examset_id', examsetId);
+                localStorage.setItem('booking_id', bookingId);
+
+                // เรียก API start_exam
+                const response = await fetch('api/start_exam.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        examset_id: examsetId
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    // เริ่มสอบสำเร็จ ไปที่หน้าสอบ
+                    window.location.href = 'student_exam.html';
+                } else {
+                    throw new Error(result.message || 'ไม่สามารถเริ่มการสอบได้');
+                }
+            } catch (error) {
+                console.error('Error starting exam:', error);
+                alert(error.message || 'เกิดข้อผิดพลาดในการเริ่มสอบ');
+                // กรณีเกิด error ให้กลับไปหน้า dashboard
+                window.location.href = 'student_dashboard.html';
+            }
         }
 
         function displayQuestion(data) {

@@ -33,23 +33,58 @@ try {
 }
 
 try {
-        $sql = "
+    $sql = "
         SELECT 
-            b.booking_id,
+            b.id AS booking_id,
             b.slot_id,
+            b.examset_id,
+            b.status,
+            b.scheduled_at,
             es.slot_date,
             es.start_time,
             es.end_time,
-            b.status,
-            b.scheduled_at
+            es.max_seats,
+            es.booked_count,
+            exs.session_id,
+            CASE 
+                WHEN es.reg_close_at < NOW() THEN 'closed'
+                WHEN es.booked_count >= es.max_seats THEN 'full'
+                ELSE 'available'
+            END as slot_status,
+            CASE 
+                WHEN exs.session_id IS NOT NULL THEN true
+                ELSE false
+            END as has_active_session
         FROM exambooking b
         JOIN exam_slots es ON b.slot_id = es.id
+        LEFT JOIN examsession exs ON exs.student_id = b.student_id 
+            AND exs.examset_id = b.examset_id
+            AND exs.end_time IS NULL  -- เฉพาะ session ที่ยังไม่จบ
         WHERE b.student_id = ?
         ORDER BY es.slot_date ASC, es.start_time ASC
     ";
+    
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$student_id]);
     $registrations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // แปลงข้อมูลให้เหมาะสมกับการใช้งาน
+    foreach ($registrations as &$reg) {
+        $reg['can_start_exam'] = (
+            $reg['status'] === 'registered' &&
+            $reg['slot_status'] === 'available' &&
+            !$reg['has_active_session']
+        );
+        
+        // แปลงเป็นตัวเลขสำหรับ ID ต่างๆ
+        $reg['booking_id'] = (int)$reg['booking_id'];
+        $reg['slot_id'] = (int)$reg['slot_id'];
+        $reg['examset_id'] = (int)$reg['examset_id'];
+        if ($reg['session_id']) {
+            $reg['session_id'] = (int)$reg['session_id'];
+        }
+    }
+    unset($reg); // ป้องกัน reference ค้าง
     echo json_encode([
         'status' => 'success',
         'data' => $registrations

@@ -291,7 +291,7 @@
             async function loadTimeSlots() {
                 showSpinner();
                 try {
-                    const res = await fetch('api/get_available_slots.php', {
+                    const res = await fetch('api/get_all_slots.php', {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const text = await res.text();
@@ -306,7 +306,7 @@
                     const rawSlots = data.slots || [];
                     console.log("📦 rawSlots", rawSlots);
 
-                    const slotsToRender = filterAvailableSlots(rawSlots);
+                    const slotsToRender = rawSlots.map(normalizeSlot);
                     console.log("📊 slots ที่จะ render:", slotsToRender);
                     console.table(slotsToRender, ['id', 'date', 'start', 'end']);
                     displayTimeSlots(slotsToRender);
