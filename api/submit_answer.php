@@ -15,7 +15,8 @@ register_shutdown_function(function () {
     }
 });
 
-function getBearerToken(): ?string {
+function getBearerToken(): ?string
+{
     $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? ($_SERVER['Authorization'] ?? '');
     if (!$auth && function_exists('getallheaders')) {
         foreach (getallheaders() as $k => $v) {
@@ -79,11 +80,17 @@ try {
     }
 
     // (5) ตรวจว่าคำถามอยู่ในชุดสอบ
-    $stm = $pdo->prepare('SELECT 1 FROM exam_set_question WHERE examset_id = ? AND question_id = ?');
+    $stm = $pdo->prepare('
+            SELECT 1 FROM examset 
+            WHERE examset_id = ? 
+            AND EXISTS (
+                SELECT 1 FROM question WHERE question_id = ? 
+            )
+        ');
     $stm->execute([$examset_id, $question_id]);
     if (!$stm->fetchColumn()) {
         http_response_code(400);
-        echo json_encode(['status' => 'error', 'message' => 'QUESTION_NOT_IN_EXAMSET']);
+        echo json_encode(['status' => 'error', 'message' => 'QUESTION_NOT_FOUND_IN_EXAMSET']);
         exit;
     }
 
@@ -168,7 +175,7 @@ try {
             WHERE session_id = ?
         ')->execute([$score, $session_id]);
 
-    // No transaction needed for score update
+        // No transaction needed for score update
         echo json_encode([
             'status' => 'finished',
             'message' => 'ทำข้อสอบครบแล้ว',
@@ -181,12 +188,12 @@ try {
     $answered_ids = $pdo->prepare('SELECT question_id FROM answer WHERE session_id = ?');
     $answered_ids->execute([$session_id]);
     $answered = $answered_ids->fetchAll(PDO::FETCH_COLUMN);
-    
+
     $remaining = array_values(array_diff($limited_qids, array_map('intval', $answered)));
     if (empty($remaining)) {
         $pdo->prepare('UPDATE examsession SET end_time = COALESCE(end_time, NOW()) WHERE session_id = ?')
             ->execute([$session_id]);
-    // No transaction needed for end time update
+        // No transaction needed for end time update
         echo json_encode(['status' => 'finished', 'message' => 'ทำข้อสอบครบแล้ว']);
         exit;
     }
@@ -196,41 +203,41 @@ try {
     $nextQ = $stm->fetch(PDO::FETCH_ASSOC);
 
     if (!$nextQ) {
-    // บันทึกเวลาสิ้นสุด
-    $pdo->prepare('UPDATE examsession SET end_time = NOW() WHERE session_id = ?')->execute([$session_id]);
+        // บันทึกเวลาสิ้นสุด
+        $pdo->prepare('UPDATE examsession SET end_time = NOW() WHERE session_id = ?')->execute([$session_id]);
 
-    // === คำนวณคะแนนและอัปเดต score (ใช้เฉพาะ question_ids ที่สุ่มไว้ใน session) ===
-    $stmQ = $pdo->prepare('SELECT question_ids FROM examsession WHERE session_id = ?');
-    $stmQ->execute([$session_id]);
-    $rowQ = $stmQ->fetch(PDO::FETCH_ASSOC);
-    $question_ids = json_decode($rowQ['question_ids'] ?? '[]', true);
-    if (!is_array($question_ids) || count($question_ids) === 0) {
-        $question_ids = [];
-    }
-
-    // 2. ดึงคำตอบของนักศึกษาทั้งหมดใน session นี้
-    $stmA = $pdo->prepare('SELECT question_id, selected_choice FROM answer WHERE session_id = ?');
-    $stmA->execute([$session_id]);
-    $answers = $stmA->fetchAll(PDO::FETCH_KEY_PAIR); // [question_id => selected_choice]
-
-    // 3. ดึงเฉลยที่ถูกต้องจาก question (label ที่ตรงกับ correct_choice ใน question)
-    $score = 0;
-    foreach ($question_ids as $qid) {
-        // ดึง correct_choice จาก question
-        $stmC = $pdo->prepare('SELECT correct_choice FROM question WHERE question_id = ?');
-        $stmC->execute([$qid]);
-        $correct = $stmC->fetchColumn();
-        if (!$correct) continue;
-        // เปรียบเทียบกับคำตอบ
-        if (isset($answers[$qid]) && strtoupper($answers[$qid]) === strtoupper($correct)) {
-            $score++;
+        // === คำนวณคะแนนและอัปเดต score (ใช้เฉพาะ question_ids ที่สุ่มไว้ใน session) ===
+        $stmQ = $pdo->prepare('SELECT question_ids FROM examsession WHERE session_id = ?');
+        $stmQ->execute([$session_id]);
+        $rowQ = $stmQ->fetch(PDO::FETCH_ASSOC);
+        $question_ids = json_decode($rowQ['question_ids'] ?? '[]', true);
+        if (!is_array($question_ids) || count($question_ids) === 0) {
+            $question_ids = [];
         }
-    }
-    // 4. อัปเดตคะแนน
-    $pdo->prepare('UPDATE examsession SET score = ? WHERE session_id = ?')->execute([$score, $session_id]);
 
-    echo json_encode(['status'=>'finished','message'=>'ทำข้อสอบครบแล้ว','score'=>$score]);
-    exit;
+        // 2. ดึงคำตอบของนักศึกษาทั้งหมดใน session นี้
+        $stmA = $pdo->prepare('SELECT question_id, selected_choice FROM answer WHERE session_id = ?');
+        $stmA->execute([$session_id]);
+        $answers = $stmA->fetchAll(PDO::FETCH_KEY_PAIR); // [question_id => selected_choice]
+
+        // 3. ดึงเฉลยที่ถูกต้องจาก question (label ที่ตรงกับ correct_choice ใน question)
+        $score = 0;
+        foreach ($question_ids as $qid) {
+            // ดึง correct_choice จาก question
+            $stmC = $pdo->prepare('SELECT correct_choice FROM question WHERE question_id = ?');
+            $stmC->execute([$qid]);
+            $correct = $stmC->fetchColumn();
+            if (!$correct) continue;
+            // เปรียบเทียบกับคำตอบ
+            if (isset($answers[$qid]) && strtoupper($answers[$qid]) === strtoupper($correct)) {
+                $score++;
+            }
+        }
+        // 4. อัปเดตคะแนน
+        $pdo->prepare('UPDATE examsession SET score = ? WHERE session_id = ?')->execute([$score, $session_id]);
+
+        echo json_encode(['status' => 'finished', 'message' => 'ทำข้อสอบครบแล้ว', 'score' => $score]);
+        exit;
     }
 
 
@@ -251,7 +258,6 @@ try {
             'choices' => $choices
         ]
     ]);
-
 } catch (Throwable $e) {
     if ($pdo && $pdo->inTransaction()) $pdo->rollBack();
     error_log('[submit_answer] ' . $e->getMessage());
