@@ -23,7 +23,7 @@ if (!preg_match('/Bearer\s+(.*)$/i', $auth_header, $matches)) {
 }
 $token = $matches[1];
 try {
-    $decoded = JWT::decode($token, new Key("your-secret-key", 'HS256'));
+    $decoded = JWT::decode($token, new Key($jwt_key, 'HS256'));
     if (!isset($decoded->role) || $decoded->role !== 'student') {
         throw new Exception('ไม่มีสิทธิ์เข้าถึงข้อมูล');
     }
