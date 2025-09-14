@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,6 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
 </head>
+
 <body>
   <!-- HEADER -->
   <header class="course-header d-flex align-items-center bg-light p-2">
@@ -27,6 +29,13 @@
   <!-- MAIN CONTENT -->
   <div class="container mt-4">
     <h3>เลือกช่วงเวลาสอบ</h3>
+    
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" class="alert alert-info d-flex align-items-center" style="display: none;">
+      <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+      <div>กำลังโหลดข้อมูลรอบสอบ...</div>
+    </div>
+
     <div class="table-responsive">
       <table id="slot-table" class="table table-bordered text-center table-striped">
         <thead class="table-light">
@@ -56,23 +65,31 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // Global variables
     const token = localStorage.getItem('studentToken');
-    let student_id = null;
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        student_id = payload.student_id;
-      } catch {}
+    let isSubmitting = false; // ป้องกันการ submit ซ้ำ
+
+    if (!token) {
+      window.location.href = 'student_login.html';
+    }
+
+    // Utility functions
+    function handleTokenExpired() {
+      localStorage.removeItem('studentToken');
+      Swal.fire({
+        icon: "warning",
+        title: "หมดเวลาการใช้งาน",
+        text: "กรุณาเข้าสู่ระบบอีกครั้ง",
+      }).then(() => window.location.href = 'student_login.html');
     }
 
     function formatThaiDate(dateStr) {
-      if (!dateStr) return "-"; // กัน null/undefined
+      if (!dateStr) return "-";
       const parts = dateStr.split("-");
       if (parts.length < 3) return "-";
       const year = parseInt(parts[0], 10) + 543;
       const month = parseInt(parts[1], 10) - 1;
       const day = parseInt(parts[2], 10);
-
       if (isNaN(year) || isNaN(month) || isNaN(day)) return "-";
 
       const months = [
@@ -82,85 +99,100 @@
       return `${day} ${months[month]} ${year}`;
     }
 
+    function formatThaiDateTime(dateTimeStr) {
+      if (!dateTimeStr) return "-";
+      const [datePart, timePart] = dateTimeStr.split(" ");
+      return `${formatThaiDate(datePart)} เวลา ${timePart.slice(0, 5)}`;
+    }
+
     function formatTime(timeStr) {
-      if (!timeStr) return "-";
-      return timeStr.slice(0, 5);
+      return timeStr ? timeStr.slice(0, 5) : "-";
     }
 
     async function loadExamSlots() {
+      const loadingIndicator = document.getElementById("loadingIndicator");
+      loadingIndicator.style.display = "block";
+
       try {
         const res = await fetch("api/get_available_slots.php", {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const text = await res.text();
-        let result;
-        try {
-          result = JSON.parse(text);
-        } catch {
-          result = { status: "error", message: "Invalid JSON", raw: text };
+
+        if (res.status === 401) {
+          handleTokenExpired();
+          return;
         }
 
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`HTTP ${res.status}: ${errorText}`);
+        }
+
+        const result = await res.json();
         const list = document.getElementById("slotList");
         list.innerHTML = "";
 
         if (result.status === "success" && Array.isArray(result.slots)) {
-          let renderedCount = 0;
+          if (result.slots.length === 0) {
+            list.innerHTML = `<tr><td colspan="8" class="text-center text-muted">ยังไม่มีช่วงเวลาที่เปิดให้ลงทะเบียน</td></tr>`;
+            return;
+          }
 
           result.slots.forEach(slot => {
-            const total = slot.max_seats || 0;
-            const booked = slot.booked_count || 0;
-            const available = total - booked;
+            const available = slot.available_seats || 0;
 
             const tr = document.createElement("tr");
             tr.innerHTML = `
-              <td>${formatThaiDate(slot.reg_open_at?.split(" ")[0])} - ${formatThaiDate(slot.reg_close_at?.split(" ")[0])}</td>
+              <td>${formatThaiDateTime(slot.reg_open_at)} -<br>${formatThaiDateTime(slot.reg_close_at)}</td>
               <td>${formatThaiDate(slot.exam_date)}</td>
               <td>${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}</td>
-              <td>${total}</td>
-              <td>${booked}</td>
+              <td>${slot.max_seats}</td>
+              <td>${slot.registered_count}</td>
               <td>
                 <span class="badge ${available <= 0 ? "bg-danger" : "bg-success"} rounded-pill">
                   ${available}
                 </span>
               </td>
               <td>
-                ${available > 0 
-                  ? '<span class="badge bg-success rounded-pill">ลงทะเบียนได้</span>'
-                  : '<span class="badge bg-danger rounded-pill">เต็มแล้ว</span>'}
+                ${available > 0
+                ? '<span class="badge bg-success rounded-pill">ลงทะเบียนได้</span>'
+                : '<span class="badge bg-danger rounded-pill">เต็มแล้ว</span>'}
               </td>
               <td>
                 <button class="btn ${available > 0 ? "btn-success" : "btn-secondary"}"
-                        ${available > 0 
-                          ? `onclick="registerSlot(${slot.id}, '${slot.exam_date}', '${slot.start_time}', '${slot.end_time}')"`
-                          : "disabled"}>
-                  ${available > 0 
-                    ? '<i class="fas fa-check-circle me-2"></i>ลงทะเบียน'
-                    : '<i class="fas fa-ban me-2"></i>เต็มแล้ว'}
+                        ${available > 0
+                ? `onclick="registerSlot(${slot.id}, '${slot.exam_date}', '${slot.start_time}', '${slot.end_time}', event)"`
+                : "disabled"}>
+                  ${available > 0
+                ? '<i class="fas fa-check-circle me-2"></i>ลงทะเบียน'
+                : '<i class="fas fa-ban me-2"></i>เต็มแล้ว'}
                 </button>
               </td>
             `;
             list.appendChild(tr);
-            renderedCount++;
           });
-
-          if (renderedCount === 0) {
-            list.innerHTML = `<tr><td colspan="8" class="text-center text-muted">ยังไม่มีช่วงเวลาที่เปิดให้ลงทะเบียน</td></tr>`;
-          }
         } else {
           list.innerHTML = `<tr><td colspan="8" class="text-danger text-center">โหลดข้อมูลไม่สำเร็จ: ${result.message || "ไม่พบข้อมูล"}</td></tr>`;
         }
       } catch (err) {
-        console.error("loadExamSlots error", err);
+        console.error("loadExamSlots error:", err);
         document.getElementById("slotList").innerHTML =
           '<tr><td colspan="8" class="text-danger text-center">เกิดข้อผิดพลาดในการเชื่อมต่อ</td></tr>';
+      } finally {
+        loadingIndicator.style.display = "none";
       }
     }
 
-    async function registerSlot(slotId, slotDate, startTime, endTime) {
-      if (!token) {
-        Swal.fire({icon:"error",title:"ยังไม่ได้เข้าสู่ระบบ",text:"กรุณาเข้าสู่ระบบก่อนลงทะเบียน"});
-        return;
-      }
+    async function registerSlot(slotId, slotDate, startTime, endTime, event) {
+      // ป้องกันการ submit ซ้ำ
+      if (isSubmitting) return;
+      isSubmitting = true;
+
+      // ปรับปรุง UI ปุ่ม
+      const btn = event.currentTarget;
+      const originalHTML = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>กำลังลงทะเบียน...`;
 
       const slotDateText = `วันที่ ${formatThaiDate(slotDate)} เวลา ${formatTime(startTime)} - ${formatTime(endTime)} น.`;
 
@@ -173,7 +205,13 @@
         cancelButtonText: "ยกเลิก",
       });
 
-      if (!result.isConfirmed) return;
+      if (!result.isConfirmed) {
+        // คืนค่า UI ปุ่มเมื่อยกเลิก
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+        isSubmitting = false;
+        return;
+      }
 
       try {
         const response = await fetch("api/book_slot.php", {
@@ -185,8 +223,28 @@
           body: JSON.stringify({ slot_id: slotId })
         });
 
+        // เช็ค HTTP status
+        if (response.status === 401) {
+          handleTokenExpired();
+          return;
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
         const data = await response.json();
+        if (data.debug) {
+          console.warn("Debug info:", data.debug);
+        }
+
         if (data.status === "success") {
+          // เก็บข้อมูลใน localStorage สำหรับใช้ในหน้าอื่น
+          localStorage.setItem('latestSlotId', slotId);
+          if (data.registration_id) {
+            localStorage.setItem('latestRegistrationId', data.registration_id);
+          }
           if (data.payment_status === "free") {
             await Swal.fire({
               icon: "success",
@@ -197,26 +255,51 @@
             await Swal.fire({
               icon: "info",
               title: "รอการชำระเงิน",
-              html: `คุณเกินสิทธิ์สอบฟรีแล้ว<br>กรุณาชำระเงิน <strong>${data.fee_amount} บาท</strong>`,
+              html: `
+                    คุณเกินสิทธิ์สอบฟรีแล้ว<br>
+                    กรุณาชำระเงิน <strong>${data.fee_amount} บาท</strong><br>
+                    <hr>
+                    <small class="text-muted">
+                      ไปที่ <a href="student_registration_status.html">หน้าสถานะการลงทะเบียน</a> 
+                      เพื่ออัปโหลดสลิปและยืนยันการชำระเงิน
+                    </small>
+                  `,
               confirmButtonText: "ตกลง"
             });
           }
           await loadExamSlots();
         } else {
-          Swal.fire({icon:"error",title:"เกิดข้อผิดพลาด",text:data.message||"ไม่สามารถลงทะเบียนได้"});
+          Swal.fire({
+            icon: "error",
+            title: "เกิดข้อผิดพลาด",
+            text: data.message || "ไม่สามารถลงทะเบียนได้"
+          });
         }
+
       } catch (err) {
-        console.error("registerSlot error", err);
-        Swal.fire({icon:"error",title:"เชื่อมต่อไม่สำเร็จ",text:"ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์"});
+        console.error("registerSlot error:", err);
+        Swal.fire({ 
+          icon: "error", 
+          title: "เชื่อมต่อไม่สำเร็จ", 
+          text: err.message || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์" 
+        });
+      } finally {
+        // คืนค่า UI ปุ่มเสมอ
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+        isSubmitting = false;
       }
     }
 
-    document.addEventListener('DOMContentLoaded',()=>{
-      if(!token){ window.location.href='student_login.html'; return; }
+    document.addEventListener('DOMContentLoaded', () => {
       loadExamSlots();
-      document.getElementById('backBtn').onclick=()=>window.location.href='student_dashboard.html';
-      document.getElementById('logoutBtn').onclick=()=>{ localStorage.removeItem('studentToken'); window.location.href='student_login.html'; };
+      document.getElementById('backBtn').onclick = () => window.location.href = 'student_dashboard.html';
+      document.getElementById('logoutBtn').onclick = () => {
+        localStorage.removeItem('studentToken');
+        window.location.href = 'student_login.html';
+      };
     });
   </script>
 </body>
+
 </html>
