@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 error_reporting(E_ALL);
-ini_set('display_errors', '0');
+ini_set('display_errors', '1');
 
 function json_out(array $o, int $code = 200): void
 {
