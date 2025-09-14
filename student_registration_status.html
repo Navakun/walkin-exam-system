@@ -3,196 +3,183 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>สถานะการลงทะเบียนสอบ</title>
+  <title>สถานะการลงทะเบียน & ประวัติการชำระเงิน</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="assets/css/main.css">
-  <link rel="stylesheet" href="assets/css/student.css">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-  <link rel="icon" href="favicon.ico">
- 
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body>
-  <header class="course-header">
-    <div class="logo-text">
-            <img src="nulogo.png" alt="Logo" height="60">
-            <div class="course-title">
-                <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ<br>มหาวิทยาลัยนเรศวร</h2>
-            </div>
-        </div>
-    <div class="ms-auto d-flex gap-2">
-      <button id="backBtn" class="btn btn-outline-primary">กลับหน้าหลัก</button>
-      <button id="logoutBtn" class="btn btn-outline-danger">ออกจากระบบ</button>
+<body class="p-3">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h3><i class="fas fa-list-check"></i> สถานะการลงทะเบียน & ประวัติการชำระเงิน</h3>
+      <button class="btn btn-outline-primary" onclick="window.location.href='student_dashboard.html'">
+        กลับหน้าหลัก
+      </button>
     </div>
-  </header>
-  <div class="container mt-4">
-    <div class="d-flex align-items-center mb-3">
-      <i class="fas fa-clipboard-list fa-2x text-primary me-2"></i>
-      <h2 class="mb-0">สถานะการลงทะเบียนสอบของคุณ</h2>
+
+    <!-- 🔹 Current Registration -->
+    <div class="card mb-4">
+      <div class="card-header bg-info text-white">
+        สถานะการลงทะเบียนปัจจุบัน
+      </div>
+      <div class="card-body" id="currentReg">
+        <p class="text-muted">กำลังโหลด...</p>
+      </div>
     </div>
-    <div id="successBanner" class="alert alert-success d-none"><b>✅ ลงทะเบียนสอบสำเร็จ!</b> คุณได้ลงทะเบียนสอบเรียบร้อยแล้ว</div>
-    <div class="alert alert-secondary" style="background: #f8f9fa; border: none; color: #333;">
-      <b>👩‍🎓 ยินดีต้อนรับ!</b> ที่นี่คุณสามารถตรวจสอบสถานะการลงทะเบียนสอบของตนเองได้ตลอดเวลา
+
+    <!-- 🔹 History -->
+    <div class="card">
+      <div class="card-header bg-secondary text-white">
+        ประวัติการลงทะเบียนและการชำระเงิน
+      </div>
+      <div class="card-body table-responsive">
+        <table class="table table-bordered" id="regTable">
+          <thead class="table-light">
+            <tr>
+              <th>วันที่สอบ</th>
+              <th>เวลา</th>
+              <th>ครั้งที่</th>
+              <th>ค่าธรรมเนียม</th>
+              <th>สถานะ</th>
+              <th>เลขที่อ้างอิง</th>
+              <th>การชำระเงิน</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
-    <div id="loading" class="alert alert-info" style="display: none;">กำลังโหลดข้อมูล...</div>
-    <div id="statusArea"></div>
   </div>
-  <script>
-    const token = localStorage.getItem('studentToken');
-    let student_id = null;
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        student_id = payload.student_id;
-      } catch (e) {}
-    }
-    document.getElementById('backBtn').onclick = () => window.location.href = 'student_dashboard.html';
-    document.getElementById('logoutBtn').onclick = () => {
-      localStorage.removeItem('studentToken');
-      window.location.href = 'student_login.html';
-    };
-    async function loadStatus() {
-      if (!token || !student_id) {
-        document.getElementById('statusArea').innerHTML = '<div class="alert alert-danger">กรุณาเข้าสู่ระบบใหม่อีกครั้ง</div>';
-        return;
-      }
-      // แสดง banner สำเร็จถ้ามี flag just_registered ใน query หรือ localStorage
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('just_registered') === '1' || localStorage.getItem('justRegistered') === '1') {
-        document.getElementById('successBanner').classList.remove('d-none');
-        setTimeout(() => document.getElementById('successBanner').classList.add('d-none'), 4000);
-        localStorage.removeItem('justRegistered');
-      }
-      document.getElementById('loading').style.display = 'block';
-      try {
-        const res = await fetch('/walkin-exam-system/api/get_student_registration_status.php', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        let text = await res.text();
-        let result;
-        try { result = JSON.parse(text); } catch (e) { result = { status: 'error', message: 'Invalid JSON', raw: text }; }
-        document.getElementById('loading').style.display = 'none';
-        if (result.status === 'success' && result.data && result.data.length > 0) {
-          // หาค่าที่ลงทะเบียนล่าสุด (booking ล่าสุด)
-          let latestIdx = 0;
-          let latestTime = 0;
-          result.data.forEach((row, idx) => {
-            const t = row.scheduled_at ? new Date(row.scheduled_at).getTime() : 0;
-            if (t > latestTime) { latestTime = t; latestIdx = idx; }
-          });
-          let html = '<div class="table-responsive"><table class="table table-striped table-bordered align-middle text-center shadow-sm"><thead class="table-primary"><tr><th>วันที่สอบ</th><th>เวลาที่สอบ</th><th>วันที่ลงทะเบียน</th><th>สถานะ</th><th>ดำเนินการ</th></tr></thead><tbody>';
-          result.data.forEach((row, idx) => {
-            let statusColor = row.status === 'registered' ? 'text-success' : (row.status === 'completed' ? 'text-primary' : 'text-danger');
-            let statusText = row.status === 'registered' ? 'ลงทะเบียนแล้ว' : (row.status === 'completed' ? 'สอบเสร็จสิ้น' : (row.status === 'cancelled' ? 'ยกเลิก' : (row.status === 'absent' ? 'ขาดสอบ' : '-')));
-            let regDate = '-';
-            if (row.scheduled_at) {
-              const d = new Date(row.scheduled_at);
-              if (!isNaN(d)) {
-                const day = String(d.getDate()).padStart(2, '0');
-                const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-                const monthName = thaiMonths[d.getMonth()];
-                const year = d.getFullYear();
-                regDate = `${day} ${monthName} ${year}`;
-              }
-            }
-            let slotDate = row.slot_date;
-            if (slotDate && /^\d{4}-\d{2}-\d{2}/.test(slotDate)) {
-              const d = new Date(slotDate);
-              if (!isNaN(d)) {
-                const day = String(d.getDate()).padStart(2, '0');
-                const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-                const monthName = thaiMonths[d.getMonth()];
-                const year = d.getFullYear();
-                slotDate = `${day} ${monthName} ${year}`;
-              }
-            }
-            let actionBtn = '';
-            if (row.status === 'registered') {
-              // เช็คว่าสามารถยกเลิกได้หรือไม่ (3 วันก่อนสอบ)
-              const examDate = new Date(row.slot_date);
-              const today = new Date();
-              const diffDays = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
-              
-              actionBtn = `<a href="student_exam.html?examset_id=${row.examset_id}" class="btn btn-sm btn-success">เข้าสอบ</a>`;
-              if (diffDays >= 3) {
-                actionBtn += ` <button onclick="cancelBooking(${row.id})" class="btn btn-sm btn-outline-danger ms-2">
-                  <i class="fas fa-times-circle"></i> ยกเลิก
-                </button>`;
-              } else {
-                actionBtn += ` <button class="btn btn-sm btn-outline-secondary ms-2" disabled title="ต้องยกเลิกล่วงหน้าอย่างน้อย 3 วัน">
-                  <i class="fas fa-lock"></i> ยกเลิก
-                </button>`;
-              }
-            } else if (row.status === 'completed') {
-              actionBtn = `<a href="student_result.html?examset_id=${row.examset_id}" class="btn btn-sm btn-primary">ดูผลสอบ</a>`;
-            }
-            html += `<tr${idx === latestIdx ? ' style=\"background:#e6ffe6;\"' : ''}><td>${slotDate}</td><td>${row.start_time} - ${row.end_time}</td><td>${regDate}</td><td class=\"${statusColor}\"><b>${statusText}</b></td><td>${actionBtn}</td></tr>`;
-          });
-          html += '</tbody></table></div>';
-          document.getElementById('statusArea').innerHTML = html;
-        } else {
-          document.getElementById('statusArea').innerHTML = `<div class="alert alert-warning text-center p-4"><i class='fas fa-info-circle fa-2x mb-2'></i><br>ยังไม่มีข้อมูลการลงทะเบียนสอบ</div>`;
-        }
-      } catch (err) {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('statusArea').innerHTML = '<div class="alert alert-danger">เกิดข้อผิดพลาด: ' + err + '</div>';
-      }
-    }
-    document.addEventListener('DOMContentLoaded', loadStatus);
-  // ถ้ามาจาก register_exam.html ให้ set flag justRegistered
-  if (document.referrer && document.referrer.includes('register_exam.html')) {
-    localStorage.setItem('justRegistered', '1');
-  }
 
-  // ฟังก์ชันยกเลิกการจอง
-  async function cancelBooking(bookingId) {
-    if (!bookingId) {
-      alert('ไม่พบข้อมูลการจอง');
-      return;
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+<script>
+const token = localStorage.getItem('studentToken');
+if(!token){ window.location.href="student_login.html"; }
+
+function formatThaiDate(dateStr) {
+  const d = new Date(dateStr);
+  const months = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+    'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+}
+
+function formatTime(timeStr) { 
+  return timeStr?.slice(0,5) || ''; 
+}
+
+async function loadRegs(){
+  try {
+    const res = await fetch("api/get_my_registrations.php",{
+      headers:{Authorization:`Bearer ${token}`}
+    });
+    const data = await res.json();
+
+    // --- Current registration ---
+    const currentBox = document.getElementById("currentReg");
+    if(data.status==="success" && data.current){
+      const r = data.current;
+      const status = {
+        'pending': '<span class="badge bg-warning">รอชำระเงิน</span>',
+        'paid': '<span class="badge bg-success">ชำระแล้ว</span>',
+        'free': '<span class="badge bg-info">ฟรี</span>'
+      }[r.payment_status] || r.payment_status;
+
+      currentBox.innerHTML = `
+        <ul>
+          <li><strong>วันที่สอบ:</strong> ${formatThaiDate(r.slot_date)}</li>
+          <li><strong>เวลา:</strong> ${formatTime(r.start_time)} - ${formatTime(r.end_time)}</li>
+          <li><strong>ครั้งที่:</strong> ${r.attempt_no}</li>
+          <li><strong>ค่าธรรมเนียม:</strong> ${r.fee_amount > 0 ? r.fee_amount + ' บาท' : 'ฟรี'}</li>
+          <li><strong>สถานะ:</strong> ${status}</li>
+        </ul>
+        ${r.payment_status==="pending"
+          ? `<button class="btn btn-sm btn-primary" onclick="payNow(${r.registration_id})">ชำระเงิน</button>`
+          : ""}`;
+    } else {
+      currentBox.innerHTML = '<p class="text-muted">ยังไม่มีการลงทะเบียนสอบปัจจุบัน</p>';
     }
-    
-    if (!confirm('คุณต้องการยกเลิกการจองใช่หรือไม่?')) return;
 
-    console.log('Token:', token);
-    console.log('Student ID:', student_id);
-    console.log('Booking ID:', bookingId);
+    // --- History ---
+    const tbody = document.querySelector("#regTable tbody");
+    tbody.innerHTML="";
+    if(data.status==="success" && data.registrations.length){
+      data.registrations.forEach(r=>{
+        const status = {
+          'pending': '<span class="badge bg-warning">รอชำระเงิน</span>',
+          'paid': '<span class="badge bg-success">ชำระแล้ว</span>',
+          'free': '<span class="badge bg-info">ฟรี</span>'
+        }[r.payment_status] || r.payment_status;
 
-    try {
-      const res = await fetch('/walkin-exam-system/api/cancel_booking.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // ต้องใส่ Bearer prefix
-        },
-        body: JSON.stringify({
-          booking_id: bookingId,
-          student_id: student_id
-        })
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${formatThaiDate(r.slot_date)}</td>
+          <td>${formatTime(r.start_time)} - ${formatTime(r.end_time)}</td>
+          <td>${r.attempt_no}</td>
+          <td>${r.fee_amount > 0 ? r.fee_amount + ' บาท' : 'ฟรี'}</td>
+          <td>${status}</td>
+          <td>${r.ref_no || '-'}</td>
+          <td>
+            ${r.payment_status==="pending"
+              ? `<button class="btn btn-sm btn-primary" onclick="payNow(${r.registration_id})">ชำระเงิน</button>`
+              : r.payment_status==="paid"
+                ? `<span class="text-success">ชำระแล้ว ${r.paid_at ? '('+ new Date(r.paid_at).toLocaleString('th-TH') +')' : ''}</span>`
+                : `<span class="text-info">สิทธิ์สอบฟรี</span>`}
+          </td>`;
+        tbody.appendChild(tr);
       });
-
-      const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.error('Invalid JSON response:', text);
-        alert('เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง');
-        return;
-      }
-
-      if (!res.ok) {
-        alert(data.message || 'เกิดข้อผิดพลาดในการยกเลิก');
-        return;
-      }
-
-      alert(data.message || 'ยกเลิกการจองสำเร็จ');
-      if (data.status === 'success') {
-        loadStatus(); // โหลดข้อมูลใหม่
-      }
-    } catch (err) {
-      console.error('Error:', err);
-      alert('เกิดข้อผิดพลาดในการติดต่อเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง');
+    } else {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">ไม่พบประวัติการลงทะเบียน</td></tr>';
     }
+
+  } catch (err) {
+    console.error(err);
+    Swal.fire({
+      icon: 'error',
+      title: 'โหลดข้อมูลไม่สำเร็จ',
+      text: 'กรุณาลองใหม่อีกครั้ง'
+    });
   }
-  </script>
+}
+
+async function payNow(regId){
+  const {value: ref, isConfirmed} = await Swal.fire({
+    title: "ยืนยันการชำระเงิน",
+    input: "text",
+    inputLabel: "เลขที่อ้างอิงการโอน/สลิป",
+    inputPlaceholder: "กรอก Ref No.",
+    showCancelButton: true,
+    confirmButtonText: "ยืนยัน",
+    cancelButtonText: "ยกเลิก",
+    inputValidator: (value) => {
+      if (!value) return "กรุณากรอกเลขที่อ้างอิง";
+    }
+  });
+
+  if (!isConfirmed) return;
+
+  try {
+    const res = await fetch("api/pay_registration.php", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({registration_id: regId, ref_no: ref})
+    });
+    const data = await res.json();
+    if(data.status==="success"){
+      await Swal.fire({icon:"success",title:"ชำระเงินสำเร็จ",text:`เลขที่อ้างอิง: ${data.ref_no}`,timer:2000});
+      await loadRegs();
+    } else {
+      throw new Error(data.message);
+    }
+  } catch (err) {
+    console.error(err);
+    Swal.fire({icon:"error",title:"ชำระเงินไม่สำเร็จ",text:err.message || "กรุณาลองใหม่อีกครั้ง"});
+  }
+}
+
+loadRegs();
+</script>
 </body>
 </html>
