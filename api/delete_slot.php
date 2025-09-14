@@ -48,7 +48,7 @@ if (!isset($data['slot_id'])) {
 
 try {
     // ตรวจสอบว่ามีการจองแล้วหรือไม่
-    $check_sql = "SELECT COUNT(*) FROM exambooking WHERE slot_id = :slot_id";
+    $check_sql = "SELECT COUNT(*) FROM exam_booking WHERE slot_id = :slot_id";
     $check_stmt = $pdo->prepare($check_sql);
     $check_stmt->execute([':slot_id' => $data['slot_id']]);
 

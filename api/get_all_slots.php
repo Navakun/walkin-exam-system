@@ -2,7 +2,7 @@
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../api/helpers/jwt_helper.php';
-require_once '../config/db.php';
+require_once __DIR__ . '/../config/db.php';
 
 $headers = getallheaders();
 if (!isset($headers['Authorization'])) {
@@ -29,7 +29,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT 
             es.id,
-            es.slot_date,
+            es.exam_date,
             es.start_time,
             es.end_time,
             es.max_seats,
@@ -41,8 +41,9 @@ try {
         FROM exam_slots es
         LEFT JOIN exam_slot_registrations r ON r.slot_id = es.id
         LEFT JOIN examset e ON es.examset_id = e.examset_id
-        GROUP BY es.id
-        ORDER BY es.slot_date, es.start_time
+        GROUP BY es.id, es.exam_date, es.start_time, es.end_time, es.max_seats, 
+                 es.reg_open_at, es.reg_close_at, es.created_by, e.title
+        ORDER BY es.exam_date, es.start_time
     ");
     $stmt->execute();
     $slots = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -50,7 +51,8 @@ try {
     echo json_encode([
         'status' => 'success',
         'slots' => $slots
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
+
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
@@ -60,3 +62,4 @@ try {
         'debug' => $e->getMessage()
     ]);
 }
+    
