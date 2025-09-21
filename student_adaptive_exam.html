@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <title>สอบแบบ Adaptive</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="assets/bootstrap.min.css">
+  <link rel="stylesheet" href="assets/sweetalert2.min.css">
+  <style>
+    body {
+      padding: 20px;
+    }
+
+    .question-box {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <h3>เริ่มการสอบแบบ Adaptive</h3>
+
+  <div id="timer" class="text-end text-danger fw-bold"></div>
+
+  <div class="progress my-2">
+    <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
+  </div>
+
+  <div id="questionContainer" class="question-box border rounded p-3"></div>
+  <div id="choicesContainer"></div>
+  <button id="submitAnswerBtn" class="btn btn-primary mt-3">ส่งคำตอบ</button>
+
+  <script src="assets/bootstrap.bundle.min.js"></script>
+  <script src="assets/sweetalert2.min.js"></script>
+  <script>
+    const sessionId = localStorage.getItem('session_id');
+    const token = localStorage.getItem('studentToken');
+
+    if (!sessionId || !token) {
+      Swal.fire({
+        icon: 'error',
+        title: 'ไม่พบ session หรือ token',
+        text: 'กรุณาเข้าสู่ระบบใหม่'
+      }).then(() => {
+        window.location.href = 'student_dashboard.html';
+      });
+    }
+
+    let timeRemaining = 90 * 60; // 90 นาที
+    let currentQuestion = null;
+    let questionsAnswered = 0;
+    let timerInterval;
+
+    startTimer();
+    loadNextQuestion();
+
+    function startTimer() {
+      updateTimerDisplay();
+      timerInterval = setInterval(() => {
+        timeRemaining--;
+        updateTimerDisplay();
+
+        if (timeRemaining <= 0) {
+          clearInterval(timerInterval);
+          finishExam();
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const minutes = Math.floor(timeRemaining / 60);
+      const seconds = timeRemaining % 60;
+      document.getElementById('timer').textContent = `เหลือเวลา: ${minutes}:${seconds.toString().padStart(2, '0')} นาที`;
+    }
+
+    function loadNextQuestion() {
+      fetch('api/submit_answer_adaptive.php', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          question_id: currentQuestion?.question_id || 0,
+          selected_choice_id: null
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'finished') {
+            finishExam(data.score);
+          } else if (data.status === 'continue') {
+            currentQuestion = data.question;
+            displayQuestion();
+          } else {
+            throw new Error(data.message || 'เกิดข้อผิดพลาด');
+          }
+        })
+        .catch(err => {
+          Swal.fire('เกิดข้อผิดพลาด', err.message, 'error');
+        });
+    }
+
+    function displayQuestion() {
+      document.getElementById('questionContainer').innerHTML =
+        `<strong>ข้อที่ ${questionsAnswered + 1}:</strong> ${currentQuestion.question_text}`;
+
+      const choices = currentQuestion.choices;
+      const html = choices.map((c, i) => `
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="choice" value="${c.choice_id}" id="c${i}">
+          <label class="form-check-label" for="c${i}">${c.choice_text}</label>
+        </div>
+      `).join('');
+
+      document.getElementById('choicesContainer').innerHTML = html;
+    }
+
+    document.getElementById('submitAnswerBtn').addEventListener('click', () => {
+      const selected = document.querySelector('input[name="choice"]:checked');
+
+      if (!selected) {
+        Swal.fire('กรุณาเลือกคำตอบก่อนส่ง', '', 'warning');
+        return;
+      }
+
+      fetch('api/submit_answer_adaptive.php', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          question_id: currentQuestion.question_id,
+          selected_choice_id: selected.value
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'finished') {
+            finishExam(data.score);
+          } else if (data.status === 'continue') {
+            questionsAnswered++;
+            updateProgressBar();
+            currentQuestion = data.question;
+            displayQuestion();
+          } else {
+            throw new Error(data.message || 'เกิดข้อผิดพลาด');
+          }
+        })
+        .catch(err => {
+          Swal.fire('เกิดข้อผิดพลาด', err.message, 'error');
+        });
+    });
+
+    function updateProgressBar() {
+      const percent = Math.floor((questionsAnswered / 15) * 100); // สมมติ 15 ข้อสูงสุด
+      const bar = document.getElementById('progressBar');
+      bar.style.width = `${percent}%`;
+      bar.textContent = `${percent}%`;
+    }
+
+    function finishExam(score = null) {
+      clearInterval(timerInterval);
+      Swal.fire({
+        icon: 'success',
+        title: 'การสอบเสร็จสิ้น',
+        text: score !== null ? `คุณได้คะแนน ${score} คะแนน` : 'การสอบสิ้นสุดแล้ว',
+        confirmButtonText: 'ดูผลสอบ'
+      }).then(() => {
+        localStorage.removeItem('session_id');
+        window.location.href = 'student_result.html';
+      });
+    }
+  </script>
+</body>
+
+</html>

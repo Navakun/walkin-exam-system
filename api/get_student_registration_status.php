@@ -57,7 +57,7 @@ try {
                 WHEN exs.session_id IS NOT NULL THEN true
                 ELSE false
             END as has_active_session
-        FROM exambooking b
+        FROM exam_booking b
         JOIN exam_slots es ON b.slot_id = es.id
         LEFT JOIN examsession exs 
             ON exs.student_id = b.student_id 

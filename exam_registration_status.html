@@ -81,7 +81,7 @@
 
             // ตรวจสอบ token ว่ายังใช้งานได้
             try {
-                const response = await fetch('/exam_project2/api/verify_token.php', {
+                const response = await fetch('/api/verify_token.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -145,7 +145,7 @@
 
                 console.log('Loading registrations with token:', token); // Debug log
 
-                const response = await fetch('/exam_project2/api/get_registration_status.php', {
+                const response = await fetch('/api/get_registration_status.php', {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',
@@ -295,7 +295,7 @@
         async function viewDetails(bookingId) {
             try {
                 const token = localStorage.getItem('teacherToken');
-                const response = await fetch(`/exam_project2/api/get_booking_details.php?id=${bookingId}`, {
+                const response = await fetch(`/api/get_booking_details.php?id=${bookingId}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }

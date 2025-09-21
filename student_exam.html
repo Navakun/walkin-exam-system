@@ -2,480 +2,89 @@
 <html lang="th">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>หน้าทำข้อสอบ</title>
-    <link rel="icon" type="image/png" href="nulogo.png">
-    <link rel="stylesheet" href="assets/css/main.css">
-    <link rel="stylesheet" href="assets/css/student.css">
-    <link rel="stylesheet" href="assets/css/student-exam.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <meta charset="UTF-8">
+  <title>กำลังเริ่มสอบ...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    body {
+      font-family: 'Prompt', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f0f2f5;
+    }
+
+    h2 {
+      color: #333;
+    }
+  </style>
 </head>
 
-
 <body>
-    <header>
-        <div class="logo-text">
-            <img src="nulogo.png" alt="Logo" height="60">
-            <div class="course-title">
-                <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ<br>มหาวิทยาลัยนเรศวร</h2>
-            </div>
-        </div>
-    </header>
 
-    <div id="exitConfirmModal" class="confirm-modal">
-        <div class="modal-content">
-            <h3><i class="fas fa-exclamation-triangle"></i> ยืนยันการออกจากการสอบ</h3>
-            <p>
-                <strong>คำเตือน:</strong> คุณกำลังจะออกจากการสอบ<br>
-                คำตอบที่ยังไม่ได้ส่งจะไม่ถูกบันทึก และไม่สามารถกลับมาทำต่อได้
-            </p>
-            <div class="modal-buttons">
-                <button class="modal-btn cancel" onclick="hideExitConfirmation()">
-                    <i class="fas fa-times"></i> ยกเลิก
-                </button>
-                <button class="modal-btn confirm" onclick="confirmExit()">
-                    <i class="fas fa-sign-out-alt"></i> ยืนยันการออก
-                </button>
-            </div>
-        </div>
-    </div>
-    <!-- Modal แจ้งเตือนเสร็จสิ้นข้อสอบ -->
-<div id="examFinishedModal" class="confirm-modal" style="display:none;">
-    <div class="modal-content">
-        <h2 style="color:#2563eb; margin-bottom:16px;">ทำข้อสอบเสร็จสิ้น!</h2>
-        <p id="examFinishedMsg" style="font-size:1.1em; margin-bottom:24px;">คุณได้ทำข้อสอบครบทุกข้อแล้ว<br>กรุณากดปุ่มด้านล่างเพื่อดำเนินการต่อ</p>
-        <div class="modal-buttons">
-            <button class="modal-btn confirm" id="goToResultBtn">ดูผลสอบ</button>
-            <button class="modal-btn cancel" onclick="closeExamFinishedModal()">ปิด</button>
-        </div>
-    </div>
-</div>
+  <h2>กำลังเริ่มต้นการสอบ...</h2>
 
-    <main id="exam-main" class="exam-container">
-        <div class="exam-header">
-            <div class="exam-info">
-                <h1>กำลังทำข้อสอบ</h1>
-                <p id="student-info">ชื่อผู้สอบ: <span id="student-name">-</span></p>
-            </div>
-            <div class="exam-timer">
-                <div class="timer-label">เวลาที่เหลือ</div>
-                <div id="timer">--:--</div>
-            </div>
-        </div>
-        
-        <div class="exam-progress">
-            <div class="progress-text">
-                ข้อที่ <span id="current-question">1</span> จาก <span id="total-questions">-</span>
-            </div>
-            <div class="progress-bar">
-                <div id="progress-fill" style="height:100%; width:0; background:#4caf50; transition:width 0.4s;"></div>
-            </div>
-        </div>
+  <script>
+    const token = localStorage.getItem('studentToken');
+    const examset_id = localStorage.getItem('examset_id');
 
-        <div id="question-area">
-            <h3 id="question-text">กำลังโหลดคำถามข้อแรก...</h3>
-        </div>
+    if (!token || !examset_id) {
+      Swal.fire({
+        icon: 'error',
+        title: 'ไม่พบข้อมูล',
+        text: 'กรุณาเข้าสู่ระบบหรือลงทะเบียนสอบใหม่'
+      });
+      throw new Error('Missing token or examset_id');
+    }
 
-        <div id="choices-container">
-        </div>
+    fetch('api/start_exam.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ examset_id: examset_id })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success' || data.status === 'ok') {
+          // เซฟข้อมูล session ลง LocalStorage
+          localStorage.setItem('session_id', data.session_id);
+          localStorage.setItem('slot_id', data.slot_id);
+          localStorage.setItem('examset_id', data.examset_id);
 
-        <button id="next-btn" disabled>ข้อถัดไป</button>
-    </main>
-    <script>
-        // ฟังก์ชันสำหรับถอดรหัส JWT token
-        function parseJwt(token) {
-            try {
-                return JSON.parse(atob(token.split('.')[1]));
-            } catch (e) {
-                return null;
-            }
-        }
-
-        let currentSessionId = null;
-        let currentQuestionId = null;
-        let timerInterval;
-        let currentQuestionNumber = 1;
-        let totalQuestions = 0;
-
-        // ฟังก์ชันเริ่ม session การสอบ
-async function initExamSession() {
-    try {
-        const token = localStorage.getItem('studentToken');
-        if (!token) {
-            throw new Error('กรุณาเข้าสู่ระบบก่อน');
-        }
-
-        const payload = parseJwt(token);
-        if (!payload || !payload.student_id) {
-            throw new Error('ข้อมูลผู้ใช้ไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่');
-        }
-
-        const examset_id = localStorage.getItem('examset_id');
-        const session_id = localStorage.getItem('session_id');
-
-        if (!examset_id) {
-            // ถ้าไม่มี examset_id ให้กลับไปหน้าลงทะเบียน
-            localStorage.removeItem('session_id');
-            window.location.href = 'register_exam.html';
-            return null;
-        }
-
-        if (session_id) {
-            // ถ้ามี session อยู่แล้ว ให้ใช้อันเดิม
-            return { session_id, examset_id };
-        }
-
-        const response = await fetch('api/start_exam.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                examset_id: parseInt(examset_id),
-                student_id: payload.student_id
-            })
-        });
-
-        const result = await response.json();
-        console.log('Start exam response:', result);  // Debug log
-
-        if (result.status === 'success' && result.session_id) {
-            // บันทึกข้อมูล session
-            localStorage.setItem('session_id', result.session_id);
-            return result;
+          Swal.fire({
+            icon: 'success',
+            title: 'เริ่มสอบเรียบร้อย',
+            text: 'กำลังเข้าสู่ข้อสอบ...',
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            window.location.href = 'exam_page.html'; // เปลี่ยนชื่อหน้าหากใช้ชื่ออื่น
+          });
         } else {
-            throw new Error(result.message || 'ไม่สามารถเริ่มการสอบได้');
-        }
-
-    } catch (error) {
-        console.error('Error in initExamSession:', error);
-        throw error;
-    }
-}
-
-
-
-        // ฟังก์ชันสำหรับเริ่มการสอบ (เรียกจากหน้าอื่น)
-        async function startExam(sessionId, examsetId, bookingId) {
-            try {
-                // เช็คว่ามี token หรือไม่
-                const token = localStorage.getItem('studentToken');
-                if (!token) {
-                    throw new Error('กรุณาเข้าสู่ระบบก่อน');
-                }
-
-                // บันทึกข้อมูลลง localStorage
-                localStorage.setItem('session_id', sessionId);
-                localStorage.setItem('examset_id', examsetId);
-                localStorage.setItem('booking_id', bookingId);
-
-                // เรียก API start_exam
-                const response = await fetch('api/start_exam.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        session_id: sessionId,
-                        examset_id: examsetId
-                    })
-                });
-
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    // เริ่มสอบสำเร็จ ไปที่หน้าสอบ
-                    window.location.href = 'student_exam.html';
-                } else {
-                    throw new Error(result.message || 'ไม่สามารถเริ่มการสอบได้');
-                }
-            } catch (error) {
-                console.error('Error starting exam:', error);
-                alert(error.message || 'เกิดข้อผิดพลาดในการเริ่มสอบ');
-                // กรณีเกิด error ให้กลับไปหน้า dashboard
-                window.location.href = 'student_dashboard.html';
-            }
-        }
-
-        function displayQuestion(data) {
-            const q = data.question;
-            const questionText = document.getElementById('question-text');
-            const choicesContainer = document.getElementById('choices-container');
-            const nextBtn = document.getElementById('next-btn');
-
-            // อัพเดทความคืบหน้า (progress)
-            if (data.progress) {
-                currentQuestionNumber = data.progress.current || currentQuestionNumber;
-                totalQuestions = data.progress.total || totalQuestions;
-            }
-            updateProgress(currentQuestionNumber, totalQuestions);
-
-            questionText.textContent = q.text || q.question_text || '(ไม่มีข้อความคำถาม)';
-            choicesContainer.innerHTML = '';
-
-            (q.choices || []).forEach((c) => {
-                const id = `choice-${c.id || c.choice_id}`;
-                const label = c.choice_text || c.content || '';
-                const el = document.createElement('label');
-                el.className = 'choice-item';
-                el.innerHTML = `
-        <input type="radio" name="choice" value="${c.id || c.choice_id}" id="${id}">
-        ${label}
-      `;
-                choicesContainer.appendChild(el);
-            });
-
-            nextBtn.disabled = false;
-        }
-
-        // ฟังก์ชันอัพเดท Progress Bar
-        function updateProgress(current, total) {
-            document.getElementById('current-question').textContent = current;
-            document.getElementById('total-questions').textContent = total;
-            let percentage = 0;
-            if (total > 0) {
-                percentage = (current / total) * 100;
-            }
-            document.getElementById('progress-fill').style.width = percentage + '%';
-        }
-
-        // ฟังก์ชันจัดการการออกจากหน้า
-        function showExitConfirmation() {
-            document.getElementById('exitConfirmModal').style.display = 'flex';
-        }
-
-        function hideExitConfirmation() {
-            document.getElementById('exitConfirmModal').style.display = 'none';
-        }
-
-        function confirmExit() {
-            localStorage.removeItem('session_id');
-            localStorage.removeItem('examset_id');
-            window.location.href = 'student_dashboard.html';
-        }
-
-        async function fetchFirstQuestion(session_id) {
-            const token = localStorage.getItem('studentToken');
-            const resp = await fetch('api/get_questions.php', {
-                method: 'POST', // หรือ 'GET' ถ้า API ของคุณกำหนดไว้แบบนั้น
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ session_id })
-            });
-
-            const raw = await resp.text();
-            let data;
-            try { data = JSON.parse(raw); }
-            catch (e) {
-                console.error('Non-JSON from get_questions:', raw);
-                throw new Error('เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON (get_questions)');
-            }
-
-            if (!resp.ok || data.status !== 'success') {
-                throw new Error(data.message || `โหลดคำถามไม่สำเร็จ (HTTP ${resp.status})`);
-            }
-            return data;
-        }
-
-        async function handleNextQuestion() {
-            const nextBtn = document.getElementById('next-btn');
-            const selected = document.querySelector('input[name="choice"]:checked');
-            if (!selected) { alert('กรุณาเลือกคำตอบ'); return; }
-
-            // ป้องกัน session_id หรือ question_id ว่าง
-            if (!currentSessionId || !currentQuestionId) {
-                alert('เกิดข้อผิดพลาด: session หรือ question ไม่ถูกต้อง กรุณารีเฟรชหน้า');
-                console.error('Missing session_id or question_id', { currentSessionId, currentQuestionId });
-                return;
-            }
-
-            nextBtn.disabled = true;
-            nextBtn.textContent = 'กำลังโหลด...';
-
-            const token = localStorage.getItem('studentToken');
-            const payload = {
-                session_id: currentSessionId,
-                question_id: currentQuestionId,
-                selected_choice_id: selected.value
-            };
-            // log payload
-            console.log('submit payload', payload);
-
-            try {
-                const resp = await fetch('api/submit_answer.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const raw = await resp.text();
-                let result;
-                try { result = JSON.parse(raw); }
-                catch {
-                    console.error('Non-JSON from submit_answer:', raw);
-                    throw new Error('เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON (submit_answer)');
-                }
-
-                if (result.status === 'continue') {
-                    currentQuestionId = result.question.id;
-                    // อัปเดตความคืบหน้าทันทีหลังได้ข้อมูลใหม่
-                    if (result.progress) {
-                        currentQuestionNumber = result.progress.current || currentQuestionNumber;
-                        totalQuestions = result.progress.total || totalQuestions;
-                    }
-                    updateProgress(currentQuestionNumber, totalQuestions);
-                    displayQuestion(result);
-                    nextBtn.textContent = 'ข้อถัดไป';
-                    nextBtn.disabled = false;
-                } else if (result.status === 'finished') {
-                    showExamFinishedModal(result.message || 'ทำข้อสอบครบแล้ว');
-                } else {
-                    throw new Error(result.message || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์');
-                }
-            }
-            catch (err) {
-                alert(err.message || 'ส่งคำตอบไม่สำเร็จ');
-                nextBtn.textContent = 'ข้อถัดไป';
-                nextBtn.disabled = false;
-            }
-        }
-
-    function startTimer(durationInSeconds) {
-        const timerElement = document.getElementById('timer');
-        let remaining = durationInSeconds;
-        clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            const m = Math.floor(remaining / 60);
-            const s = (remaining % 60).toString().padStart(2, '0');
-            timerElement.textContent = `${m}:${s}`;
-            remaining--;
-            if (remaining < 0) {
-                clearInterval(timerInterval);
-                showExamFinishedModal('หมดเวลาทำข้อสอบ!');
-            }
-        }, 1000);
-    }
-
-    function showExamFinishedModal(msg) {
-        document.getElementById('examFinishedMsg').innerHTML = msg + '<br>กรุณากดปุ่มด้านล่างเพื่อดำเนินการต่อ';
-        document.getElementById('examFinishedModal').style.display = 'flex';
-        document.getElementById('goToResultBtn').onclick = function() {
-            // ใช้ session_id จาก localStorage หรือ window.currentSessionId
-            var sessionId = window.currentSessionId || localStorage.getItem('session_id') || '';
-            window.location.href = 'student_result.html?session_id=' + sessionId;
-        };
-    }
-    function closeExamFinishedModal() {
-        document.getElementById('examFinishedModal').style.display = 'none';
-    }
-
-        // ป้องกันการออกจากหน้าโดยไม่ตั้งใจ
-        // เพิ่มการจัดการการกด Back บน browser
-        window.history.pushState(null, '', window.location.href);
-        window.addEventListener('popstate', function(event) {
-            showExitConfirmation();
-            window.history.pushState(null, '', window.location.href);
-        });
-
-        document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        const session_id = localStorage.getItem('session_id');
-        const examset_id = localStorage.getItem('examset_id');
-        const token = localStorage.getItem('studentToken');
-
-        // ตรวจสอบการล็อกอิน
-        if (!token) {
-            window.location.href = 'student_login.html';
-            return;
-        }
-
-        // ตรวจสอบข้อมูลข้อสอบ
-        if (!examset_id) {
-            window.location.href = 'register_exam.html';
-            return;
-        }
-
-        if (!session_id) {
-            const examData = await initExamSession();
-            if (!examData) {
-                throw new Error('ไม่พบข้อมูลการลงทะเบียนสอบที่พร้อมทำการสอบ');
-            }
-            currentSessionId = examData.session_id;
-        } else {
-            currentSessionId = session_id;
-        }
-
-        // ชื่อนักศึกษา
-        if (token) {
-            const payload = parseJwt(token);
-            if (payload && payload.name) {
-                document.getElementById('student-name').textContent = payload.name;
-            }
-        }
-
-        // โหลดคำถาม
-        const data = await fetchFirstQuestion(currentSessionId);
-        currentQuestionId = data.question.id;
-        displayQuestion(data);
-
-        // จับเวลา 90 นาที
-        startTimer(5400);
-
-        // ปุ่มข้อถัดไป
-        document.getElementById('next-btn').addEventListener('click', handleNextQuestion);
-    } catch (e) {
-        console.error(e);
-        document.getElementById('exam-main').innerHTML =
-            `<h2 style="color:#c00">เกิดข้อผิดพลาด: ${e.message}</h2>`;
-    }
-});
-
-function startCountdown(durationInSeconds) {
-  let remainingTime = durationInSeconds;
-  const timerDisplay = document.getElementById('timer');
-
-  const countdown = setInterval(() => {
-    if (remainingTime <= 0) {
-      clearInterval(countdown);
-      alert('หมดเวลาแล้ว! ระบบจะทำการบันทึกการสอบ');
-
-      // ✅ เรียก API เพื่อบันทึก end_time
-      fetch('api/finish_exam.php?session_id=' + session_id, {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + localStorage.getItem('studentToken'),
-          'Content-Type': 'application/json'
+          Swal.fire({
+            icon: 'error',
+            title: 'ไม่สามารถเริ่มสอบได้',
+            text: data.message || 'เกิดข้อผิดพลาด'
+          });
         }
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          alert('การสอบสิ้นสุดแล้ว ระบบได้บันทึกเวลาสิ้นสุดเรียบร้อย');
-          window.location.href = 'student_result.html?session_id=' + session_id;
-        } else {
-          alert('เกิดข้อผิดพลาดในการบันทึกเวลา');
-        }
+      .catch(err => {
+        console.error(err);
+        Swal.fire({
+          icon: 'error',
+          title: 'ข้อผิดพลาด',
+          text: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้'
+        });
       });
-
-    } else {
-      const mins = Math.floor(remainingTime / 60);
-      const secs = remainingTime % 60;
-      timerDisplay.textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-      remainingTime--;
-    }
-  }, 1000);
-}
-
-
-    </script>
+  </script>
 
 </body>
 
