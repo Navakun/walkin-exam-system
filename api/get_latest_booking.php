@@ -1,59 +1,81 @@
 <?php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-header('Content-Type: application/json; charset=utf-8');
 
-require_once '../config/db.php';
-require_once '../vendor/autoload.php';
+declare(strict_types=1);
 
 use \Firebase\JWT\JWT;
 use \Firebase\JWT\Key;
 
-function getBearerToken()
-{
-    $headers = getallheaders();
-    if (!isset($headers['Authorization'])) return null;
-    if (!preg_match('/Bearer\s+(\S+)/', $headers['Authorization'], $matches)) return null;
-    return $matches[1];
-}
+header('Content-Type: application/json; charset=utf-8');
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
 
-$token = getBearerToken();
-if (!$token) {
-    http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => 'Missing token']);
+// ⬇️ ฟังก์ชันช่วยคืน JSON
+function json_out(array $o, int $code = 200): void
+{
+    http_response_code($code);
+    echo json_encode($o, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 try {
-    $decoded = JWT::decode($token, new Key("your-secret-key", 'HS256'));
-    if (!isset($decoded->role) || $decoded->role !== 'student') {
-        throw new Exception('Access denied');
+    // 1) โหลด DB + composer autoload
+    require_once __DIR__ . '/../config/db.php';
+    require_once __DIR__ . '/../vendor/autoload.php';
+
+    // 2) JWT Helper
+    $jwtHelper = __DIR__ . '/helpers/jwt_helper.php';
+    if (!file_exists($jwtHelper)) throw new Exception("jwt_helper missing");
+    require_once $jwtHelper;
+
+    // 3) อ่าน Bearer Token
+    function getBearerToken(): ?string
+    {
+        $headers = getallheaders();
+        if (!isset($headers['Authorization'])) return null;
+        if (!preg_match('/Bearer\s+(\S+)/', $headers['Authorization'], $matches)) return null;
+        return $matches[1];
     }
+
+    $token = getBearerToken();
+    if (!$token) json_out(['status' => 'error', 'message' => 'Missing token'], 401);
+
+    // 4) ถอดรหัส JWT
+    try {
+        $decoded = JWT::decode($token, new Key(getJwtKey(), 'HS256'));
+    } catch (Exception $e) {
+        json_out(['status' => 'error', 'message' => 'Invalid token'], 403);
+    }
+
+    if (!isset($decoded->role) || $decoded->role !== 'student') {
+        json_out(['status' => 'error', 'message' => 'Unauthorized role'], 403);
+    }
+
     $student_id = $decoded->student_id ?? null;
-    if (!$student_id) throw new Exception('Missing student_id');
-} catch (Exception $e) {
-    http_response_code(403);
-    echo json_encode(['status' => 'error', 'message' => 'Invalid token']);
-    exit;
-}
+    if (!$student_id) {
+        json_out(['status' => 'error', 'message' => 'Missing student_id'], 403);
+    }
 
-// ดึงข้อมูลการจองล่าสุด และหา examset_id ที่ตรงกับ slot_id
-$stmt = $pdo->prepare("
-    SELECT 
-        esr.id AS booking_id, 
-        esr.slot_id, 
-        es.examset_id
-    FROM exam_slot_registrations esr
-    LEFT JOIN examset es ON es.examset_id = esr.examset_id
-    WHERE esr.student_id = ?
-    ORDER BY esr.registered_at DESC
-    LIMIT 1
-");
-$stmt->execute([$student_id]);
-$booking = $stmt->fetch(PDO::FETCH_ASSOC);
+    // 5) คำสั่ง SQL: ดึงการจองล่าสุด
+    $stmt = $pdo->prepare("
+        SELECT 
+            esr.id AS booking_id,
+            esr.slot_id,
+            esr.examset_id
+        FROM exam_slot_registrations esr
+        WHERE esr.student_id = ?
+        ORDER BY esr.registered_at DESC
+        LIMIT 1
+    ");
+    $stmt->execute([$student_id]);
+    $booking = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if ($booking) {
-    echo json_encode(['status' => 'success'] + $booking);
-} else {
-    echo json_encode(['status' => 'error', 'message' => 'ยังไม่มีข้อมูลการจอง']);
+
+    if ($booking) {
+        json_out(['status' => 'success'] + $booking);
+    } else {
+        json_out(['status' => 'error', 'message' => 'ยังไม่มีข้อมูลการจอง'], 404);
+    }
+} catch (Throwable $e) {
+    error_log('[get_latest_booking.php] ERROR: ' . $e->getMessage());
+    json_out(['status' => 'error', 'message' => 'Server error: ' . $e->getMessage()], 500);
 }

@@ -33,6 +33,10 @@
   <script>
     const token = localStorage.getItem('studentToken');
     const examset_id = localStorage.getItem('examset_id');
+    const existingSession = localStorage.getItem('session_id');
+    if (existingSession) {
+      window.location.href = 'exam_page.html';
+    }
 
     if (!token || !examset_id) {
       Swal.fire({
@@ -43,13 +47,25 @@
       throw new Error('Missing token or examset_id');
     }
 
+    if (data.status === 'error' && data.message === 'Invalid token') {
+      Swal.fire({
+        icon: 'warning',
+        title: 'หมดเวลาเข้าสู่ระบบ',
+        text: 'กรุณาเข้าสู่ระบบใหม่',
+      }).then(() => {
+        localStorage.clear();
+        window.location.href = 'login.html';
+      });
+      return;
+    }
+
     fetch('api/start_exam.php', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + token
       },
-      body: JSON.stringify({ examset_id: examset_id })
+      body: JSON.stringify({})
     })
       .then(response => response.json())
       .then(data => {

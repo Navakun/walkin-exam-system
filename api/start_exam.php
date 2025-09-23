@@ -73,12 +73,14 @@ if ($existing = $stmt->fetchColumn()) {
     exit;
 }
 
-// 4. โหลด config
-$stmt = $pdo->query("SELECT easy_count, medium_count, hard_count FROM exam_config WHERE id = 1 LIMIT 1");
+// 4. โหลด config จาก examset แทน
+$stmt = $pdo->prepare("SELECT easy_count, medium_count, hard_count FROM examset WHERE id = ? LIMIT 1");
+$stmt->execute([$examset_id]);
 $config = $stmt->fetch(PDO::FETCH_ASSOC);
+
 if (!$config) {
     http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => 'ไม่พบการตั้งค่าข้อสอบ']);
+    echo json_encode(['status' => 'error', 'message' => 'ไม่พบชุดข้อสอบ']);
     exit;
 }
 

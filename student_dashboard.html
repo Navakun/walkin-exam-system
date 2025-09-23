@@ -7,11 +7,24 @@
   <title>หน้าหลักนิสิต</title>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/fontawesome/css/all.min.css">
   <link rel="stylesheet" href="assets/css/student-dashboard.css">
   <link rel="icon" href="favicon.ico">
   <!-- SweetAlert2 -->
-  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="assets/sweetalert2/sweetalert2.min.css">
+  <script src="assets/sweetalert2/sweetalert2.min.js"></script>
+  <style>
+    @font-face {
+      font-family: 'Prompt';
+      src: url('assets/fonts/prompt/prompt-regular.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    body {
+      font-family: 'Prompt', sans-serif;
+    }
+  </style>
 </head>
 
 <body>
@@ -115,7 +128,7 @@
     }
 
     // ==================
-    // Auth check
+    // ตรวจสอบ token และแสดงชื่อ
     // ==================
     const token = localStorage.getItem('studentToken');
     if (!token) {
@@ -148,13 +161,6 @@
           confirmButtonColor: '#3085d6'
         });
         return;
-      }
-
-      if (res.ok && result.status === 'success') {
-        localStorage.setItem('session_id', result.session_id);
-        localStorage.setItem('slot_id', result.slot_id);
-        localStorage.setItem('examset_id', result.examset_id);
-        window.location.href = 'student_exam.html';
       }
 
       try {
@@ -199,13 +205,16 @@
       }
     }
 
-    // เรียก booking ล่าสุดตอนโหลดหน้า
+    // ==================
+    // โหลด booking ล่าสุด
+    // ==================
     document.addEventListener("DOMContentLoaded", async () => {
       const token = localStorage.getItem("studentToken");
       if (!token) return;
 
       try {
         const res = await fetch("api/get_latest_booking.php", {
+          method: "GET",
           headers: { Authorization: `Bearer ${token}` }
         });
         const result = await res.json();
@@ -220,7 +229,6 @@
         console.error("Error loading latest booking:", err);
       }
     });
-
 
     // ==================
     // ดูผลคะแนน
@@ -255,6 +263,7 @@
       window.location.href = 'student_login.html';
     });
   </script>
+
 </body>
 
 </html>
