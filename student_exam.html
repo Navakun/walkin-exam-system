@@ -2,106 +2,106 @@
 <html lang="th">
 
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>กำลังเริ่มสอบ...</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" href="favicon.ico">
-  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="favicon.ico" />
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
   <style>
     body {
-      font-family: 'Prompt', sans-serif;
+      font-family: "Prompt", sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      min-height: 100vh;
       background: #f0f2f5;
+      margin: 0;
     }
 
     h2 {
       color: #333;
+      font-weight: 500
     }
   </style>
 </head>
 
 <body>
-
   <h2>กำลังเริ่มต้นการสอบ...</h2>
 
   <script>
-    const token = localStorage.getItem('studentToken');
-    const examset_id = localStorage.getItem('examset_id');
-    const existingSession = localStorage.getItem('session_id');
-    if (existingSession) {
-      window.location.href = 'exam_page.html';
-    }
+    document.addEventListener('DOMContentLoaded', initExamPage);
 
-    if (!token || !examset_id) {
-      Swal.fire({
-        icon: 'error',
-        title: 'ไม่พบข้อมูล',
-        text: 'กรุณาเข้าสู่ระบบหรือลงทะเบียนสอบใหม่'
-      });
-      throw new Error('Missing token or examset_id');
-    }
+    async function initExamPage() {
+      const token = localStorage.getItem('studentToken');
+      const slotStr = localStorage.getItem('slot_id');           // มาจากหน้า dashboard
+      const existed = localStorage.getItem('exam_session_id');   // ถ้ามีแล้ว ไปต่อได้เลย
 
-    if (data.status === 'error' && data.message === 'Invalid token') {
-      Swal.fire({
-        icon: 'warning',
-        title: 'หมดเวลาเข้าสู่ระบบ',
-        text: 'กรุณาเข้าสู่ระบบใหม่',
-      }).then(() => {
-        localStorage.clear();
-        window.location.href = 'login.html';
-      });
-      return;
-    }
+      if (!token) {
+        await Swal.fire({ icon: 'warning', title: 'หมดเวลาการใช้งาน', text: 'กรุณาเข้าสู่ระบบใหม่' });
+        window.location.href = 'student_login.html';
+        return;
+      }
 
-    fetch('api/start_exam.php', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      },
-      body: JSON.stringify({})
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success' || data.status === 'ok') {
-          // เซฟข้อมูล session ลง LocalStorage
-          localStorage.setItem('session_id', data.session_id);
-          localStorage.setItem('slot_id', data.slot_id);
-          localStorage.setItem('examset_id', data.examset_id);
+      if (existed) {
+        // มี session อยู่แล้ว → ไปหน้าโจทย์
+        window.location.href = 'student_adaptive_exam.html';
+        return;
+      }
 
-          Swal.fire({
-            icon: 'success',
-            title: 'เริ่มสอบเรียบร้อย',
-            text: 'กำลังเข้าสู่ข้อสอบ...',
-            timer: 1500,
-            showConfirmButton: false
-          }).then(() => {
-            window.location.href = 'exam_page.html'; // เปลี่ยนชื่อหน้าหากใช้ชื่ออื่น
-          });
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'ไม่สามารถเริ่มสอบได้',
-            text: data.message || 'เกิดข้อผิดพลาด'
-          });
-        }
-      })
-      .catch(err => {
-        console.error(err);
-        Swal.fire({
-          icon: 'error',
-          title: 'ข้อผิดพลาด',
-          text: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้'
+      if (!slotStr) {
+        await Swal.fire({ icon: 'error', title: 'ไม่พบรอบสอบ', text: 'โปรดลงทะเบียน/เลือกเวลาสอบอีกครั้ง' });
+        window.location.href = 'student_dashboard.html';
+        return;
+      }
+
+      const slot_id = Number(slotStr);
+
+      // เรียก API เพื่อ "เริ่มสอบ" และสร้าง session ใหม่ (กรณีไม่มี)
+      try {
+        const res = await fetch('api/start_exam.php', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ slot_id })   // ✅ ต้องส่ง slot_id
         });
-      });
-  </script>
 
+        // token หมดอายุ
+        if (res.status === 401) {
+          await Swal.fire({ icon: 'warning', title: 'หมดเวลาการใช้งาน', text: 'กรุณาเข้าสู่ระบบใหม่' });
+          localStorage.removeItem('studentToken');
+          window.location.href = 'student_login.html';
+          return;
+        }
+
+        // อ่าน response เพียงครั้งเดียว
+        const raw = await res.text();
+        let data;
+        try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
+
+        if (!res.ok || !data) {
+          throw new Error((data && data.message) || raw || `HTTP ${res.status}`);
+        }
+
+        if (data.status === 'success') {
+          // เก็บ session แล้วไปหน้าโจทย์
+          localStorage.setItem('exam_session_id', String(data.session_id));
+          localStorage.setItem('slot_id', String(data.slot_id));
+          window.location.href = 'student_adaptive_exam.html';
+        } else {
+          throw new Error(data.message || 'เริ่มสอบไม่ได้');
+        }
+      } catch (err) {
+        await Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่สำเร็จ', text: err.message || 'Network error' });
+        // กลับหน้าหลักเผื่อให้เริ่มใหม่
+        window.location.href = 'student_dashboard.html';
+      }
+    }
+  </script>
 </body>
 
 </html>

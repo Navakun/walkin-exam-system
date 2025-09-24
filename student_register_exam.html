@@ -29,7 +29,7 @@
   <!-- MAIN CONTENT -->
   <div class="container mt-4">
     <h3>เลือกช่วงเวลาสอบ</h3>
-    
+
     <!-- Loading Indicator -->
     <div id="loadingIndicator" class="alert alert-info d-flex align-items-center" style="display: none;">
       <div class="spinner-border spinner-border-sm me-2" role="status"></div>
@@ -115,65 +115,72 @@
 
       try {
         const res = await fetch("api/get_available_slots.php", {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json"
+          }
         });
 
+        // 401 → หมดอายุ token
         if (res.status === 401) {
           handleTokenExpired();
           return;
         }
 
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`HTTP ${res.status}: ${errorText}`);
+        // ✅ อ่าน body แค่ครั้งเดียว
+        const result = await res.json();
+
+        // ถ้า HTTP ไม่โอเค หรือ API ส่ง status != success → โยน error
+        if (!res.ok || result.status !== "success") {
+          const msg = (result && result.message) ? result.message : `HTTP ${res.status}`;
+          throw new Error(msg);
         }
 
-        const result = await res.json();
         const list = document.getElementById("slotList");
         list.innerHTML = "";
 
-        if (result.status === "success" && Array.isArray(result.slots)) {
-          if (result.slots.length === 0) {
-            list.innerHTML = `<tr><td colspan="8" class="text-center text-muted">ยังไม่มีช่วงเวลาที่เปิดให้ลงทะเบียน</td></tr>`;
-            return;
-          }
+        const slots = Array.isArray(result.slots) ? result.slots : [];
 
-          result.slots.forEach(slot => {
-            const available = slot.available_seats || 0;
-
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td>${formatThaiDateTime(slot.reg_open_at)} -<br>${formatThaiDateTime(slot.reg_close_at)}</td>
-              <td>${formatThaiDate(slot.exam_date)}</td>
-              <td>${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}</td>
-              <td>${slot.max_seats}</td>
-              <td>${slot.registered_count}</td>
-              <td>
-                <span class="badge ${available <= 0 ? "bg-danger" : "bg-success"} rounded-pill">
-                  ${available}
-                </span>
-              </td>
-              <td>
-                ${available > 0
-                ? '<span class="badge bg-success rounded-pill">ลงทะเบียนได้</span>'
-                : '<span class="badge bg-danger rounded-pill">เต็มแล้ว</span>'}
-              </td>
-              <td>
-                <button class="btn ${available > 0 ? "btn-success" : "btn-secondary"}"
-                        ${available > 0
-                ? `onclick="registerSlot(${slot.id}, '${slot.exam_date}', '${slot.start_time}', '${slot.end_time}', event)"`
-                : "disabled"}>
-                  ${available > 0
-                ? '<i class="fas fa-check-circle me-2"></i>ลงทะเบียน'
-                : '<i class="fas fa-ban me-2"></i>เต็มแล้ว'}
-                </button>
-              </td>
-            `;
-            list.appendChild(tr);
-          });
-        } else {
-          list.innerHTML = `<tr><td colspan="8" class="text-danger text-center">โหลดข้อมูลไม่สำเร็จ: ${result.message || "ไม่พบข้อมูล"}</td></tr>`;
+        if (slots.length === 0) {
+          list.innerHTML = `<tr><td colspan="8" class="text-center text-muted">ยังไม่มีช่วงเวลาที่เปิดให้ลงทะเบียน</td></tr>`;
+          return;
         }
+
+        slots.forEach((slot) => {
+          // ใช้ฟิลด์จาก API: slot_id, booked, seats_left
+          const available = Number(slot.seats_left || 0);
+          const registeredCount = Number(slot.booked || 0);
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+        <td>${formatThaiDateTime(slot.reg_open_at)} -<br>${formatThaiDateTime(slot.reg_close_at)}</td>
+        <td>${formatThaiDate(slot.exam_date)}</td>
+        <td>${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}</td>
+        <td>${slot.max_seats}</td>
+        <td>${registeredCount}</td>
+        <td>
+          <span class="badge ${available <= 0 ? "bg-danger" : "bg-success"} rounded-pill">
+            ${available}
+          </span>
+        </td>
+        <td>
+          ${available > 0
+              ? '<span class="badge bg-success rounded-pill">ลงทะเบียนได้</span>'
+              : '<span class="badge bg-danger rounded-pill">เต็มแล้ว</span>'}
+        </td>
+        <td>
+          <button class="btn ${available > 0 ? "btn-success" : "btn-secondary"}"
+                  ${available > 0
+              ? `onclick="registerSlot(${slot.slot_id}, '${slot.exam_date}', '${slot.start_time}', '${slot.end_time}', event)"`
+              : "disabled"}>
+            ${available > 0
+              ? '<i class="fas fa-check-circle me-2"></i>ลงทะเบียน'
+              : '<i class="fas fa-ban me-2"></i>เต็มแล้ว'}
+          </button>
+        </td>
+      `;
+          list.appendChild(tr);
+        });
       } catch (err) {
         console.error("loadExamSlots error:", err);
         document.getElementById("slotList").innerHTML =
@@ -278,10 +285,10 @@
 
       } catch (err) {
         console.error("registerSlot error:", err);
-        Swal.fire({ 
-          icon: "error", 
-          title: "เชื่อมต่อไม่สำเร็จ", 
-          text: err.message || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์" 
+        Swal.fire({
+          icon: "error",
+          title: "เชื่อมต่อไม่สำเร็จ",
+          text: err.message || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์"
         });
       } finally {
         // คืนค่า UI ปุ่มเสมอ

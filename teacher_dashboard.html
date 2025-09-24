@@ -11,6 +11,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="icon" href="favicon.ico">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SweetAlert2 via CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 
 </head>
 
@@ -33,22 +36,21 @@
             <!-- การจัดการข้อสอบ -->
             <div class="col-12 mb-4">
                 <h3 class="border-bottom pb-2 mb-3">การจัดการข้อสอบ</h3>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="fas fa-question-circle"></i>
-                                    คลังข้อสอบ
-                                </h5>
-                                <p class="card-text">จัดการคำถามในคลังข้อสอบ เพิ่ม/แก้ไข/ลบข้อสอบ</p>
-                                <a href="teacher_question_bank.html" class="btn btn-primary">
-                                    <i class="fas fa-cog"></i> จัดการข้อสอบ
-                                </a>
-                            </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-question-circle"></i>
+                                คลังข้อสอบ
+                            </h5>
+                            <p class="card-text">จัดการคำถามในคลังข้อสอบ เพิ่ม/แก้ไข/ลบข้อสอบ</p>
+                            <a href="teacher_question_bank.html" class="btn btn-primary">
+                                <i class="fas fa-cog"></i> จัดการข้อสอบ
+                            </a>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                </div>
+                <!-- <div class="col-md-6">
                         <div class="card h-100">
                             <div class="card-body">
                                 <h5 class="card-title">
@@ -61,67 +63,67 @@
                                 </a>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </div> -->
             </div>
+        </div>
 
-            <!-- การจัดการการสอบ -->
-            <div class="col-12 mb-4">
-                <h3 class="border-bottom pb-2 mb-3">การจัดการสอบ</h3>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="fas fa-calendar-alt"></i>
-                                    ช่วงเวลาการสอบ
-                                </h5>
-                                <p class="card-text">กำหนดวันเวลาสอบ จำนวนที่นั่ง และจัดการช่วงเวลาสอบ</p>
-                                <a href="teacher_exam_out.html" class="btn btn-primary">
-                                    <i class="fas fa-clock"></i> จัดการช่วงเวลา
+        <!-- การจัดการการสอบ -->
+        <div class="col-12 mb-4">
+            <h3 class="border-bottom pb-2 mb-3">การจัดการสอบ</h3>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-calendar-alt"></i>
+                                ช่วงเวลาการสอบ
+                            </h5>
+                            <p class="card-text">กำหนดวันเวลาสอบ จำนวนที่นั่ง และจัดการช่วงเวลาสอบ</p>
+                            <a href="teacher_exam_out.html" class="btn btn-primary">
+                                <i class="fas fa-clock"></i> จัดการช่วงเวลา
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-users"></i>
+                                รายชื่อผู้เข้าสอบ
+                            </h5>
+                            <p class="card-text">ดูรายชื่อผู้ลงทะเบียนสอบ ผลการสอบ และจัดการข้อมูล</p>
+                            <div class="d-grid gap-2 ">
+                                <a href="exam_users.html" class="btn btn-primary">
+                                    <i class="fas fa-list"></i> ดูรายชื่อ
                                 </a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="fas fa-users"></i>
-                                    รายชื่อผู้เข้าสอบ
-                                </h5>
-                                <p class="card-text">ดูรายชื่อผู้ลงทะเบียนสอบ ผลการสอบ และจัดการข้อมูล</p>
-                                <div class="d-grid gap-2 ">
-                                    <a href="exam_users.html" class="btn btn-primary">
-                                        <i class="fas fa-list"></i> ดูรายชื่อ
-                                    </a>
-                                    <a href="exam_registration_status.html" class="btn btn-info">
-                                        <i class="fas fa-clipboard-check"></i> ตรวจสอบสถานะนิสิต
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="fas fa-chart-bar"></i>
-                                    สถิติการสอบ
-                                </h5>
-                                <p class="card-text">ดูสถิติการสอบของนักเรียน</p>
-                                <a href="exam_statistics.html" class="btn btn-primary">
-                                    <i class="fas fa-chart-line"></i> ดูสถิติ
+                                <a href="exam_registration_status.html" class="btn btn-info">
+                                    <i class="fas fa-clipboard-check"></i> ตรวจสอบสถานะนิสิต
                                 </a>
                             </div>
                         </div>
                     </div>
                 </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-chart-bar"></i>
+                                สถิติการสอบ
+                            </h5>
+                            <p class="card-text">ดูสถิติการสอบของนักเรียน</p>
+                            <a href="exam_statistics.html" class="btn btn-primary">
+                                <i class="fas fa-chart-line"></i> ดูสถิติ
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="col-12 mb-4">
-                <h3 class="border-bottom pb-2 mb-3">เนื้อหารายวิชา</h3>
-                <div class="row g-3">
-                    <!-- <div class="col-md-6">
+        </div>
+        <div class="col-12 mb-4">
+            <h3 class="border-bottom pb-2 mb-3">เนื้อหารายวิชา</h3>
+            <div class="row g-3">
+                <!-- <div class="col-md-6">
                         <div class="card h-100">
                             <div class="card-body">
                                 <h5 class="card-title">
@@ -135,36 +137,36 @@
                             </div>
                         </div>
                     </div> -->
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="fas fa-file-alt"></i>
-                                    สื่อการสอน
-                                </h5>
-                                <p class="card-text">อัพโหลดข้อมูลสื่อการสอน</p>
-                                <a href="teaching_materials.html" class="btn btn-primary">
-                                    <i class="fas fa-upload"></i> อัปโหลดสื่อการสอน
-                                </a>
-                            </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-file-alt"></i>
+                                สื่อการสอน
+                            </h5>
+                            <p class="card-text">อัพโหลดข้อมูลสื่อการสอน</p>
+                            <a href="teaching_materials.html" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> อัปโหลดสื่อการสอน
+                            </a>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="fas fa-file-alt"></i>
-                                    ดูสื่อการสอน
-                                </h5>
-                                <p class="card-text">เปิดสื่อการสอนที่อัปโหลดไว้</p>
-                                <a href="teacher_open_materials.html" class="btn btn-primary">
-                                    <i class="fas fa-sliders-h"></i> เปิดสื่อการสอน
-                                </a>
-                            </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-file-alt"></i>
+                                ดูสื่อการสอน
+                            </h5>
+                            <p class="card-text">เปิดสื่อการสอนที่อัปโหลดไว้</p>
+                            <a href="teacher_open_materials.html" class="btn btn-primary">
+                                <i class="fas fa-sliders-h"></i> เปิดสื่อการสอน
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
         </div>
     </main>
 

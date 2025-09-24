@@ -59,8 +59,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT 
             esr.id AS booking_id,
-            esr.slot_id,
-            esr.examset_id
+            esr.slot_id
         FROM exam_slot_registrations esr
         WHERE esr.student_id = ?
         ORDER BY esr.registered_at DESC
