@@ -174,72 +174,62 @@
       isStarting = true;
 
       const token = localStorage.getItem('studentToken');
-      const slotStr = localStorage.getItem('slot_id');
+      const slotId = Number(localStorage.getItem('slot_id'));
       const booking = localStorage.getItem('booking_id') || '';
 
-      if (!token) {
-        isStarting = false;
-        return handleTokenExpired();
-      }
-      if (!slotStr) {
+      if (!token) { isStarting = false; return handleTokenExpired(); }
+      if (!slotId) {
         isStarting = false;
         return Swal.fire('เกิดข้อผิดพลาด', 'ไม่พบรอบสอบล่าสุดของคุณ (slot_id ว่าง)', 'error');
       }
 
-      const slotId = Number(slotStr);
-
-      // เปลี่ยนหน้าตาปุ่มระหว่างรอ (ถ้ามี)
       const btn = e?.currentTarget;
       const oldHTML = btn?.innerHTML;
       if (btn) btn.disabled = true;
 
-      Swal.fire({
-        title: 'กำลังเตรียมข้อสอบ...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        didOpen: () => Swal.showLoading()
-      });
+      Swal.fire({ title: 'กำลังเตรียมข้อสอบ...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
 
       try {
         const res = await fetch('/walkin-exam-system/api/start_exam.php', {
           method: 'POST',
           headers: {
-            'Authorization': 'Bearer ' + token,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          body: JSON.stringify({ slot_id: slotId })
+          credentials: 'include',                   // 👈 ต้องอยู่นอก headers
+          body: JSON.stringify({ slot_id: slotId }) // 👈 ต้องอยู่นอก headers
         });
 
         if (res.status === 401) {
-          Swal.close();
-          isStarting = false;
-          if (btn) btn.disabled = false;
+          Swal.close(); isStarting = false; if (btn) btn.disabled = false;
           return handleTokenExpired();
         }
 
-        // ✅ อ่าน body แค่ครั้งเดียว
         const raw = await res.text();
-        let data = null;
-        try { data = raw ? JSON.parse(raw) : null; } catch { /* ปล่อยว่างไว้ */ }
+        let data = null; try { data = raw ? JSON.parse(raw) : null; } catch { }
 
         if (!res.ok) {
-          const msg = (data && data.message) || raw || `HTTP ${res.status}`;
-          throw new Error(msg);
-        }
-        if (!data || data.status !== 'success') {
-          const msg = (data && data.message) || 'ไม่สามารถเริ่มสอบได้';
+          // ถ้า API บอกว่ายังไม่ถึงเวลาเริ่มสอบ
+          if (data?.status === 'not_started') {
+            Swal.fire('ยังไม่ถึงเวลาเริ่มสอบ', `เริ่มได้เวลา ${data.exam_start_at}`, 'warning');
+            return;
+          }
+          const msg = data?.message || raw || `HTTP ${res.status}`;
           throw new Error(msg);
         }
 
-        // สำเร็จ
+        if (!data || data.status !== 'success') {
+          throw new Error(data?.message || 'ไม่สามารถเริ่มสอบได้');
+        }
+
+        // success
         localStorage.setItem('exam_session_id', String(data.session_id));
         localStorage.setItem('slot_id', String(slotId));
         if (booking) localStorage.setItem('latestRegistrationId', booking);
 
         Swal.close();
         window.location.href = 'student_exam.html';
-
       } catch (err) {
         Swal.fire('เชื่อมต่อไม่สำเร็จ', String(err.message || err), 'error');
       } finally {
@@ -248,6 +238,7 @@
         if (btn && oldHTML != null) btn.innerHTML = oldHTML;
       }
     }
+
 
 
     // ==================
