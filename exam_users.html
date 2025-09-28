@@ -1,27 +1,108 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>รายชื่อผู้เข้าสอบ</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
   <link rel="stylesheet" href="assets/css/main.css">
   <link rel="stylesheet" href="assets/css/teacher.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
-  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+  <!-- Font Awesome (ลิงก์ถูกต้อง) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+
   <style>
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:999}
-    .modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.2);width:min(900px,92vw);max-height:90vh;display:none;z-index:1000}
-    .modal header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e5e7eb}
-    .modal .body{padding:16px 18px;overflow:auto;max-height:calc(60vh - 56px)}
-    .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
-    .kpi .card{background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:12px}
-    .wrong-list{margin-top:12px}
-    .wrong-item{border:1px solid #fee2e2;background:#fff7f7;border-radius:10px;padding:10px;margin:8px 0}
-    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:12px}
-    .close-btn{background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer}
-    </style>
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .45);
+      display: none;
+      z-index: 999
+    }
+
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .2);
+      width: min(900px, 92vw);
+      max-height: 90vh;
+      display: none;
+      z-index: 1000
+    }
+
+    .modal header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid #e5e7eb
+    }
+
+    .modal .body {
+      padding: 16px 18px;
+      overflow: auto;
+      max-height: calc(60vh - 56px)
+    }
+
+    .kpi {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 12px
+    }
+
+    .kpi .card {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 12px
+    }
+
+    .wrong-list {
+      margin-top: 12px
+    }
+
+    .wrong-item {
+      border: 1px solid #fee2e2;
+      background: #fff7f7;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 8px 0
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      font-size: 12px
+    }
+
+    .close-btn {
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer
+    }
+  </style>
 </head>
+
 <body>
   <header>
     <div class="logo-text">
@@ -67,330 +148,323 @@
     </div>
 
     <div id="detailBackdrop" class="modal-backdrop"></div>
-<div id="detailModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
-<header>
-<h3 id="detailTitle">รายละเอียดการสอบ</h3>
-<button class="close-btn" onclick="closeDetailModal()">ปิด</button>
-</header>
-<div class="body">
-<div id="detailMeta" style="margin-bottom:10px"></div>
+    <div id="detailModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <header>
+        <h3 id="detailTitle">รายละเอียดการสอบ</h3>
+        <button class="close-btn" onclick="closeDetailModal()">ปิด</button>
+      </header>
+      <div class="body">
+        <div id="detailMeta" style="margin-bottom:10px"></div>
 
 
-<div class="kpi">
-<div class="card"><div class="badge">จำนวนข้อ</div><div id="kpi_total" style="font-size:20px;font-weight:700">-</div></div>
-<div class="card"><div class="badge">ตอบถูก</div><div id="kpi_correct" style="font-size:20px;font-weight:700">-</div></div>
-<div class="card"><div class="badge">ตอบผิด</div><div id="kpi_wrong" style="font-size:20px;font-weight:700">-</div></div>
-<div class="card"><div class="badge">คะแนน</div><div id="kpi_score" style="font-size:20px;font-weight:700">-</div></div>
-</div>
+        <div class="kpi">
+          <div class="card">
+            <div class="badge">จำนวนข้อ</div>
+            <div id="kpi_total" style="font-size:20px;font-weight:700">-</div>
+          </div>
+          <div class="card">
+            <div class="badge">ตอบถูก</div>
+            <div id="kpi_correct" style="font-size:20px;font-weight:700">-</div>
+          </div>
+          <div class="card">
+            <div class="badge">ตอบผิด</div>
+            <div id="kpi_wrong" style="font-size:20px;font-weight:700">-</div>
+          </div>
+          <div class="card">
+            <div class="badge">คะแนน</div>
+            <div id="kpi_score" style="font-size:20px;font-weight:700">-</div>
+          </div>
+        </div>
 
 
-<canvas id="resultChart" height="160"></canvas>
+        <canvas id="resultChart" height="160"></canvas>
 
 
-<div class="wrong-list">
-<h4 style="margin:14px 0 6px">ข้อที่ตอบผิด</h4>
-<div id="wrongContainer">—</div>
-</div>
-</div>
-</div>
+        <div class="wrong-list">
+          <h4 style="margin:14px 0 6px">ข้อที่ตอบผิด</h4>
+          <div id="wrongContainer">—</div>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script>
+    // ---------- Config / State ----------
+    const API_BASE = '/walkin-exam-system/api/';
+    const ENDPOINT_LIST = API_BASE + 'get_all_results_new.php';
+    const ENDPOINT_DETAILS = API_BASE + 'get_session_answers.php';
 
-  // --------- State / Consts ----------
-  let SESSIONS = [];
-  let _chartInstance = null;
-  const DETAILS_ENDPOINT = 'api/get_session_answers.php'; // ปรับตาม endpoint จริง
+    let SESSIONS = [];
+    let _chartInstance = null;
 
-  // --------- Boot ----------
-  document.addEventListener('DOMContentLoaded', () => {
-    init();
-
-    document.getElementById('backBtn').addEventListener('click', () => {
-      location.href = 'teacher_dashboard.html';
-    });
-
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      localStorage.removeItem('teacherToken');
-      location.href = 'teacher_login.html';
-    });
-
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-      filterTable(e.target.value);
-    });
-
-    // ใช้ event delegation สำหรับปุ่มรายละเอียด
-    document.getElementById('results-container').addEventListener('click', (e) => {
-      const btn = e.target.closest('.btn-details');
-      if (!btn) return;
-      const tr = btn.closest('tr');
-      const sessionId = tr?.dataset.sessionId;
-      const studentId = tr?.dataset.studentId;
-      viewDetails(sessionId, studentId);
-    });
-  });
-
-  // --------- Utils ----------
-  function esc(s){ return String(s ?? '')
-    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
-    .replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-  function toBool(v){
-    if (typeof v === 'boolean') return v;
-    if (typeof v === 'number') return v !== 0;
-    if (typeof v === 'string') return v === '1' || v.toLowerCase() === 'true' || v === '✓';
-    return false;
-  }
-
-  // --------- Table ----------
-  function filterTable(searchText) {
-    const tbody = document.getElementById('results-table-body');
-    const rows = tbody.getElementsByTagName('tr');
-    for (let row of rows) {
-      const cells = row.getElementsByTagName('td');
-      if (!cells.length) continue;
-      let found = false;
-      for (let cell of cells) {
-        if (cell.textContent.toLowerCase().includes(searchText.toLowerCase())) {
-          found = true; break;
-        }
-      }
-      row.style.display = found ? '' : 'none';
+    // ---------- Helpers ----------
+    const $ = (id) => document.getElementById(id);
+    function esc(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
-  }
-
-  async function init() {
-    const token = localStorage.getItem('teacherToken');
-    const tbody = document.getElementById('results-table-body');
-    const errorBox = document.getElementById('errorBox');
-
-    if (!token) {
-      errorBox.textContent = 'ไม่ได้ล็อกอินอาจารย์ กรุณาเข้าสู่ระบบใหม่';
-      errorBox.style.display = 'block';
-      location.href = 'teacher_login.html';
-      return;
+    function toBool(v) {
+      if (typeof v === 'boolean') return v;
+      if (typeof v === 'number') return v !== 0;
+      if (typeof v === 'string') return v === '1' || v.toLowerCase() === 'true' || v === '✓';
+      return false;
+    }
+    function getTeacherToken() {
+      return localStorage.getItem('teacherToken') || sessionStorage.getItem('teacherToken');
     }
 
-    try {
-      const resp = await fetch('api/get_all_results_new.php', {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store',
+    // ---------- Boot ----------
+    document.addEventListener('DOMContentLoaded', () => {
+      init();
+
+      $('backBtn').addEventListener('click', () => location.href = 'teacher_dashboard.html');
+      $('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('teacherToken');
+        sessionStorage.removeItem('teacherToken');
+        location.href = 'teacher_login.html';
       });
+      $('searchInput').addEventListener('input', (e) => filterTable(e.target.value));
 
-      const raw = await resp.text();
-      console.log('RAW:', raw);
+      // ปุ่มดูรายละเอียด (event delegation)
+      $('results-container').addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-details');
+        if (!btn) return;
+        const tr = btn.closest('tr');
+        viewDetails(tr?.dataset.sessionId, tr?.dataset.studentId);
+      });
+    });
 
-      let data;
-      try { data = JSON.parse(raw); }
-      catch {
-        errorBox.textContent = 'เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON';
+    // ---------- Init (ตัวเดียวพอ) ----------
+    async function init() {
+      const token = getTeacherToken();
+      const tbody = $('results-table-body');
+      const errorBox = $('errorBox');
+
+      if (!token) {
+        errorBox.textContent = 'ไม่ได้ล็อกอินอาจารย์ หรือโทเคนหาย กรุณาเข้าสู่ระบบใหม่';
         errorBox.style.display = 'block';
-        tbody.innerHTML = `<tr><td colspan="7">${raw}</td></tr>`;
         return;
       }
 
-      if (!resp.ok || data.status !== 'success' || !Array.isArray(data.data)) {
-        errorBox.textContent = data?.message || `HTTP ${resp.status}`;
+      try {
+        const resp = await fetch(ENDPOINT_LIST, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        });
+
+        const raw = await resp.text();
+        console.log('RAW:', raw);
+
+        if (resp.status === 401 || resp.status === 403) {
+          errorBox.textContent = 'สิทธิ์ไม่เพียงพอหรือโทเคนหมดอายุ กรุณาเข้าสู่ระบบใหม่';
+          errorBox.style.display = 'block';
+          return;
+        }
+
+        let data;
+        try { data = JSON.parse(raw); }
+        catch {
+          errorBox.textContent = 'เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON';
+          errorBox.style.display = 'block';
+          tbody.innerHTML = `<tr><td colspan="7">${raw}</td></tr>`;
+          return;
+        }
+
+        if (!resp.ok || data.status !== 'success' || !Array.isArray(data.data)) {
+          errorBox.textContent = data?.message || `HTTP ${resp.status}`;
+          errorBox.style.display = 'block';
+          return;
+        }
+
+        SESSIONS = data.data;
+        renderTable(SESSIONS);
+      } catch (err) {
+        console.error(err);
+        errorBox.textContent = err.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้';
         errorBox.style.display = 'block';
+      }
+    }
+
+    // ---------- Table ----------
+    function filterTable(searchText) {
+      const tbody = $('results-table-body');
+      if (!tbody) return;
+
+      const rows = tbody.getElementsByTagName('tr');
+      for (const row of rows) {
+        const cells = row.getElementsByTagName('td');
+        if (!cells.length) continue;
+        let found = false;
+        for (const cell of cells) {
+          if (cell.textContent.toLowerCase().includes(searchText.toLowerCase())) {
+            found = true; break;
+          }
+        }
+        row.style.display = found ? '' : 'none';
+      }
+    }
+
+    function renderTable(rows) {
+      const tbody = $('results-table-body');
+      if (!tbody) return;
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="7">ไม่พบข้อมูล</td></tr>';
         return;
       }
 
-      SESSIONS = data.data;
-      renderTable(SESSIONS);
-    } catch (err) {
-      console.error(err);
-      errorBox.textContent = err.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้';
-      errorBox.style.display = 'block';
+      tbody.innerHTML = rows.map(r => {
+        const status = r.end_time ? 'completed' : (r.start_time ? 'in_progress' : 'registered');
+        const scoreText = (r.score == null) ? '-' : (+r.score).toFixed(2);
+        return `
+        <tr
+          data-session-id="${esc(r.session_id)}"
+          data-student-id="${esc(r.student_id)}"
+          data-student-name="${esc(r.student_name || '')}"
+          data-exam-title="${esc(r.exam_title || '')}"
+          data-score="${esc(scoreText)}"
+          data-start-time="${esc(r.start_time || '')}"
+          data-end-time="${esc(r.end_time || '')}"
+          data-status="${esc(status)}"
+        >
+          <td>${esc(r.student_id)}</td>
+          <td>${esc(r.student_name || '')}</td>
+          <td>${esc(r.exam_title || '')}</td>
+          <td>${scoreText}</td>
+          <td>${esc(r.start_time || '-')}</td>
+          <td>${esc(r.end_time || '-')}</td>
+          <td>
+            <button type="button" class="btn-details">
+              <i class="fas fa-info-circle"></i> ดูรายละเอียด
+            </button>
+          </td>
+        </tr>
+      `;
+      }).join('');
     }
-  }
 
-  function renderTable(rows) {
-    const tbody = document.getElementById('results-table-body');
-    if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="7">ไม่พบข้อมูล</td></tr>';
-      return;
-    }
+    // ---------- Modal ----------
+    function openDetailModal() { $('detailBackdrop').style.display = 'block'; $('detailModal').style.display = 'block'; }
+    function closeDetailModal() { $('detailBackdrop').style.display = 'none'; $('detailModal').style.display = 'none'; }
+    window.closeDetailModal = closeDetailModal;
 
-    tbody.innerHTML = rows.map((r) => `
-      <tr
-        data-session-id="${esc(r.session_id)}"
-        data-student-id="${esc(r.student_id)}"
-        data-student-name="${esc(r.student_name)}"
-        data-exam-title="${esc(r.exam_title)}"
-        data-score="${esc(r.score ?? '')}"
-        data-start-time="${esc(r.start_time ?? '')}"
-        data-end-time="${esc(r.end_time ?? '')}"
-        data-status="${esc(r.status ?? '')}"
-      >
-        <td>${esc(r.student_id)}</td>
-        <td>${esc(r.student_name)}</td>
-        <td>${esc(r.exam_title)}</td>
-        <td>${esc(r.score ?? '-')}</td>
-        <td>${esc(r.start_time ?? '-')}</td>
-        <td>${esc(r.end_time ?? '-')}</td>
-        <td>
-          <button type="button" class="btn-details">
-            <i class="fas fa-info-circle"></i> ดูรายละเอียด
-          </button>
-        </td>
-      </tr>
-    `).join('');
-  }
-
-  // --------- Modal helpers ----------
-  function openDetailModal(){
-    document.getElementById('detailBackdrop').style.display = 'block';
-    document.getElementById('detailModal').style.display = 'block';
-  }
-  function closeDetailModal(){
-    document.getElementById('detailBackdrop').style.display = 'none';
-    document.getElementById('detailModal').style.display = 'none';
-  }
-
-  function fillDetailMeta(det){
-    const el = document.getElementById('detailMeta');
-    el.innerHTML = `
+    function fillDetailMeta(det) {
+      $('detailMeta').innerHTML = `
       <div><b>รหัสนิสิต:</b> ${esc(det.student_id)} &nbsp;&nbsp; <b>ชื่อ-สกุล:</b> ${esc(det.student_name)}</div>
       <div><b>ชุดข้อสอบ:</b> ${esc(det.exam_title)}</div>
       <div><b>เวลาเริ่ม:</b> ${esc(det.start_time)} &nbsp;&nbsp; <b>เวลาสิ้นสุด:</b> ${esc(det.end_time)}</div>
       <div><b>สถานะ:</b> ${esc(det.status)}</div>
     `;
-  }
-
-  function fillKPIs({total, correct, wrong, score}){
-    document.getElementById('kpi_total').textContent = total ?? '-';
-    document.getElementById('kpi_correct').textContent = correct ?? '-';
-    document.getElementById('kpi_wrong').textContent = wrong ?? '-';
-    document.getElementById('kpi_score').textContent = score ?? '-';
-  }
-
-  function drawChart(correct, wrong){
-    const ctx = document.getElementById('resultChart');
-    if(_chartInstance){ _chartInstance.destroy(); }
-    _chartInstance = new Chart(ctx, {
-      type:'doughnut',
-      data:{
-        labels:['ถูก','ผิด'],
-        datasets:[{ data:[correct||0, wrong||0] }]
-      },
-      options:{
-        responsive:true,
-        plugins:{ legend:{ position:'bottom' }, tooltip:{ enabled:true } }
-      }
-    });
-  }
-
-  function renderWrongList(items){
-  const wrap = document.getElementById('wrongContainer');
-  if(!items || !items.length){ wrap.textContent = '—'; return; }
-
-  const wrongs = items.filter(x => !toBool(x.is_correct));
-  if(!wrongs.length){ wrap.textContent = 'ไม่มีข้อที่ตอบผิด'; return; }
-
-  wrap.innerHTML = wrongs.map((it,i)=>{
-    // รองรับหลายชื่อ field จาก API
-    const choiceLabel = (it.chosen_choice ?? it.student_choice ?? it.selected_choice ?? '').trim();
-    const choiceText  = (it.student_choice_text ?? '').trim();
-    const correctLbl  = (it.correct_choice ?? '').trim();
-    const correctText = (it.correct_choice_text ?? '').trim();
-
-    const studentDisplay = choiceLabel
-      ? `${esc(choiceLabel)}${choiceText ? ' — ' + esc(choiceText) : ''}`
-      : 'ไม่ได้เลือก';
-    const correctDisplay = correctLbl
-      ? `${esc(correctLbl)}${correctText ? ' — ' + esc(correctText) : ''}`
-      : '-';
-
-    return `
-    <div class="wrong-item">
-      <div class="badge">ข้อที่ ${i+1} (QID: ${esc(it.question_id)})</div>
-      <div style="margin-top:6px"><b>คำถาม:</b> ${esc(it.question_text || '')}</div>
-      <div><b>คำตอบของนิสิต:</b> ${studentDisplay}</div>
-      <div><b>คำตอบที่ถูก:</b> ${correctDisplay}</div>
-    </div>`;
-  }).join('');
-}
-
-
-  // --------- View Details (main) ----------
-  async function viewDetails(sessionId, studentId) {
-    const token = localStorage.getItem('teacherToken');
-    if (!token) { alert('ไม่ได้ล็อกอิน'); location.href = 'teacher_login.html'; return; }
-
-    // อ่านข้อมูลพื้นฐานจากแถวในตาราง
-    const row = document.querySelector(`tr[data-session-id="${sessionId}"]`);
-    if (!row) { alert('ไม่พบแถวข้อมูล'); return; }
-
-    const base = {
-      student_id  : row.dataset.studentId || studentId || '',
-      student_name: row.dataset.studentName || '-',
-      exam_title  : row.dataset.examTitle || '-',
-      start_time  : row.dataset.startTime || '-',
-      end_time    : row.dataset.endTime || '-',
-      score       : row.dataset.score || '-',
-      status      : row.dataset.status || '-',
-    };
-
-    openDetailModal();
-    fillDetailMeta(base);
-    fillKPIs({ total: '-', correct: '-', wrong: '-', score: base.score });
-    drawChart(0, 0);
-    renderWrongList([]);
-
-    // เรียก API รายคำตอบ (ต้องมี endpoint ส่ง items/ตัวนับถูกผิด)
-    try {
-      const url = `${DETAILS_ENDPOINT}?session_id=${encodeURIComponent(sessionId)}`;
-      const resp = await fetch(url, { headers:{ Authorization:`Bearer ${token}` }, cache:'no-store' });
-      const raw  = await resp.text();
-      let payload = {};
-      try { payload = JSON.parse(raw); } catch {}
-
-      if (!resp.ok || payload?.status === 'error') {
-        console.warn('details fetch failed:', resp.status, payload);
-        return;
-      }
-
-
-      const items = Array.isArray(payload?.items) ? payload.items : [];
-      const total = Number(payload?.total_questions ?? (items.length || 0));
-
-      // ดึงคะแนนสเกล 5 จาก API/ตาราง (ลำดับความเชื่อถือ: API -> dataset -> คำนวณจาก items)
-      let score5 = (payload?.score != null) ? Number(payload.score)
-                 : (document.querySelector(`tr[data-session-id="${sessionId}"]`)?.dataset.score
-                    ? Number(document.querySelector(`tr[data-session-id="${sessionId}"]`).dataset.score)
-                    : null);
-
-      // ถ้าไม่มีคะแนนจาก API/ตาราง ค่อย fallback คำนวณจากคำตอบ (ถูก/ผิด)
-      if (!Number.isFinite(score5)) {
-        const correctByFlag =
-          items.filter(x => (x.is_correct === 1) ||
-                            (x.is_correct === '1') ||
-                            (typeof x.is_correct === 'string' && x.is_correct.toLowerCase() === 'true')).length;
-        score5 = total ? +((correctByFlag / total) * 5).toFixed(2) : 0;
-      }
-
-      // แปลงคะแนนเต็ม 5 -> จำนวน “ข้อที่ถูก/ผิด” ให้กราฟ (ปัดเป็นจำนวนข้อ)
-      const correct = Math.round((score5 / 5) * total);
-      const wrong   = Math.max(0, total - correct);
-
-      // อัปเดต KPI + กราฟ + รายการข้อผิด (รายการข้อผิดยังใช้ items ตามเดิม)
-      fillKPIs({ total, correct, wrong, score: +score5.toFixed(2) });
-      drawChart(correct, wrong);
-      renderWrongList(items);
-
-      // อัปเดต score ใน dataset และใน cell ตารางให้สอดคล้อง (optional)
-      const row = document.querySelector(`tr[data-session-id="${sessionId}"]`);
-      if (row) {
-        row.dataset.score = String(score5);
-        const scoreCell = row.children?.[3];
-        if (scoreCell) scoreCell.textContent = (+score5).toFixed(2);
-      }
-
-    } catch (e) {
-      console.warn('details fetch error:', e);
     }
-  }
+    function fillKPIs({ total, correct, wrong, score }) {
+      $('kpi_total').textContent = total ?? '-';
+      $('kpi_correct').textContent = correct ?? '-';
+      $('kpi_wrong').textContent = wrong ?? '-';
+      $('kpi_score').textContent = score ?? '-';
+    }
+    function drawChart(correct, wrong) {
+      const ctx = $('resultChart');
+      if (_chartInstance) _chartInstance.destroy();
+      _chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: ['ถูก', 'ผิด'], datasets: [{ data: [correct || 0, wrong || 0] }] },
+        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+    function renderWrongList(items) {
+      const wrap = $('wrongContainer');
+      if (!items || !items.length) { wrap.textContent = '—'; return; }
+      const wrongs = items.filter(x => !toBool(x.is_correct));
+      if (!wrongs.length) { wrap.textContent = 'ไม่มีข้อที่ตอบผิด'; return; }
 
+      wrap.innerHTML = wrongs.map((it, i) => {
+        const choiceLabel = (it.chosen_choice ?? it.student_choice ?? it.selected_choice ?? '').trim();
+        const choiceText = (it.student_choice_text ?? '').trim();
+        const correctLbl = (it.correct_choice ?? '').trim();
+        const correctText = (it.correct_choice_text ?? '').trim();
+        const studentDisplay = choiceLabel ? `${esc(choiceLabel)}${choiceText ? ' — ' + esc(choiceText) : ''}` : 'ไม่ได้เลือก';
+        const correctDisplay = correctLbl ? `${esc(correctLbl)}${correctText ? ' — ' + esc(correctText) : ''}` : '-';
+        return `
+        <div class="wrong-item">
+          <div class="badge">ข้อที่ ${i + 1} (QID: ${esc(it.question_id)})</div>
+          <div style="margin-top:6px"><b>คำถาม:</b> ${esc(it.question_text || '')}</div>
+          <div><b>คำตอบของนิสิต:</b> ${studentDisplay}</div>
+          <div><b>คำตอบที่ถูก:</b> ${correctDisplay}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // ---------- Details ----------
+    async function viewDetails(sessionId, studentId) {
+      const token = getTeacherToken();
+      if (!token) { alert('ไม่ได้ล็อกอิน'); return; }
+
+      const row = document.querySelector(`tr[data-session-id="${sessionId}"]`);
+      if (!row) { alert('ไม่พบแถวข้อมูล'); return; }
+
+      const base = {
+        student_id: row.dataset.studentId || studentId || '',
+        student_name: row.dataset.studentName || '-',
+        exam_title: row.dataset.examTitle || '-',
+        start_time: row.dataset.startTime || '-',
+        end_time: row.dataset.endTime || '-',
+        score: row.dataset.score || '-', // แสดงเป็นเปอร์เซ็นต์ (หาก API ยังไม่ส่ง)
+        status: row.dataset.status || '-',
+      };
+
+      openDetailModal();
+      fillDetailMeta(base);
+      fillKPIs({ total: '-', correct: '-', wrong: '-', score: base.score });
+      drawChart(0, 0);
+      renderWrongList([]);
+
+      try {
+        const url = `${ENDPOINT_DETAILS}?session_id=${encodeURIComponent(sessionId)}`;
+        const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+        const raw = await resp.text();
+        let payload = {};
+        try { payload = JSON.parse(raw); } catch { }
+
+        if (!resp.ok || payload?.status === 'error') {
+          console.warn('details fetch failed:', resp.status, payload);
+          return;
+        }
+
+        const items = Array.isArray(payload?.items) ? payload.items : [];
+        const total = Number(payload?.total_questions ?? (items.length || 0));
+
+        // 1) อ่านเปอร์เซ็นต์จาก API ก่อน
+        let scorePercent = (payload?.score != null) ? Number(payload.score) : NaN;
+        // 2) ถ้าไม่มี → ใช้จาก cell ตาราง
+        if (!Number.isFinite(scorePercent) && row.dataset.score) scorePercent = Number(row.dataset.score);
+        // 3) ถ้ายังไม่มี → คำนวณจากจำนวนถูก/ผิด
+        if (!Number.isFinite(scorePercent)) {
+          const correctByFlag = items.filter(x =>
+            x.is_correct === 1 || x.is_correct === '1' ||
+            (typeof x.is_correct === 'string' && x.is_correct.toLowerCase() === 'true')
+          ).length;
+          scorePercent = total ? +((correctByFlag / total) * 100).toFixed(2) : 0;
+        }
+
+        const correct = Math.round((scorePercent / 100) * total);
+        const wrong = Math.max(0, total - correct);
+
+        fillKPIs({ total, correct, wrong, score: +scorePercent.toFixed(2) });
+        drawChart(correct, wrong);
+        renderWrongList(items);
+
+        // sync แถวในตาราง
+        row.dataset.score = String(scorePercent);
+        const scoreCell = row.children?.[3];
+        if (scoreCell) scoreCell.textContent = (+scorePercent).toFixed(2);
+
+      } catch (e) {
+        console.warn('details fetch error:', e);
+      }
+    }
   </script>
+
 </body>
+
 </html>

@@ -1,95 +1,106 @@
 <?php
+// api/get_registration_status.php
+declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
-require_once '../config/db.php';
-require_once '../vendor/autoload.php';
-use \Firebase\JWT\JWT;
-use \Firebase\JWT\Key;
+header('Cache-Control: no-store');
 
-// ตรวจสอบ Authorization
-$headers = getallheaders();
-if (!isset($headers['Authorization'])) {
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/helpers/jwt_helper.php';
+
+// -------- auth (teacher only) --------
+$hdrs  = function_exists('getallheaders') ? getallheaders() : [];
+$auth  = $hdrs['Authorization'] ?? $hdrs['authorization'] ?? '';
+if (!preg_match('/Bearer\s+(\S+)/i', $auth, $m)) {
     http_response_code(401);
     echo json_encode(['status' => 'error', 'message' => 'กรุณาเข้าสู่ระบบ']);
     exit;
 }
-
-$auth_header = $headers['Authorization'];
-if (!preg_match('/Bearer\s+(.*)$/i', $auth_header, $matches)) {
+$claims = decodeToken($m[1]);
+if (!$claims) {
     http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => 'Token ไม่ถูกต้อง']);
+    echo json_encode(['status' => 'error', 'message' => 'Token ไม่ถูกต้องหรือหมดอายุ']);
     exit;
 }
-
-$token = $matches[1];
-try {
-    $decoded = JWT::decode($token, new Key("d57a9c8e90f6fcb62f0e05e01357ed9cfb50a3b1e121c84a3cdb3fae8a1c71ef", 'HS256'));
-    // ตรวจสอบว่าเป็น token ของอาจารย์
-    if (!isset($decoded->role) || $decoded->role !== 'teacher') {
-        throw new Exception('ไม่มีสิทธิ์เข้าถึงข้อมูล');
-    }
-} catch (Exception $e) {
-    http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+if (($claims['role'] ?? '') !== 'teacher') {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'ไม่มีสิทธิ์เข้าถึงข้อมูล']);
     exit;
 }
 
 try {
-    error_log("Fetching registration data...");
-    
-    // ตรวจสอบข้อมูลในตาราง exambooking
-    $check_sql = "SELECT COUNT(*) as count FROM exambooking";
-    $check_stmt = $pdo->query($check_sql);
-    $booking_count = $check_stmt->fetch(PDO::FETCH_ASSOC)['count'];
-    error_log("Total bookings in database: " . $booking_count);
-    
-    // ดึงข้อมูลการลงทะเบียนทั้งหมด
+    // -------- main query --------
+    // ตารางจริงของคุณ:
+    // exam_booking: id, student_id, slot_id, status, created_at, updated_at
+    // exam_slots   : id, exam_date, start_time, end_time, (examset_id อาจมี/อาจไม่มี)
+    // student      : student_id, name
+    // examset      : examset_id, title
+    // examsession  : มี attempt_no, start_time, end_time ฯลฯ (ไม่พึ่ง examset_id อีกต่อไป)
+
     $sql = "
-        SELECT 
-            b.booking_id,
-            s.student_id,
-            s.name as student_name,
-            es.slot_date as exam_date,
-            es.start_time,
-            es.end_time,
-            COALESCE(e.title, 'ยังไม่กำหนดชุดข้อสอบ') as exam_title,
-            b.status,
-            b.scheduled_at
-        FROM exambooking b
-        JOIN student s ON b.student_id = s.student_id
-        JOIN exam_slots es ON b.slot_id = es.id
-        LEFT JOIN examset e ON b.examset_id = e.examset_id
-        ORDER BY es.slot_date ASC, es.start_time ASC
-    ";
+    SELECT
+      b.id                             AS booking_id,
+      s.student_id                     AS student_id,
+      s.name                           AS student_name,
 
-    error_log("Executing query: " . $sql);
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $registrations = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    error_log("Found " . count($registrations) . " registrations");
+      sl.exam_date                     AS exam_date,
+      sl.start_time                    AS start_time,
+      sl.end_time                      AS end_time,
 
-    // จัดรูปแบบข้อมูลก่อนส่งกลับ
-    $formatted_registrations = array_map(function($reg) {
+      COALESCE(es.title,'ยังไม่กำหนดชุดข้อสอบ') AS exam_title,
+      b.status                         AS status,
+      b.created_at                     AS scheduled_at,
+
+      /* เคยสอบ ‘จบ’ แล้วไหม (ดูจาก end_time) — ไม่อิง examset_id */
+      (
+        SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+        FROM examsession x
+        WHERE x.student_id = s.student_id
+          AND x.end_time IS NOT NULL
+      ) AS has_completed,
+
+      /* ครั้งล่าสุดที่เคยสอบ — ไม่อิง examset_id */
+      COALESCE((
+        SELECT MAX(x2.attempt_no)
+        FROM examsession x2
+        WHERE x2.student_id = s.student_id
+      ), 0) AS last_attempt
+    FROM exam_booking b
+    JOIN student     s  ON s.student_id = b.student_id
+    JOIN exam_slots  sl ON sl.id        = b.slot_id
+    LEFT JOIN examset es ON es.examset_id = sl.examset_id
+    ORDER BY sl.exam_date DESC, sl.start_time DESC, b.id DESC
+  ";
+
+    $stmt = $pdo->query($sql);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // shape สำหรับหน้าเว็บ
+    $out = array_map(function (array $r) {
+        $start = $r['start_time'] ?? '';
+        $end   = $r['end_time']   ?? '';
+        $examTime = trim($start . (strlen($start) && strlen($end) ? ' - ' : '') . $end);
+        $last = (int)($r['last_attempt'] ?? 0);
+
         return [
-            'booking_id' => $reg['booking_id'],
-            'student_id' => $reg['student_id'],
-            'student_name' => $reg['student_name'],
-            'exam_date' => $reg['exam_date'],
-            'exam_time' => $reg['start_time'] . ' - ' . $reg['end_time'],
-            'exam_title' => $reg['exam_title'],
-            'status' => $reg['status'],
-            'scheduled_at' => $reg['scheduled_at']
+            'booking_id'   => (int)$r['booking_id'],
+            'student_id'   => $r['student_id'],
+            'student_name' => $r['student_name'],
+            'exam_date'    => $r['exam_date'],
+            'exam_time'    => $examTime,
+            'exam_title'   => $r['exam_title'],
+            'status'       => $r['status'],
+            'scheduled_at' => $r['scheduled_at'] ?? null,
+            'has_completed' => (int)($r['has_completed'] ?? 0),
+            'last_attempt' => $last,
+            'next_attempt' => $last + 1,
         ];
-    }, $registrations);
+    }, $rows);
 
-    echo json_encode([
-        'status' => 'success',
-        'registrations' => $formatted_registrations
-    ]);
-
-} catch (Exception $e) {
+    echo json_encode(['status' => 'success', 'registrations' => $out], JSON_UNESCAPED_UNICODE);
+} catch (Throwable $e) {
     http_response_code(500);
     echo json_encode([
         'status' => 'error',
         'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage()
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 }

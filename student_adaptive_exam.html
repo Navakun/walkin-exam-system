@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="favicon.ico" />
 
-  <!-- ใช้ CDN อย่างเดียว และไม่ใส่ defer เพื่อให้พร้อมก่อนสคริปต์ด้านล่าง -->
+  <!-- ใช้ CDN -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -39,83 +39,71 @@
 
   <script>
     // ====== config ======
-    const API_BASE = '/walkin-exam-system/api/'; // ปรับครั้งเดียวจบ
+    const API_BASE = '/walkin-exam-system/api/';
+    const API_SUBMIT = 'submit_answer.php';
+
+    // --- state ---
+    let TOTAL_QUESTIONS = null; // จะตั้งจาก API
+    let timeRemaining = 0;
+    let currentQuestion = null;
+    let questionsAnswered = 0;
+    let timerInterval = null;
+    let syncInterval = null;
+    let sending = false;
+
+    // สร้าง URL ให้ปลอดภัย
+    function buildApiUrl(path) {
+      path = String(path || '').replace(/^\/+/, '');
+      path = path.replace(/^api\/+/, '');
+      return API_BASE + path;
+    }
 
     // ====== token + session ======
     const token = localStorage.getItem('studentToken');
-    let sessionId =
-      localStorage.getItem('exam_session_id') ||
-      localStorage.getItem('session_id'); // รองรับชื่อเก่า
-
+    let sessionId = localStorage.getItem('exam_session_id') || localStorage.getItem('session_id');
     if (!sessionId && token) {
       const tmp = localStorage.getItem('exam_session_id');
       if (tmp) { sessionId = tmp; localStorage.setItem('session_id', tmp); }
     }
-
     if (!sessionId || !token) {
       Swal.fire({ icon: 'error', title: 'ไม่พบ session หรือ token', text: 'กรุณาเข้าสู่ระบบใหม่' })
         .then(() => location.href = 'student_dashboard.html');
       throw new Error('Missing session/token');
     }
 
-    // ====== state ======
-    let timeRemaining = 0;      // วินาที
-    let currentQuestion = null;
-    let questionsAnswered = 0;
-    let timerInterval = null;
-    let syncInterval = null;
-
     // ====== helper: POST JSON แบบปลอดภัย ======
     async function apiPost(path, payload) {
-      const res = await fetch(API_BASE + path, {
+      const res = await fetch(buildApiUrl(path), {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload || {})
       });
       const text = await res.text();
       let data;
       try { data = text ? JSON.parse(text) : null; }
       catch { throw new Error(text || `HTTP ${res.status}`); }
-
       if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
       return data;
     }
 
-    // ====== init: ขอเวลาอนุญาตจากเซิร์ฟเวอร์ ======
+    // --- ตอน init: ลองอ่าน total_questions จาก get_exam_timing.php ถ้ามี ---
     (async function init() {
       try {
         const j = await apiPost('get_exam_timing.php', { session_id: Number(sessionId) });
-
-        // รองรับทั้งโครงสร้างเก่า/ใหม่
-        const status = j.status;
         const left = Number(j.time_left_secs ?? j.time_remaining ?? 0);
-
-        if (status === 'closed') {
-          Swal.fire('สิ้นสุดการสอบ', 'รอบนี้ปิดไปแล้ว', 'info')
-            .then(() => location.href = 'student_dashboard.html');
-          return;
-        }
-        if (status === 'due') {
-          Swal.fire('หมดเวลา', 'หมดเวลาทำข้อสอบแล้ว', 'info')
-            .then(() => location.href = 'student_dashboard.html');
-          return;
-        }
-        // 'open' หรือ 'success' ถือว่าเริ่มนับได้
         if (left <= 0) {
-          Swal.fire('หมดเวลา', 'หมดเวลาทำข้อสอบแล้ว', 'info')
-            .then(() => location.href = 'student_dashboard.html');
+          Swal.fire('หมดเวลา', 'หมดเวลาทำข้อสอบแล้ว', 'info').then(() => location.href = 'student_dashboard.html');
           return;
         }
-
         timeRemaining = left;
+        // ตั้งจำนวนข้อจาก timing ถ้าส่งมา
+        if (j.total_questions != null) TOTAL_QUESTIONS = Number(j.total_questions) || TOTAL_QUESTIONS;
         startTimer();
         loadNextQuestion();
-
-        // re-sync ทุก 60 วินาที กันนาฬิกาเพี้ยน
         syncInterval = setInterval(syncTiming, 60000);
       } catch (e) {
         Swal.fire('ดึงเวลาไม่ได้', String(e.message || e), 'error');
@@ -124,12 +112,10 @@
 
     async function syncTiming() {
       try {
-        const j = await apiPost('api/get_exam_timing.php', { session_id: Number(sessionId) });
+        const j = await apiPost('get_exam_timing.php', { session_id: Number(sessionId) });
         const left = Number(j.time_left_secs ?? j.time_remaining ?? 0);
-        if (!isNaN(left) && left >= 0) {
-          timeRemaining = Math.min(timeRemaining, left);
-        }
-      } catch { /* เงียบไว้ได้ */ }
+        if (!isNaN(left) && left >= 0) timeRemaining = Math.min(timeRemaining, left);
+      } catch { }
     }
 
     // ====== timer ======
@@ -152,9 +138,7 @@
         `เวลาที่เหลือ: ${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
-    // ====== question flow ======
-    const API_SUBMIT = 'api/submit_answer.php';
-
+    // --- ขอข้อถัดไป ---
     async function loadNextQuestion() {
       try {
         const data = await apiPost(API_SUBMIT, {
@@ -162,7 +146,10 @@
           question_id: currentQuestion?.question_id || 0,
           selected_choice_id: null
         });
-
+        // ดึงจำนวนข้อ & จำนวนที่ตอบแล้วจาก API
+        if (data.total_questions != null) TOTAL_QUESTIONS = Number(data.total_questions) || TOTAL_QUESTIONS;
+        if (data.answered_count != null) questionsAnswered = Number(data.answered_count) || questionsAnswered;
+        updateProgressBar();
         if (data.status === 'finished') {
           finishExam(data.score);
         } else if (data.status === 'continue') {
@@ -179,9 +166,7 @@
     function displayQuestion() {
       const qc = document.getElementById('questionContainer');
       const cc = document.getElementById('choicesContainer');
-
       qc.innerHTML = `<strong>ข้อที่ ${questionsAnswered + 1}:</strong> ${currentQuestion.question_text}`;
-
       const html = (currentQuestion.choices || []).map((c, i) => `
         <div class="form-check">
           <input class="form-check-input" type="radio" name="choice" value="${c.choice_id}" id="c${i}">
@@ -191,24 +176,30 @@
       cc.innerHTML = html;
     }
 
+    // --- ส่งคำตอบ ---
     document.getElementById('submitAnswerBtn').addEventListener('click', async () => {
+      if (sending) return;
       const selected = document.querySelector('input[name="choice"]:checked');
       if (!selected) {
         Swal.fire('กรุณาเลือกคำตอบก่อนส่ง', '', 'warning');
         return;
       }
       try {
-        const data = await apiPost('submit_answer_adaptive.php', {
+        sending = true;
+        document.getElementById('submitAnswerBtn').disabled = true;
+        const data = await apiPost(API_SUBMIT, {
           session_id: Number(sessionId),
           question_id: currentQuestion.question_id,
-          selected_choice_id: selected.value
+          selected_choice_id: Number(selected.value)
         });
-
+        // อัปเดตจำนวนข้อ/ตอบแล้วจาก API (กันคลาดเคลื่อน)
+        if (data.total_questions != null) TOTAL_QUESTIONS = Number(data.total_questions) || TOTAL_QUESTIONS;
+        if (data.answered_count != null) questionsAnswered = Number(data.answered_count);
+        else questionsAnswered++;
+        updateProgressBar();
         if (data.status === 'finished') {
           finishExam(data.score);
         } else if (data.status === 'continue') {
-          questionsAnswered++;
-          updateProgressBar();
           currentQuestion = data.question;
           displayQuestion();
         } else {
@@ -216,11 +207,16 @@
         }
       } catch (err) {
         Swal.fire('เกิดข้อผิดพลาด', String(err.message || err), 'error');
+      } finally {
+        sending = false;
+        document.getElementById('submitAnswerBtn').disabled = false;
       }
     });
 
+    // ใช้ในทุกที่: คำนวณ % ตามจำนวนข้อจริง
     function updateProgressBar() {
-      const percent = Math.min(100, Math.floor((questionsAnswered / 15) * 100)); // สมมติ 15 ข้อสูงสุด
+      const total = TOTAL_QUESTIONS ?? 15;
+      const percent = Math.min(100, Math.floor((questionsAnswered / Math.max(1, total)) * 100));
       const bar = document.getElementById('progressBar');
       bar.style.width = `${percent}%`;
       bar.textContent = `${percent}%`;
@@ -235,12 +231,11 @@
         text: score !== null ? `คุณได้คะแนน ${score} คะแนน` : 'การสอบสิ้นสุดแล้ว',
         confirmButtonText: 'ดูผลสอบ'
       }).then(() => {
-        localStorage.removeItem('session_id');
-        // เปลี่ยนปลายทางตามหน้าแสดงผลจริงของโปรเจ็กต์คุณ
-        location.href = 'student_results.html';
+        location.href = `student_result.html?session_id=${encodeURIComponent(sessionId)}`;
       });
     }
   </script>
+
 </body>
 
 </html>

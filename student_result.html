@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
   <meta charset="UTF-8" />
   <title>สรุปผลการสอบ</title>
@@ -10,22 +11,120 @@
   <link rel="stylesheet" href="assets/css/student.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
   <style>
-    .result-main { max-width: 700px; margin: 32px auto 0 auto; background: #fff; border-radius: 18px; box-shadow: 0 4px 24px 0 rgba(30,41,59,0.08); padding: 32px 28px 28px 28px; }
-    .result-cards { display: flex; gap: 18px; justify-content: center; margin-bottom: 18px; flex-wrap: wrap; }
-    .result-cards .card { min-width: 140px; flex: 1 1 0; border-radius: 14px; box-shadow: 0 2px 8px 0 rgba(30,41,59,0.04); border: 1.5px solid #cbd5e1; background: #f8fafc; }
-    .result-cards .card h3 { font-size: 1.1rem; margin-bottom: 6px; color: #2563eb; }
-    .result-cards .value { font-size: 2.1rem; font-weight: 700; color: #1e293b; }
-    .meta { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 10px; }
-    .meta div { background: #f1f5f9; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(30,41,59,0.04); font-size: 1.05rem; }
-    .banner { margin-bottom: 18px; }
-    .btn-send { background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%); color: #fff; border: none; border-radius: 10px; padding: 10px 22px; font-size: 1.1rem; font-weight: 600; box-shadow: 0 2px 8px 0 rgba(251,191,36,0.10); transition: background 0.2s, box-shadow 0.2s; }
-    .btn-send:hover { background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%); box-shadow: 0 4px 16px 0 rgba(251,191,36,0.18); }
-    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 0; }
-    .logo-text { display: flex; align-items: center; gap: 18px; }
-    .course-title h2 { font-size: 1.3rem; color: #1e293b; margin: 0; font-weight: 700; letter-spacing: 1px; }
-    @media (max-width: 600px) { .result-main { padding: 16px 4px; } .result-cards { flex-direction: column; gap: 10px; } .meta { grid-template-columns: 1fr; } }
+    .result-main {
+      max-width: 700px;
+      margin: 32px auto 0 auto;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 4px 24px 0 rgba(30, 41, 59, 0.08);
+      padding: 32px 28px 28px 28px;
+    }
+
+    .result-cards {
+      display: flex;
+      gap: 18px;
+      justify-content: center;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .result-cards .card {
+      min-width: 140px;
+      flex: 1 1 0;
+      border-radius: 14px;
+      box-shadow: 0 2px 8px 0 rgba(30, 41, 59, 0.04);
+      border: 1.5px solid #cbd5e1;
+      background: #f8fafc;
+      padding: 14px;
+    }
+
+    .result-cards .card h3 {
+      font-size: 1.1rem;
+      margin-bottom: 6px;
+      color: #2563eb;
+    }
+
+    .result-cards .value {
+      font-size: 2.1rem;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .meta {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .meta div {
+      background: #f1f5f9;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(30, 41, 59, 0.04);
+      font-size: 1.05rem;
+    }
+
+    .banner {
+      margin-bottom: 18px;
+    }
+
+    .btn-send {
+      background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 22px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      box-shadow: 0 2px 8px 0 rgba(251, 191, 36, 0.10);
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-send:hover {
+      background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+      box-shadow: 0 4px 16px 0 rgba(251, 191, 36, 0.18);
+    }
+
+    .course-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 20px;
+    }
+
+    .logo-text {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .course-title h2 {
+      font-size: 1.3rem;
+      color: #1e293b;
+      margin: 0;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    @media (max-width: 600px) {
+      .result-main {
+        padding: 16px 10px;
+      }
+
+      .result-cards {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .meta {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
+
 <body>
   <header class="course-header">
     <div class="logo-text">
@@ -65,7 +164,9 @@
   </main>
 
   <script>
+    // ================== helpers ==================
     const $ = (id) => document.getElementById(id);
+
     function showBanner(msg, type = 'success', timeout = 3500) {
       const bannerArea = document.getElementById('bannerArea');
       bannerArea.innerHTML = `<div class="alert alert-${type} banner" role="alert">${msg}</div>`;
@@ -82,27 +183,50 @@
       return (h ? `${h}:` : '') + `${pad(m)}:${pad(s)}`;
     }
 
-    function safeParseJSON(raw) {
-      try { return JSON.parse(raw); } catch { return null; }
+    function safeParseJSON(raw) { try { return JSON.parse(raw); } catch { return null; } }
+    function parseJwt(token) { try { return JSON.parse(atob(token.split('.')[1])); } catch { return null; } }
+
+    // แปลง 'YYYY-MM-DD HH:MM:SS' -> Date (ตีเป็น UTC กันเพี้ยน)
+    function parseDateStr(dt) {
+      if (!dt) return null;
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dt)) return new Date(dt.replace(' ', 'T') + 'Z');
+      return new Date(dt);
+    }
+    function formatDateDMYHM(dt) {
+      if (!dt) return '—';
+      const d = parseDateStr(dt);
+      if (isNaN(d)) return '—';
+      const day = d.getUTCDate().toString().padStart(2, '0');
+      const month = (d.getUTCMonth() + 1).toString().padStart(2, '0');
+      const year = d.getUTCFullYear();
+      const hour = d.getUTCHours().toString().padStart(2, '0');
+      const min = d.getUTCMinutes().toString().padStart(2, '0');
+      return `${day}/${month}/${year} ${hour}:${min}`;
     }
 
+    // ================== state ==================
+    let CURRENT_SESSION_ID = null;
 
-
+    // ================== send to teacher ==================
     document.getElementById('sendToTeacherBtn').onclick = async () => {
       const btn = document.getElementById('sendToTeacherBtn');
       btn.disabled = true;
       btn.textContent = 'กำลังส่ง...';
-      const params = new URLSearchParams(location.search);
-      const sessionId = params.get('session_id') || localStorage.getItem('session_id');
+
       const token = localStorage.getItem('studentToken');
+
+      if (!CURRENT_SESSION_ID) {
+        showBanner('ไม่พบ session_id', 'danger', 5000);
+        btn.textContent = 'ส่งข้อมูลให้อาจารย์';
+        btn.disabled = false;
+        return;
+      }
+
       try {
         const resp = await fetch('api/send_result_to_teacher.php', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-          },
-          body: JSON.stringify({ session_id: sessionId })
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ session_id: CURRENT_SESSION_ID })
         });
         const data = await resp.json();
         if (resp.ok && data.status === 'success') {
@@ -113,126 +237,83 @@
         }
       } catch (e) {
         showBanner('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger', 5000);
+      } finally {
+        btn.textContent = 'ส่งข้อมูลให้อาจารย์';
+        btn.disabled = false;
       }
-      btn.textContent = 'ส่งข้อมูลให้อาจารย์';
-      btn.disabled = false;
     };
 
+    // ================== load result ==================
     document.addEventListener('DOMContentLoaded', async () => {
       const params = new URLSearchParams(location.search);
-      const sessionId = params.get('session_id') || localStorage.getItem('session_id');
-      const token = localStorage.getItem('studentToken');
+      CURRENT_SESSION_ID =
+        params.get('session_id') ||
+        localStorage.getItem('session_id') ||
+        localStorage.getItem('exam_session_id');
 
+      if (!CURRENT_SESSION_ID) {
+        showBanner('ไม่พบ session_id', 'danger', 5000);
+        return;
+      }
+      // เก็บไว้ใช้ต่อในหน้าอื่น
+      localStorage.setItem('session_id', String(CURRENT_SESSION_ID));
+
+      const token = localStorage.getItem('studentToken');
       if (!token) {
         alert('กรุณาเข้าสู่ระบบใหม่');
         location.href = 'student_login.html';
         return;
       }
-      if (!sessionId) {
-  showBanner('ไม่พบ session_id', 'danger', 5000);
-  return;
-      }
 
       try {
-        const resp = await fetch(`api/get_result.php?session_id=${encodeURIComponent(sessionId)}`, {
+        const resp = await fetch(`api/get_result.php?session_id=${encodeURIComponent(CURRENT_SESSION_ID)}`, {
           headers: { 'Authorization': 'Bearer ' + token },
           cache: 'no-store'
         });
 
         const raw = await resp.text();
         const data = safeParseJSON(raw);
-        if (!data) {
-          showBanner('เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON', 'danger', 5000);
-          console.error('RAW:', raw);
-          return;
-        }
-        if (!resp.ok || data.status !== 'success') {
-          showBanner(data.message || `ดึงผลสอบไม่สำเร็จ (HTTP ${resp.status})`, 'danger', 5000);
-          return;
-        }
-        
-        // รองรับทั้งกรณี field อยู่ใน data หรือ root
+        if (!data) { showBanner('เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON', 'danger', 5000); console.error('RAW:', raw); return; }
+        if (!resp.ok || data.status !== 'success') { showBanner(data.message || `ดึงผลสอบไม่สำเร็จ (HTTP ${resp.status})`, 'danger', 5000); return; }
+
+        // รองรับทั้งวางใน data หรือ root
         const d = data.data || {};
-        // คะแนน/จำนวนข้อ
-        const total   = d.total_questions ?? data.total_questions ?? data.total ?? data.questions_total ?? null;
+        const total = d.total_questions ?? data.total_questions ?? data.total ?? data.questions_total ?? null;
         const correct = d.correct_count ?? data.correct_count ?? data.correct ?? data.corrects ?? null;
-        const wrong   = (total != null && correct != null) ? (total - correct) : (d.wrong_count ?? data.wrong_count ?? data.wrong ?? null);
-        // เวลาทำข้อสอบ
+        const wrong = (total != null && correct != null) ? (total - correct) : (d.wrong_count ?? data.wrong_count ?? data.wrong ?? null);
         const startTime = d.start_time ?? data.start_time ?? d.started_at ?? data.started_at ?? null;
-        const endTime   = d.end_time ?? data.end_time ?? d.ended_at ?? data.ended_at ?? null;
-        // รหัสนักศึกษาและชื่อ-นามสกุล
-        const studentId = d.student_id ?? data.student_id ?? d.student ?? data.student ?? localStorage.getItem('student_id') ?? '—';
-        // ดึงชื่อ-นามสกุลจาก JWT token (localStorage)
-        function parseJwt(token) {
-          try { return JSON.parse(atob(token.split('.')[1])); } catch { return null; }
-        }
+        const endTime = d.end_time ?? data.end_time ?? d.ended_at ?? data.ended_at ?? null;
+
+        // รหัสนักศึกษา + ชื่อจาก JWT
+        const studentId = d.student_id ?? data.student_id ?? localStorage.getItem('student_id') ?? '—';
         let studentName = '—';
-        const tokenStr = localStorage.getItem('studentToken');
-        if (tokenStr) {
-          const payload = parseJwt(tokenStr);
-          if (payload && payload.name) studentName = payload.name;
-        }
+        const payload = parseJwt(localStorage.getItem('studentToken'));
+        if (payload?.name) studentName = payload.name;
 
         // แสดงผล
-        $('totalValue').textContent   = (total != null) ? total : '—';
-        $('correctValue').textContent = (correct != null) ? correct : '—';
-        $('wrongValue').textContent   = (wrong != null) ? wrong : '—';
-  $('studentId').textContent    = studentId;
-  $('studentName').textContent  = studentName;
-        // ฟังก์ชันแปลงวันที่เป็น dd/mm/yyyy HH:MM (ไม่มีวินาที)
-        function formatDateDMYHM(dt) {
-          if (!dt) return '—';
-          const d = parseDateStr(dt);
-          if (isNaN(d)) return '—';
-          const day = d.getUTCDate().toString().padStart(2, '0');
-          const month = (d.getUTCMonth() + 1).toString().padStart(2, '0');
-          const year = d.getUTCFullYear();
-          const hour = d.getUTCHours().toString().padStart(2, '0');
-          const min = d.getUTCMinutes().toString().padStart(2, '0');
-          return `${day}/${month}/${year} ${hour}:${min}`;
-        }
-        $('startTime').textContent    = startTime ? formatDateDMYHM(startTime) : '—';
-        $('endTime').textContent      = endTime ? formatDateDMYHM(endTime) : '—';
+        $('totalValue').textContent = (total ?? '—');
+        $('correctValue').textContent = (correct ?? '—');
+        $('wrongValue').textContent = (wrong ?? '—');
+        $('studentId').textContent = studentId;
+        $('studentName').textContent = studentName;
+        $('startTime').textContent = startTime ? formatDateDMYHM(startTime) : '—';
+        $('endTime').textContent = endTime ? formatDateDMYHM(endTime) : '—';
 
-        // เวลาที่ใช้ (รองรับฟอร์แมตวันที่ MySQL)
-        function parseDateStr(dt) {
-          if (!dt) return null;
-          // ถ้าเป็นฟอร์แมต 'YYYY-MM-DD HH:MM:SS' ให้แปลงเป็น ISO string
-          if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dt)) {
-            return new Date(dt.replace(' ', 'T') + 'Z');
-          }
-          return new Date(dt);
-        }
         if (startTime && endTime) {
           const st = parseDateStr(startTime);
           const en = parseDateStr(endTime);
-          if (!isNaN(st) && !isNaN(en)) {
-            $('duration').textContent = fmtDuration(en - st);
-          } else {
-            $('duration').textContent = '—';
-          }
-        } else if (d.duration_ms ?? data.duration_ms) {
+          $('duration').textContent = (!isNaN(st) && !isNaN(en)) ? fmtDuration(en - st) : '—';
+        } else if ((d.duration_ms ?? data.duration_ms) != null) {
           $('duration').textContent = fmtDuration(d.duration_ms ?? data.duration_ms);
         } else {
           $('duration').textContent = '—';
         }
-
-
-
       } catch (err) {
-  console.error(err);
-  showBanner('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger', 5000);
+        console.error(err);
+        showBanner('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger', 5000);
       }
     });
-
-    // ออกจากระบบ
-    function logout() {
-      localStorage.removeItem('userToken');
-      localStorage.removeItem('studentId');
-      localStorage.removeItem('session_id');
-      localStorage.removeItem('examset_id');
-  location.href = 'student_login.html';
-    }
   </script>
 </body>
+
 </html>

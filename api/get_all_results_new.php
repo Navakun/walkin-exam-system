@@ -1,90 +1,70 @@
 <?php
-require_once '../vendor/autoload.php';
-require_once '../config/db.php';
-
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
-
+// api/get_all_results_new.php
+declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Cache-Control: no-store');
+
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+ini_set('error_log', __DIR__ . '/get_all_results_new_error.log');
+
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/helpers/jwt_helper.php';
+
+function out($o, int $code = 200)
+{
+    http_response_code($code);
+    echo json_encode($o, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// ------- Auth: รับ Bearer token แล้วตรวจ role แบบยืดหยุ่น -------
+$h = array_change_key_case(getallheaders(), CASE_LOWER);
+if (!isset($h['authorization']) || !preg_match('/bearer\s+(\S+)/i', $h['authorization'], $m)) {
+    out(['status' => 'error', 'message' => 'Unauthorized'], 401);
+}
+$claims = decodeToken($m[1]);
+if (!$claims) out(['status' => 'error', 'message' => 'Unauthorized'], 401);
+
+$claims = (array)$claims;
+$role = strtolower((string)($claims['role'] ?? $claims['user_role'] ?? $claims['typ'] ?? $claims['scope'] ?? ''));
+$allowRoles = ['teacher', 'instructor', 'admin'];
+if (!in_array($role, $allowRoles, true)) {
+    out(['status' => 'error', 'message' => 'Forbidden'], 403);
+}
+
+// (ถ้ามีในโทเค็น) ไว้ใช้ฟิลเตอร์รายผู้สอนภายหลังได้
+$instructorId = $claims['instructor_id'] ?? $claims['sub'] ?? null;
 
 try {
-    // ตรวจสอบ Authorization header
-    $headers = getallheaders();
-    if (!isset($headers['Authorization']) && !isset($headers['authorization'])) {
-        throw new Exception('กรุณาเข้าสู่ระบบ');
+    $pdo->exec("SET time_zone = '+07:00'");
+
+    // ดึงรายการ session ทั้งหมด + ชื่อ นศ. + ชุดข้อสอบ (ผ่าน exam_slots -> examset)
+    // !! ไม่ผูกกับ s.examset_id อีกต่อไป เพื่อตัด error "Unknown column 's.examset_id'"
+    $sql = "
+    SELECT 
+      se.session_id,
+      se.student_id,
+      st.name AS student_name,
+      COALESCE(es.title, CONCAT('ชุดสอบ #', COALESCE(sl.examset_id, '—'))) AS exam_title,
+      se.start_time,
+      se.end_time,
+      se.score
+    FROM examsession se
+    JOIN student st       ON st.student_id = se.student_id
+    LEFT JOIN exam_slots sl ON sl.id        = se.slot_id
+    LEFT JOIN examset es    ON es.examset_id = sl.examset_id
+    ORDER BY se.session_id DESC
+  ";
+    $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    // แปลงคะแนนเป็นเลขทศนิยม 2 ตำแหน่ง (ถ้ามี)
+    foreach ($rows as &$r) {
+        if ($r['score'] !== null) $r['score'] = (float)$r['score'];
     }
 
-    // รับ token
-    $auth_header = isset($headers['Authorization']) ? $headers['Authorization'] : $headers['authorization'];
-    if (!preg_match('/Bearer\s+(.*)$/i', $auth_header, $matches)) {
-        throw new Exception('Token ไม่ถูกต้อง');
-    }
-
-    $token = $matches[1];
-
-    if (empty($jwt_key)) {
-        throw new Exception('JWT key not configured');
-    }
-
-    // ตรวจสอบ token
-    $decoded = JWT::decode($token, new Key($jwt_key, 'HS256'));
-    
-    // ตรวจสอบว่าเป็น token ของอาจารย์
-    if (!isset($decoded->role) || $decoded->role !== 'teacher') {
-        throw new Exception('ไม่มีสิทธิ์เข้าถึงข้อมูล');
-    }
-
-    // ดึงข้อมูลผลสอบทั้งหมด
-    $sql = "SELECT 
-                s.session_id,
-                st.student_id,
-                st.name AS student_name,
-                es.title AS exam_title,
-                s.score,
-                s.start_time,
-                s.end_time,
-                CASE 
-                    WHEN s.end_time IS NULL THEN 'in_progress'
-                    ELSE 'completed'
-                END AS status
-            FROM 
-                examsession s
-            JOIN 
-                student st ON s.student_id = st.student_id
-            JOIN 
-                examset es ON s.examset_id = es.examset_id
-            ORDER BY 
-                s.session_id DESC";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // จัดรูปแบบข้อมูลก่อนส่งกลับ
-    $formatted_results = array_map(function($result) {
-        return [
-            'session_id' => $result['session_id'],
-            'student_id' => $result['student_id'],
-            'student_name' => $result['student_name'],
-            'exam_title' => $result['exam_title'],
-            'score' => $result['score'],
-            'start_time' => $result['start_time'],
-            'end_time' => $result['end_time'],
-            'status' => $result['status']
-        ];
-    }, $results);
-
-    echo json_encode([
-        'status' => 'success',
-        'data' => $formatted_results
-    ]);
-
-} catch (Exception $e) {
-    http_response_code(401);
-    echo json_encode([
-        'status' => 'error',
-        'message' => $e->getMessage()
-    ]);
+    out(['status' => 'success', 'data' => $rows], 200);
+} catch (Throwable $e) {
+    error_log('[get_all_results_new] ' . $e->getMessage());
+    out(['status' => 'error', 'message' => 'Server error'], 500);
 }
