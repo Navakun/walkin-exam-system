@@ -1,0 +1,218 @@
+/* Teacher Dashboard – clean & calm UI
+   -------------------------------------------------- */
+
+/* 1) ฟอนต์ + โทนสี */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600&display=swap");
+
+:root{
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --primary: #2563eb;      /* blue-600 */
+  --primary-600: #1d4ed8;  /* blue-700 */
+  --info: #0ea5e9;         /* sky-500 */
+  --shadow: 0 6px 20px rgba(17, 24, 39, .06);
+  --radius: 16px;
+
+  /* Navbar sizing (ปรับได้ง่าย) */
+  --nav-pad-y: 10px;
+  --nav-pad-x: 16px;
+  --logo-h: 48px;
+  --title-size: 18px;
+  --logout-pad-y: 8px;
+  --logout-pad-x: 12px;
+}
+
+*{ box-sizing: border-box; }
+html,body{ height:100%; }
+body{
+  font-family: "Inter","Noto Sans Thai",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue","Noto Sans",sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+}
+
+/* 2) Header ให้อ่านง่ายและติดบน */
+header{
+  position: sticky; top: 0; z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,.02);
+  padding: var(--nav-pad-y) var(--nav-pad-x);
+  min-height: calc(var(--logo-h) + var(--nav-pad-y)*2);
+}
+header .logo-text{
+  display:flex; align-items:center; gap:10px;
+}
+header .logo-text img{
+  height: var(--logo-h);
+  width: auto;
+  object-fit: contain;
+  image-rendering: auto; /* ค่าเริ่มต้น */
+}
+/* ใช้ตัวเลือกที่รองรับบน Edge/Chrome/Safari */
+@supports (image-rendering: -webkit-optimize-contrast){
+  header .logo-text img{ image-rendering: -webkit-optimize-contrast; }
+}
+/* ถ้าไม่รองรับข้างบนแต่รองรับ crisp-edges */
+@supports (image-rendering: crisp-edges) and (not (image-rendering: -webkit-optimize-contrast)){
+  header .logo-text img{ image-rendering: crisp-edges; }
+}
+/* จอความหนาแน่นสูงปล่อย auto เพื่อไม่ oversharpen */
+@media (min-resolution: 2dppx){
+  header .logo-text img{ image-rendering: auto; }
+}
+
+header .course-title h2{
+  margin:0;
+  font-weight: 600;
+  font-size: var(--title-size);
+  letter-spacing:.2px;
+  line-height: 1.2;
+}
+
+/* ปุ่มออกจากระบบ */
+.top-right{ position:absolute; right:var(--nav-pad-x); top:calc(var(--nav-pad-y) - 2px); }
+.logout-btn{
+  appearance:none; border:0;
+  background: #ef4444; color:#fff;
+  padding: var(--logout-pad-y) var(--logout-pad-x);
+  border-radius: 12px;
+  font-weight:600; cursor:pointer;
+  box-shadow: 0 4px 14px rgba(239,68,68,.25);
+  transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease;
+  font-size: .95rem;
+}
+.logout-btn:hover{ transform: translateY(-1px); }
+.logout-btn:active{ transform: translateY(0); opacity:.9; }
+
+/* ย่อ header เล็กน้อยตอน scroll (ถ้าใส่ class .shrink ด้วย JS) */
+header.shrink{
+  --nav-pad-y: 6px;
+  --logo-h: 40px;
+  --title-size: 16px;
+  --logout-pad-y: 6px;
+  --logout-pad-x: 10px;
+}
+
+/* 3) คอนเทนเนอร์แคบลงให้สายตาวิ่งสั้น */
+.container{ max-width: 1120px; }
+
+/* 4) หัวข้อส่วน (h3) ให้มีเส้นเน้นแบบเรียบ */
+h3.border-bottom{
+  border:0 !important;
+  margin-bottom: 0.75rem !important;
+  position: relative;
+  padding-bottom: .5rem !important;
+}
+h3.border-bottom::after{
+  content:"";
+  display:block; height:3px; width:64px;
+  background: linear-gradient(90deg, var(--primary), rgba(37,99,235,.25));
+  border-radius: 3px;
+  margin-top: .5rem;
+}
+
+/* 5) Card – ขอบโค้ง เงานุ่ม เนื้อหาเว้นหายใจ */
+.card{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease;
+  overflow: hidden;
+}
+.card:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(17,24,39,.09);
+  border-color: #dde3ee;
+}
+.card-body{ padding: 18px 18px 20px 18px; }
+
+/* ชื่อการ์ด + ไอคอน */
+.card-title{
+  display:flex; align-items:center; gap:10px;
+  margin-bottom: .35rem; font-weight: 600;
+}
+.card-title i{
+  display:inline-flex; align-items:center; justify-content:center;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #eff6ff; color: var(--primary);
+  border: 1px solid #dbeafe;
+  font-size: 18px; line-height: 1;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.04);
+}
+
+/* คำอธิบายสั้น ๆ */
+.card-text{
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+/* 6) ปุ่ม – ใหญ่ จับง่าย โทนเดียวกัน */
+.btn{
+  border-radius: 12px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border: none;
+  transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease;
+}
+.btn i{ font-size: 1rem; margin-right: .45rem; transform: translateZ(0); }
+
+.btn:focus-visible{
+  outline: 3px solid rgba(37,99,235,.25);
+  outline-offset: 2px;
+}
+.btn-primary{
+  background: var(--primary);
+  box-shadow: 0 6px 16px rgba(37,99,235,.25);
+}
+.btn-primary:hover{ background: var(--primary-600); transform: translateY(-1px); }
+.btn-primary:active{ transform: translateY(0); opacity:.95; }
+
+.btn-info{
+  background: var(--info);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(14,165,233,.25);
+}
+.btn-info:hover{ filter: brightness(.95); transform: translateY(-1px); }
+
+/* 7) ระยะห่างแถวให้โปร่งขึ้นบนจอใหญ่ */
+@media (min-width: 992px){
+  .row.g-3{ row-gap: 1.1rem !important; }
+  .row.g-4{ row-gap: 1.2rem !important; }
+}
+
+/* 8) ปุ่มใน card ที่เป็นกลุ่ม d-grid ให้ระยะห่างกำลังดี */
+.d-grid.gap-2{ gap: .6rem !important; }
+
+/* 9) ลิงก์แบบไม่รก */
+a{ text-decoration: none; }
+a:hover{ text-decoration: none; }
+
+/* 10) โหมดลดความรก: ซ่อนเส้นขอบ bootstrap เดิมที่ไม่จำเป็น */
+.border-bottom{ border-bottom: none !important; }
+
+/* 11) มือถือ: เว้นระยะให้สมูท */
+@media (max-width: 576px){
+  :root{
+    --nav-pad-y: 8px;
+    --nav-pad-x: 12px;
+    --logo-h: 44px;
+    --title-size: 17px;
+  }
+  .card-body{ padding: 16px; }
+  .card-title i{ width:36px; height:36px; font-size:16px; }
+}
+
+/* 12) โทนสีไอคอนตามหมวด เพื่อสแกนสายตาเร็ว */
+.card .fa-calendar-alt{ color:#0369a1; background:#e0f2fe; border-color:#bae6fd; }
+.card .fa-users{        color:#15803d; background:#dcfce7; border-color:#bbf7d0; }
+.card .fa-chart-bar{    color:#b45309; background:#fef3c7; border-color:#fde68a; }
+.card .fa-file-alt{     color:#6d28d9; background:#ede9fe; border-color:#ddd6fe; }
+.card .fa-question-circle{ color:#1e40af; background:#e9f0ff; border-color:#dbeafe; }
+
+/* 13) ปรับสีกลุ่มข้อความเล็ก ๆ */
+small, .text-muted{ color: var(--muted) !important; }

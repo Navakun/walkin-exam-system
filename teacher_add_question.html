@@ -5,137 +5,194 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>เพิ่มคำถามใหม่</title>
-  <link rel="icon" href="favicon.ico" />
+
+  <link rel="icon" href="data:," />
   <link rel="stylesheet" href="assets/css/main.css">
   <link rel="stylesheet" href="assets/css/teacher.css">
-  <link rel="stylesheet" href="assets/css/addquestion.css">
-  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <!-- ใช้สไตล์เดียวกับหน้าแก้ไข -->
+  <link rel="stylesheet" href="assets/css/teacher-edit-question.css">
+
+  <!-- SweetAlert2 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <style>
+    /* ปรับโทน SweetAlert2 ให้เข้ากับ UI */
+    .swal2-popup {
+      border-radius: 16px !important;
+      box-shadow: 0 18px 44px rgba(17, 24, 39, .18)
+    }
+
+    .swal2-styled.swal2-confirm {
+      border-radius: 12px !important;
+      background: #2563eb !important;
+      font-weight: 700
+    }
+
+    .swal2-styled.swal2-cancel {
+      border-radius: 12px !important;
+      background: #e5e7eb !important;
+      color: #111827 !important
+    }
+  </style>
 </head>
 
 <body>
-
   <header>
     <div class="logo-text">
       <img src="nulogo.png" alt="Logo" height="60">
       <div class="course-title">
-        <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ<br>มหาวิทยาลัยนเรศวร</h2>
+        <h2>เพิ่มคำถามใหม่</h2>
       </div>
     </div>
     <div class="top-right">
-      <button id="backBtn" class="home-btn"><i class="fas fa-arrow-left"></i> คลังข้อสอบ</button>
-      <button id="logoutBtn" class="logout-btn"><i class="fas fa-sign-out-alt"></i> ออกจากระบบ</button>
+      <button id="backBtn" class="home-btn">คลังข้อสอบ</button>
+      <button id="logoutBtn" class="logout-btn">ออกจากระบบ</button>
     </div>
   </header>
 
-  <main class="teacher-dashboard">
-    <div class="page-header">
-      <h1>เพิ่มคำถามใหม่</h1>
-      <div class="subtext">กรุณากรอกข้อมูลให้ครบถ้วนทุกช่อง เพื่อความถูกต้องของข้อสอบ</div>
-    </div>
+  <div class="container">
+    <h2>เพิ่มคำถามใหม่</h2>
+    <form id="addQuestionForm">
+      <label for="question_text">คำถาม:</label>
+      <textarea id="question_text" required placeholder="พิมพ์คำถามของคุณที่นี่..."></textarea>
 
-    <form id="questionForm">
-      <div class="form-group">
-        <label for="questionText"><i class="fas fa-question-circle"></i> คำถาม:</label>
-        <textarea id="questionText" name="question_text" rows="3" required
-          placeholder="พิมพ์คำถามของคุณที่นี่..."></textarea>
-      </div>
+      <label for="choiceA">ตัวเลือก A:</label>
+      <input type="text" id="choiceA" required placeholder="ตัวเลือก A">
 
-      <div class="form-group">
-        <label><i class="fas fa-list-ol"></i> ตัวเลือก:</label>
-        <div class="choice-grid">
-          <p><i class="fas fa-chevron-right"></i> A</p>
-          <input type="text" name="choices[A]" placeholder="ตัวเลือก A" required />
-          <p><i class="fas fa-chevron-right"></i> B</p>
-          <input type="text" name="choices[B]" placeholder="ตัวเลือก B" required />
-          <p><i class="fas fa-chevron-right"></i> C</p>
-          <input type="text" name="choices[C]" placeholder="ตัวเลือก C" required />
-          <p><i class="fas fa-chevron-right"></i> D</p>
-          <input type="text" name="choices[D]" placeholder="ตัวเลือก D" required />
-        </div>
-      </div>
+      <label for="choiceB">ตัวเลือก B:</label>
+      <input type="text" id="choiceB" required placeholder="ตัวเลือก B">
 
-      <div class="form-group">
-        <label for="correctChoice"><i class="fas fa-check-circle"></i> คำตอบที่ถูกต้อง:</label>
-        <select id="correctChoice" name="correct_choice" required>
-          <option value="" disabled selected>เลือกคำตอบที่ถูกต้อง</option>
-          <option value="A">ตัวเลือก A</option>
-          <option value="B">ตัวเลือก B</option>
-          <option value="C">ตัวเลือก C</option>
-          <option value="D">ตัวเลือก D</option>
-        </select>
-      </div>
+      <label for="choiceC">ตัวเลือก C:</label>
+      <input type="text" id="choiceC" required placeholder="ตัวเลือก C">
 
-      <div class="form-group">
-        <label for="difficultyLevel"><i class="fas fa-signal"></i> ระดับความยาก:</label>
-        <select id="difficultyLevel" name="difficulty_level" required>
-          <option value="" disabled selected>เลือกระดับความยาก</option>
-          <option value="0.150">ง่าย</option>
-          <option value="0.500">ปานกลาง</option>
-          <option value="0.850">ยาก</option>
-        </select>
-      </div>
+      <label for="choiceD">ตัวเลือก D:</label>
+      <input type="text" id="choiceD" required placeholder="ตัวเลือก D">
 
-      <button type="submit" class="action-button">
-        <i class="fas fa-save"></i> บันทึกคำถาม
-      </button>
+      <label for="correct_choice">คำตอบที่ถูกต้อง:</label>
+      <select id="correct_choice" required>
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="D">D</option>
+      </select>
+
+      <label for="difficulty">ระดับความยาก:</label>
+      <!-- ให้เหมือนหน้าแก้ไข: easy/medium/hard แล้ว map เป็น 0.15/0.5/0.85 -->
+      <select id="difficulty" required>
+        <option value="easy">ง่าย</option>
+        <option value="medium" selected>ปานกลาง</option>
+        <option value="hard">ยาก</option>
+      </select>
+
+      <!-- ปุ่ม sticky มุมขวาล่าง -->
+      <button type="submit" class="submit-btn sticky-save">บันทึกคำถาม</button>
     </form>
-  </main>
+  </div>
+
+  <!-- โหลด SweetAlert2 ก่อนโค้ดของเรา -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <script>
-    (() => {
-      const form = document.getElementById('questionForm');
+    (function init() {
+      if (!window.Swal) { console.error('SweetAlert2 ไม่ได้โหลด'); return; }
+
+      // Helpers (เหมือนหน้าแก้ไข)
+      const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 2200, timerProgressBar: true });
+      const showError = (msg) => Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: msg });
+      const showWarn = (title, text, goto) =>
+        Swal.fire({ icon: 'warning', title, text, confirmButtonText: 'ไปต่อ' })
+          .then(() => { if (goto) location.href = goto; });
+      const showLoading = (t = 'กำลังบันทึก...') => Swal.fire({ title: t, allowOutsideClick: false, allowEscapeKey: false, didOpen: () => Swal.showLoading() });
+      const closeLoading = () => Swal.close();
+
+      // ตรวจ token
       const token = localStorage.getItem('teacherToken');
-      if (!token) {
-        alert('กรุณาเข้าสู่ระบบสำหรับอาจารย์ก่อน');
-        location.href = 'teacher_login.html';
-        return;
-      }
+      if (!token) { showWarn('ยังไม่ได้เข้าสู่ระบบ', 'กรุณาเข้าสู่ระบบสำหรับอาจารย์ก่อน', 'teacher_login.html'); return; }
+      const authHeader = { 'Authorization': 'Bearer ' + token };
+
+      // Map label -> float (ให้เหมือนหน้าแก้ไข)
+      const toFloatDifficulty = (label) => label === 'easy' ? 0.15 : (label === 'hard' ? 0.85 : 0.5);
+
+      // Submit
+      const form = document.getElementById('addQuestionForm');
+      const saveBtn = document.querySelector('.submit-btn');
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const fd = new FormData(form);
+
+        // ยืนยันก่อน
+        const ok = await Swal.fire({
+          icon: 'question', title: 'ยืนยันการบันทึก?', text: 'ระบบจะเพิ่มคำถามใหม่ตามข้อมูลที่กรอก',
+          showCancelButton: true, confirmButtonText: 'บันทึกเลย', cancelButtonText: 'ยกเลิก'
+        });
+        if (!ok.isConfirmed) return;
+
+        // เตรียม payload
+        const diffVal = toFloatDifficulty(document.getElementById('difficulty').value);
         const payload = {
-          question_text: fd.get('question_text'),
+          question_text: document.getElementById('question_text').value.trim(),
           choices: {
-            A: fd.get('choices[A]'),
-            B: fd.get('choices[B]'),
-            C: fd.get('choices[C]'),
-            D: fd.get('choices[D]')
+            A: document.getElementById('choiceA').value.trim(),
+            B: document.getElementById('choiceB').value.trim(),
+            C: document.getElementById('choiceC').value.trim(),
+            D: document.getElementById('choiceD').value.trim(),
           },
-          correct_choice: fd.get('correct_choice'),
-          difficulty_level: parseFloat(fd.get('difficulty_level') || 0.5)
+          correct_choice: document.getElementById('correct_choice').value,
+          difficulty: diffVal,          // ให้เหมือนหน้าแก้ไข
+          difficulty_level: diffVal     // เผื่อ backend เดิมใช้ชื่อนี้
         };
 
-        console.log("Payload to API:", payload);
+        // ตรวจฟิลด์ว่าง (กันช่องว่างเฉย ๆ)
+        if (!payload.question_text || !payload.choices.A || !payload.choices.B || !payload.choices.C || !payload.choices.D) {
+          return showError('กรุณากรอกข้อมูลให้ครบทุกช่อง');
+        }
+
+        // loading state
+        const originalText = saveBtn.textContent;
+        saveBtn.disabled = true; saveBtn.classList.add('is-loading'); saveBtn.textContent = 'กำลังบันทึก...';
+        showLoading('กำลังบันทึก...');
 
         try {
-          const r = await fetch('api/create_question.php', {
+          const res = await fetch('api/create_question.php', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: 'Bearer ' + token
-            },
-            body: JSON.stringify(payload)
+            headers: { 'Content-Type': 'application/json', ...authHeader },
+            body: JSON.stringify(payload),
+            credentials: 'same-origin'
           });
-          const res = await r.json();
-          if (!r.ok || res.status !== 'success') throw new Error(res.message || 'บันทึกไม่สำเร็จ');
 
-          alert('เพิ่มคำถามสำเร็จ');
-          location.href = 'teacher_question_bank.html';
+          closeLoading();
+
+          if (res.status === 401) {
+            return showWarn('เซสชันหมดอายุ', 'กรุณาเข้าสู่ระบบใหม่', 'teacher_login.html');
+          }
+
+          const result = await res.json();
+          if (res.ok && result.status === 'success') {
+            Toast.fire({ icon: 'success', title: 'เพิ่มคำถามสำเร็จ' });
+            setTimeout(() => location.href = 'teacher_question_bank.html', 1200);
+          } else {
+            showError(result.message || 'บันทึกไม่สำเร็จ');
+          }
         } catch (err) {
-          alert('เกิดข้อผิดพลาด: ' + err.message);
+          closeLoading();
+          console.error(err);
+          showError('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ');
+        } finally {
+          saveBtn.classList.remove('is-loading');
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
         }
       });
 
+      // ปุ่มนำทางเหมือนหน้าแก้ไข
       document.getElementById('backBtn').onclick = () => (location.href = 'teacher_question_bank.html');
       document.getElementById('logoutBtn').onclick = () => {
-        localStorage.removeItem('teacherToken');
-        location.href = 'teacher_login.html';
+        Swal.fire({
+          icon: 'warning', title: 'ออกจากระบบ?', text: 'ต้องการออกจากระบบตอนนี้หรือไม่',
+          showCancelButton: true, confirmButtonText: 'ออกจากระบบ', cancelButtonText: 'ยกเลิก'
+        }).then(r => { if (r.isConfirmed) { localStorage.removeItem('teacherToken'); location.href = 'teacher_login.html'; } });
       };
     })();
   </script>
-
 </body>
 
 </html>

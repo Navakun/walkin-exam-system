@@ -94,3 +94,27 @@ header {
     font-size: 1rem;
     margin-right: 15px;
 }
+
+/* --- โลโก้ส่วนหัวแบบมาตรฐาน ใช้ร่วมทุกหน้า --- */
+header .logo-text img.brand-logo{
+  height: 48px;              /* ใช้ค่าเดียวทั้งโปรเจกต์ (แนะนำ 48 หรือ 64) */
+  width: auto;
+  max-width: none;
+  object-fit: contain;
+  image-rendering: auto;     /* ค่าปลอดภัยเริ่มต้น */
+}
+
+/* Chrome/Edge/Safari ที่รองรับ: ภาพคมขึ้นโดยไม่แตก */
+@supports (image-rendering: -webkit-optimize-contrast){
+  header .logo-text img.brand-logo{ image-rendering: -webkit-optimize-contrast; }
+}
+
+/* ถ้าไม่รองรับ -webkit-optimize-contrast แต่รองรับ crisp-edges ให้ใช้ตัวนี้แทน */
+@supports (image-rendering: crisp-edges) and (not (image-rendering: -webkit-optimize-contrast)){
+  header .logo-text img.brand-logo{ image-rendering: crisp-edges; }
+}
+
+/* บนจอความหนาแน่นสูง กลับมาใช้ auto เพื่อเลี่ยง oversharpen */
+@media (min-resolution: 2dppx){
+  header .logo-text img.brand-logo{ image-rendering: auto; }
+}

@@ -1,263 +1,141 @@
-/* ============================
-   Student Dashboard Styles (Unified, 2025-09)
-   File: assets/css/student-dashboard.css
-   ============================ */
+/* ===========================
+   Student Dashboard (2025-09)
+   =========================== */
 
-/* Reset */
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
+*{box-sizing:border-box}
 :root{
-  --thai-font: "Prompt","Noto Sans Thai",system-ui,-apple-system,"Segoe UI",
-               Roboto,"Helvetica Neue",Arial,sans-serif;
-  --brand:#004080;
-  --brand-2:#007bff;
-  --text:#333;
+  --thai-font:"Prompt","Noto Sans Thai",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --brand:#0d3b8e;
+  --brand-2:#3b6fe6;
+  --text:#1f2937;
   --muted:#6b7280;
   --border:#e5e7eb;
-  --card-shadow: 0 8px 24px rgba(0,0,0,.06);
+  --card-shadow:0 10px 32px rgba(59,111,230,.08);
 }
-
-html, body{
-  font-family: var(--thai-font) !important;
-  color: var(--text);
+html,body{
+  height:100%;
+  font-family:var(--thai-font);
+  color:var(--text);
   background:#f5f6fa;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
 }
 
 /* Header */
-header{
-  background: var(--brand);
-  color:#fff;
-  padding:15px 30px;
-  display:flex; justify-content:space-between; align-items:center;
-  box-shadow:0 2px 10px rgba(0,0,0,.05);
+.app-header{
   position:sticky; top:0; z-index:100;
+  background:linear-gradient(135deg,var(--brand-2),var(--brand));
+  color:#fff;
+  padding:14px 24px;
+  display:flex; align-items:center; justify-content:space-between;
+  box-shadow:0 2px 10px rgba(0,0,0,.05);
 }
-header .logo-text{ display:flex; align-items:center; gap:15px; }
-header img{ height:60px; }
-header .course-title h2{ font-size:1.2rem; line-height:1.4; margin:0; }
-header .top-right{ display:flex; align-items:center; gap:1rem; }
-#studentName{
+.logo-text{display:flex; align-items:center; gap:14px}
+.logo-text img{height:56px; width:auto}
+.course-title h1{font-size:1.1rem; line-height:1.35; margin:0}
+.top-right{display:flex; align-items:center; gap:10px}
+.student-badge{
   background:rgba(255,255,255,.15);
-  padding:6px 14px; border-radius:20px; font-weight:500;
+  border:1px solid rgba(255,255,255,.25);
+  padding:6px 12px; border-radius:9999px; font-weight:600
 }
 .logout-btn{
-  background:#dc3545; color:#fff; border:0; padding:8px 16px; border-radius:8px;
-  font-weight:500; cursor:pointer; transition:.2s; display:flex; align-items:center; gap:6px;
+  background:#dc3545; color:#fff; border:0; padding:8px 14px; border-radius:10px;
+  font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;
+  transition:transform .12s ease, background .12s ease;
 }
-.logout-btn:hover{ background:#c82333; transform:translateY(-1px); }
+.logout-btn:hover{ background:#c82333; transform:translateY(-1px) }
 
 /* Layout */
-.dashboard{ padding:30px; max-width:1200px; margin:0 auto; }
+.dashboard{ max-width:1200px; margin:0 auto; padding:26px 18px }
 
-/* Welcome Banner */
+/* Banner */
 .welcome-banner{
-  background: linear-gradient(135deg, var(--brand-2), var(--brand));
-  color:#fff; padding:25px 30px; border-radius:12px; margin-bottom:30px;
-  box-shadow:0 4px 15px rgba(0,0,0,.15);
+  background:linear-gradient(135deg,var(--brand-2),var(--brand));
+  color:#fff; padding:22px; border-radius:14px; margin-bottom:24px;
+  box-shadow:0 6px 16px rgba(0,0,0,.08)
 }
-.welcome-banner h2{
-  font-size:1.7rem; margin-bottom:8px; display:flex; align-items:center; gap:10px;
-}
-.welcome-text{ opacity:.9; font-size:1rem; }
+.welcome-banner h2{display:flex; align-items:center; gap:10px; font-size:1.5rem; margin:0 0 6px}
+.welcome-text{opacity:.9}
 
-/* ===== Card Grid ===== */
-
-.card-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 24px;
-  align-items: stretch;
+/* Card Grid */
+.card-list{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:22px; align-items:stretch;
 }
 
-/* ===== Card (ทั้ง <a> และ <button>) ===== */
+/* Card (ใช้กับทั้ง <a> และ <button>) */
+.card, .card--home{
+  text-decoration:none!important;
+  display:flex; flex-direction:column; align-items:center; gap:12px;
+  min-height:160px; padding:26px 22px; width:100%;
+  background:linear-gradient(180deg,#f8fbff 80%,#f3f7ff 100%);
+  border:1.5px solid #e3eafc; border-radius:16px;
+  box-shadow:var(--card-shadow);
+  position:relative; overflow:hidden;
+  transition:transform .12s, box-shadow .12s, border-color .12s;
+}
+.card:hover, .card--home:hover{ transform:translateY(-2px); border-color:#bbdefb; box-shadow:0 18px 40px rgba(59,111,230,.13) }
+.card:focus-visible, .card--home:focus-visible{ outline:3px solid #93c5fd; outline-offset:3px }
 
-/* ===== Unified Card Style ===== */
+/* Icon */
+.card-icon{
+  width:60px; height:60px; border-radius:14px;
+  display:grid; place-items:center;
+  background:linear-gradient(180deg,#f3f7ff,#eaf1ff); color:#4f7de8; font-size:26px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9), inset 0 -6px 14px rgba(79,125,232,.08);
+  transition:transform .15s, background .15s, color .15s;
+}
+.card:hover .card-icon{ background:#4f7de8; color:#fff; transform:translateY(-1px) }
 
-.card,
-.card--home {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 160px;
-  background: linear-gradient(180deg,#f8fbff 80%,#f3f7ff 100%);
-  border: 1.5px solid #e3eafc;
-  border-radius: 16px;
-  box-shadow: 0 10px 32px rgba(59,111,230,.08);
-  padding: 28px 26px;
-  position: relative;
-  overflow: hidden;
-  transition: transform .12s, box-shadow .12s, border-color .12s;
-  animation: fadeInUp .45s ease backwards;
-  text-decoration: none !important;
+/* Content */
+.card-content h3{
+  margin:0 0 4px; font-weight:800; color:#1e4fbf; font-size:1.08rem; text-align:center
 }
-.card:hover,
-.card--home:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 40px rgba(59,111,230,.13);
-  border-color: #bbdefb;
-}
-.card:focus-visible,
-.card--home:focus-visible {
-  outline: 3px solid #93c5fd;
-  outline-offset: 3px;
-}
-.card *, .card--home *,
-.card-content h3, .card-content p {
-  text-decoration: none !important;
-}
-.card:nth-child(1), .card--home:nth-child(1){ animation-delay:.06s; }
-.card:nth-child(2), .card--home:nth-child(2){ animation-delay:.12s; }
-.card:nth-child(3), .card--home:nth-child(3){ animation-delay:.18s; }
-.card:nth-child(4), .card--home:nth-child(4){ animation-delay:.24s; }
+.card-content p{ margin:0; color:#6b7a91; font-size:.94rem; text-align:center }
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Arrow */
+.card-arrow{
+  position:absolute; right:12px; bottom:12px; width:34px; height:34px;
+  border-radius:9999px; display:grid; place-items:center;
+  background:#eef5ff; color:#4f7de8; transition:background .15s, color .15s;
 }
+.card--home.center-right .card-arrow{ top:50%; bottom:auto; transform:translateY(-50%) }
+.card:hover .card-arrow{ background:#dfeaff; color:#1e4fbf }
 
-@media (prefers-reduced-motion: reduce) {
-  .card, .card--home, .card-icon, .card-arrow { transition: none !important; animation: none !important; }
-}
-
-/* Card Icon */
-.card-icon {
-  width: 60px; height: 60px;
-  border-radius: 14px;
-  background: linear-gradient(180deg,#f3f7ff,#eaf1ff);
-  color: #4f7de8;
-  font-size: 26px;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.9),
-    inset 0 -6px 14px rgba(79,125,232,.08);
-  display: grid; place-items: center;
-  transition: transform .15s, background .15s, color .15s;
-}
-.card:hover .card-icon,
-.card--home:hover .card-icon {
-  background: #4f7de8;
-  color: #fff;
-  transform: translateY(-1px);
-}
-
-/* Card Content */
-
-.card-content h3 {
-  font-weight: 700;
-  color: #1e4fbf;
-  font-size: 1.08rem;
-  margin-bottom: 4px;
-  text-align: center;
-  text-decoration: none !important;
-}
-.card-content p {
-  color: #6b7a91;
-  font-size: .93rem;
-  margin: 0;
-  text-align: center;
-  text-decoration: none !important;
-}
-
-/* Card Arrow */
-.card-arrow {
-  position: absolute;
-  right: 12px; bottom: 12px;
-  width: 34px; height: 34px;
-  border-radius: 9999px;
-  display: grid; place-items: center;
-  background: #eef5ff;
-  color: #4f7de8;
-  transition: background .15s, color .15s;
-}
-.card:hover .card-arrow,
-.card--home:hover .card-arrow {
-  background: #dfeaff;
-  color: #1e4fbf;
-}
-
-/* Center-right arrow for dashboard */
-.card--home.center-right .card-arrow {
-  top: 50%;
-  right: 12px;
-  bottom: auto;
-  transform: translateY(-50%);
-}
-.card--home.center-right:hover .card-arrow {
-  background: #dfeaff;
-  color: #1e4fbf;
-}
-
-/* Disabled state for button.card */
+/* Disabled state (สำหรับ <button>) */
 button.card[disabled], button.card[aria-disabled="true"],
-button.card--home[disabled], button.card--home[aria-disabled="true"] {
-  filter: grayscale(.1) opacity(.9);
-  cursor: not-allowed;
-  pointer-events: none;
+button.card--home[disabled], button.card--home[aria-disabled="true"]{
+  filter:grayscale(.1) opacity(.9);
+  pointer-events:none; cursor:not-allowed;
 }
-button.card[disabled] .card-icon,
-button.card[aria-disabled="true"] .card-icon,
-button.card--home[disabled] .card-icon,
-button.card--home[aria-disabled="true"] .card-icon {
-  filter: grayscale(.2) opacity(.85);
-}
-button.card[disabled] .card-arrow,
-button.card[aria-disabled="true"] .card-arrow,
-button.card--home[disabled] .card-arrow,
-button.card--home[aria-disabled="true"] .card-arrow {
-  opacity: .65;
-}
+button.card[disabled] .card-arrow{ opacity:.65 }
 
 /* Footer */
-.dashboard-footer {
-  text-align: center;
-  padding: 20px;
-  margin-top: 40px;
-  border-top: 1px solid #eee;
-  color: #666;
-  font-size: .9rem;
-}
+.dashboard-footer{ text-align:center; padding:22px; margin-top:34px; border-top:1px solid #eee; color:#666 }
 
 /* Logout Modal */
 .logout-confirm-modal{
-  position:fixed; inset:0; background:rgba(0,0,0,.6);
-  display:none; justify-content:center; align-items:center; z-index:1000;
-  backdrop-filter: blur(4px);
+  position:fixed; inset:0; display:none; justify-content:center; align-items:center; z-index:1000;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(4px);
 }
 .logout-modal-content{
-  background:#fff; padding:30px; border-radius:12px;
-  max-width:400px; width:90%; text-align:center;
-  box-shadow:0 6px 14px rgba(0,0,0,.2);
-  animation: modalPopIn .3s ease;
+  background:#fff; padding:28px; border-radius:12px; width:90%; max-width:420px; text-align:center;
+  box-shadow:0 6px 16px rgba(0,0,0,.18); animation:modalPop .28s ease;
 }
-.logout-modal-content h3{ color:#dc3545; font-size:1.4rem; margin-bottom:15px; }
-.logout-modal-content p{  color:#555; margin-bottom:20px; }
-.logout-modal-buttons{ display:flex; gap:12px; justify-content:center; }
-.modal-btn{
-  padding:10px 22px; border-radius:8px; border:0; font-size:1rem; font-weight:500;
-  cursor:pointer; transition:.2s;
+.logout-modal-content h3{ color:#dc3545; font-size:1.35rem; margin:0 0 10px }
+.logout-modal-content p{ color:#555; margin:0 0 18px }
+.logout-modal-buttons{ display:flex; gap:12px; justify-content:center }
+.modal-btn{ padding:10px 22px; border-radius:8px; border:0; font-weight:600; cursor:pointer; transition:.15s }
+.modal-btn.cancel{ background:#f8f9fa; color:#333; border:1px solid #ddd }
+.modal-btn.cancel:hover{ background:#e9ecef }
+.modal-btn.confirm{ background:#dc3545; color:#fff }
+.modal-btn.confirm:hover{ background:#c82333; transform:translateY(-1px) }
+@keyframes modalPop{ from{opacity:0; transform:translateY(-14px)} to{opacity:1; transform:translateY(0)} }
+
+/* Responsive */
+@media (max-width:768px){
+  .dashboard{padding:20px}
+  .welcome-banner{padding:18px}
+  .welcome-banner h2{font-size:1.25rem}
 }
-.modal-btn.cancel{ background:#f8f9fa; color:#333; border:1px solid #ddd; }
-.modal-btn.cancel:hover{ background:#e9ecef; }
-.modal-btn.confirm{ background:#dc3545; color:#fff; }
-.modal-btn.confirm:hover{ background:#c82333; transform:translateY(-1px); }
-@keyframes modalPopIn{ from{opacity:0; transform:translateY(-20px);} to{opacity:1; transform:translateY(0);} }
-
-/* ===== Responsive (single block) ===== */
-
-@media (max-width: 768px) {
-  .dashboard { padding: 20px; }
-  .welcome-banner { padding: 20px; }
-  .welcome-banner h2 { font-size: 1.4rem; }
-  .card, .card--home { align-items: flex-start; flex-direction: column; }
-  .card-icon { margin-bottom: 10px; }
-}
-
-
-/* ===== Home Card Variant (ให้เหมือนภาพที่สอง) ===== */
-
-

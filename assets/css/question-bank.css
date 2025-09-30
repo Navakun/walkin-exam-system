@@ -1,0 +1,181 @@
+/* Question Bank – clean & calm UI  */
+/* ใช้ได้ทับ teacher.css โดยเน้นความโปร่ง-ใช้งานง่าย */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600&display=swap");
+
+:root{
+  --bg:#f6f7fb; --surface:#fff; --text:#111827; --muted:#6b7280; --border:#e5e7eb;
+  --primary:#2563eb; --primary-600:#1d4ed8; --danger:#ef4444; --warn:#f59e0b; --ok:#16a34a;
+  --shadow:0 8px 24px rgba(17,24,39,.06); --radius:16px;
+}
+
+body{ background:var(--bg); font-family:"Inter","Noto Sans Thai",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue","Noto Sans",sans-serif; }
+
+/* ปรับกล่องหลักให้โปร่งขึ้น */
+main.teacher-dashboard{
+  max-width: 1180px;
+  margin: 28px auto 36px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px 22px 8px;
+}
+
+/* หัวเรื่อง */
+main.teacher-dashboard h1{
+  margin: 2px 0 14px;
+  font-size: 26px; font-weight: 800;
+}
+main.teacher-dashboard h1::after{
+  content:""; display:block; height:3px; width:64px;
+  background:linear-gradient(90deg,var(--primary),rgba(37,99,235,.25));
+  border-radius:3px; margin-top:10px;
+}
+
+/* แถบเครื่องมือด้านบน */
+.action-bar{
+  display:grid; grid-template-columns: 1fr auto; gap: 12px;
+  align-items:center; margin: 10px 0 8px;
+}
+
+/* ปุ่มหลัก */
+.btn-add{
+  border:0; padding:10px 14px; border-radius:12px; font-weight:700; color:#fff;
+  background: var(--primary); box-shadow:0 10px 20px rgba(37,99,235,.25);
+  transition: transform .08s ease, filter .2s ease, box-shadow .2s ease;
+}
+.btn-add:hover{ transform:translateY(-1px); background:var(--primary-600); }
+.btn-add i{ margin-right:.45rem; }
+
+/* กลุ่มตัวกรอง */
+.action-bar label{ color:var(--muted); font-weight:600; margin-right:8px; }
+.select-filter{
+  padding: 10px 14px; border-radius:12px; border:1px solid var(--border);
+  background:#fff; font-weight:600; min-width:240px; box-shadow: 0 4px 10px rgba(0,0,0,.04);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24'%3E%3Cpath fill='%236b7280' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center; padding-right:38px;
+  transition:border-color .2s ease, box-shadow .2s ease;
+}
+.select-filter:hover{ border-color:#d4d8e1 }
+.select-filter:focus{ outline:0; border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.15) }
+
+/* กล่อง error */
+.message.error{
+  display:none; margin: 8px 0 4px;
+  background:#fee2e2; color:#991b1b; border:1px solid #fecaca;
+  border-radius:12px; padding:12px 14px; font-weight:600;
+}
+
+/* ตาราง */
+#question-list-container{ overflow:auto; border-radius:12px; }
+table{
+  width:100%; border-collapse: separate; border-spacing:0;
+  background:#fff; border:1px solid var(--border);
+  border-radius: 12px; overflow:hidden;
+}
+thead th{
+  position: sticky; top: 0;
+  background:#f8fafc; color:#0f172a;
+  font-weight:700; text-align:left; letter-spacing:.2px;
+  padding: 12px 14px; border-bottom:1px solid var(--border);
+}
+tbody td{
+  padding: 12px 14px; vertical-align: middle; border-bottom:1px solid #f1f5f9;
+}
+tbody tr:nth-child(odd){ background:#ffffff; }
+tbody tr:nth-child(even){ background:#fbfdff; }
+tbody tr:hover{ background:#f6fafe; }
+
+/* คอลัมน์กึ่งกลาง */
+.text-center{ text-align:center }
+
+/* ปุ่มจัดการ */
+.actions{ white-space:nowrap; text-align:center; }
+.btn-edit,.btn-delete{
+  padding:8px 10px; border:0; border-radius:10px; cursor:pointer; font-weight:700;
+  display:inline-flex; align-items:center; gap:.4rem; transition: transform .08s ease, filter .2s ease;
+}
+.btn-edit{ background:#fde68a; color:#713f12; }
+.btn-edit:hover{ filter:brightness(.97); transform:translateY(-1px); }
+.btn-delete{ background:#ef4444; color:#fff; }
+.btn-delete:hover{ filter:brightness(.98); transform:translateY(-1px); }
+
+/* ป้ายระดับความยาก */
+.difficulty-easy,.difficulty-medium,.difficulty-hard,.difficulty-unknown{
+  display:inline-block; padding:6px 10px; border-radius:999px; font-weight:700; font-size:.92rem;
+}
+.difficulty-easy{ background:#ecfdf5; color:#047857; }
+.difficulty-medium{ background:#fffbeb; color:#b45309; }
+.difficulty-hard{ background:#fef2f2; color:#b91c1c; }
+.difficulty-unknown{ background:#f1f5f9; color:#475569; font-style:normal; }
+
+/* เส้นขั้น */
+hr{ border:0; height:1px; background:var(--border); margin: 8px 0 16px }
+
+/* Responsive: แสดงเป็นการ์ดบนจอเล็ก */
+@media (max-width: 860px){
+  thead{ display:none; }
+  table, tbody, tr, td{ display:block; width:100%; }
+  tbody tr{ background:#fff; margin:10px 0; border:1px solid var(--border); border-radius:12px; box-shadow:0 6px 16px rgba(17,24,39,.06); }
+  tbody td{ border-bottom: 1px dashed #e5e7eb; }
+  tbody td:last-child{ border-bottom:0; }
+  tbody td::before{
+    content: attr(data-label);
+    display:block; font-size:.85rem; color:var(--muted); margin-bottom:4px; font-weight:600;
+  }
+  .actions{ padding-top:8px; }
+}
+
+/* ให้ <td> สร้าง label อัตโนมัติบนมือถือ ด้วย nth-child */
+@media (max-width: 860px){
+  tbody td:nth-child(1){ --label:"ID"; }
+  tbody td:nth-child(2){ --label:"คำถาม"; }
+  tbody td:nth-child(3){ --label:"คำตอบที่ถูก"; }
+  tbody td:nth-child(4){ --label:"ระดับความยาก"; }
+  tbody td:nth-child(5){ --label:"ค่าอำนาจจำแนก"; }
+  tbody td:nth-child(6){ --label:"จำนวนผู้ทำ"; }
+  tbody td:nth-child(7){ --label:"ตอบถูก (%)"; }
+  tbody td:nth-child(8){ --label:"จัดการ"; }
+  tbody td{ position:relative; }
+  tbody td::before{ content: var(--label); }
+}
+
+/* ปรับ header (โลโก้/ปุ่ม) ให้พอดี */
+header{ background:#fff; border-bottom:1px solid var(--border); }
+header .logo-text img{ height:52px; width:auto; object-fit:contain; }
+.top-right .home-btn{ background:#3b82f6; color:#fff; border:0; border-radius:12px; padding:8px 12px; font-weight:700; }
+.top-right .home-btn:hover{ filter:brightness(.97); }
+.top-right .logout-btn{ padding:8px 12px; border-radius:12px; }
+
+/* จัด layout ของแถบเครื่องมือใหม่ให้ label อยู่ติดกับ select */
+.action-bar{
+  display: flex;
+  align-items: center;
+  gap: 12px;            /* ช่องไฟรวม */
+  padding: 10px 0;
+  margin-bottom: 20px;
+  /* เดิมใช้ space-between ทำให้ label กับ select แยกกันเกินไป */
+  justify-content: flex-start;
+}
+
+/* ดันกลุ่มตัวกรองไปชิดฝั่งขวา และให้ label ชิด select */
+.action-bar label[for="difficultyFilter"]{
+  margin-left: auto;    /* ดันไปด้านขวา */
+  margin-right: 8px;    /* ช่องไฟระหว่าง label กับ select */
+  font-weight: 600;
+  color: #6b7280;
+}
+
+/* มือถือ: stack ให้สวยและไม่เบียด */
+@media (max-width: 600px){
+  .action-bar{
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .action-bar label[for="difficultyFilter"]{
+    margin-left: 0;     /* ไม่ต้องดันไปขวาในจอแคบ */
+  }
+}
+.action-bar{ justify-content: space-between; }
+.filter-group{ display:flex; align-items:center; gap:8px; }

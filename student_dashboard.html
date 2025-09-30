@@ -3,56 +3,59 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>หน้าหลักนิสิต</title>
 
-  <!-- Google Fonts -->
+  <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-  <!-- Font Awesome -->
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet">
 
   <!-- Bootstrap (โหลดก่อน เพื่อให้ไฟล์ของเรามา override) -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <!-- SweetAlert2 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 
-  <!-- Chart.js (ถ้าอนาคตมีใช้) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- CSS ของเรา (โหลดหลังสุดเพื่อ override Bootstrap) -->
+  <!-- CSS ของเรา -->
   <link rel="stylesheet" href="assets/css/student-dashboard.css">
-
   <link rel="icon" href="favicon.ico">
 </head>
 
 <body>
-  <header>
+  <!-- Header -->
+  <header class="app-header">
     <div class="logo-text">
-      <img src="nulogo.png" alt="Logo" height="60">
+      <img src="nulogo.png" alt="ตรามหาวิทยาลัย" />
       <div class="course-title">
-        <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ<br>มหาวิทยาลัยนเรศวร</h2>
+        <h1>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ<br>มหาวิทยาลัยนเรศวร</h1>
       </div>
     </div>
     <div class="top-right">
-      <span id="studentName"></span>
-      <button id="logoutBtn" class="logout-btn">ออกจากระบบ</button>
+      <span id="studentName" class="student-badge"></span>
+      <button id="logoutBtn" class="logout-btn">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        ออกจากระบบ
+      </button>
     </div>
   </header>
 
+  <!-- Main -->
   <main class="dashboard" id="main" role="main">
+    <!-- Welcome -->
     <section class="welcome-banner" aria-labelledby="homeHeading">
-      <h2 id="homeHeading"><i class="fas fa-graduation-cap" aria-hidden="true"></i> หน้าหลัก</h2>
+      <h2 id="homeHeading">
+        <i class="fas fa-graduation-cap" aria-hidden="true"></i>
+        หน้าหลัก
+      </h2>
       <p class="welcome-text">ยินดีต้อนรับสู่ระบบจัดการการสอบออนไลน์</p>
     </section>
 
-    <!-- live region สำหรับบอกสถานะปุ่มเข้าสอบ (ซ่อนไว้) -->
+    <!-- live region สำหรับสถานะปุ่มเข้าสอบ -->
     <div id="srStatus" class="visually-hidden" aria-live="polite"></div>
 
+    <!-- Cards -->
     <nav class="card-list" aria-label="เมนูหลัก">
       <!-- ลงทะเบียนสอบ -->
       <a href="student_register_exam.html" class="card card--home center-right">
@@ -74,9 +77,8 @@
         <div class="card-arrow"><i class="fas fa-chevron-right" aria-hidden="true"></i></div>
       </a>
 
-      <!-- เข้าสอบ -->
-      <button id="startExamBtn" type="button" class="card card--home center-right" onclick="handleStartExam(event)"
-        disabled aria-disabled="true" aria-label="เข้าสอบ">
+      <!-- เข้าสอบ (ใช้ button เพื่อคุม disabled ได้จริง) -->
+      <button id="startExamBtn" type="button" class="card card--home center-right" disabled aria-disabled="true">
         <div class="card-icon"><i class="fas fa-edit" aria-hidden="true"></i></div>
         <div class="card-content">
           <h3>เข้าสอบ</h3>
@@ -85,37 +87,36 @@
         <div class="card-arrow"><i class="fas fa-chevron-right" aria-hidden="true"></i></div>
       </button>
 
-      <!-- ผลสอบ -->
-      <a href="#" class="card card--home center-right" id="viewResultBtn" aria-disabled="true" tabindex="-1">
+      <!-- ผลสอบ (ใช้ button เพื่อคุม disabled ได้จริง) -->
+      <button id="viewResultBtn" type="button" class="card card--home center-right" disabled aria-disabled="true">
         <div class="card-icon"><i class="fas fa-poll" aria-hidden="true"></i></div>
         <div class="card-content">
           <h3>ดูผลคะแนน</h3>
           <p>ตรวจสอบผลคะแนนสอบของคุณ</p>
         </div>
         <div class="card-arrow"><i class="fas fa-chevron-right" aria-hidden="true"></i></div>
+      </button>
+
+      <!-- เอกสารประกอบ -->
+      <a href="student_materials.html" class="card card--home center-right">
+        <div class="card-icon"><i class="fas fa-book-open" aria-hidden="true"></i></div>
+        <div class="card-content">
+          <h3>เอกสารประกอบ</h3>
+          <p>เปิดอ่านเอกสารรายวิชา / ฟังเสียงอ่าน</p>
+        </div>
+        <div class="card-arrow"><i class="fas fa-chevron-right" aria-hidden="true"></i></div>
       </a>
     </nav>
-
-    <!-- เอกสารประกอบ -->
-    <a href="student_materials.html" class="card card--home center-right">
-      <div class="card-icon"><i class="fas fa-book-open" aria-hidden="true"></i></div>
-      <div class="card-content">
-        <h3>เอกสารประกอบ</h3>
-        <p>เปิดอ่านเอกสารรายวิชา / ฟังเสียงอ่าน</p>
-      </div>
-      <div class="card-arrow"><i class="fas fa-chevron-right" aria-hidden="true"></i></div>
-    </a>
-
   </main>
 
   <footer class="dashboard-footer">
     <small>&copy; 2025 ระบบจัดการการสอบออนไลน์ มหาวิทยาลัยนเรศวร</small>
   </footer>
 
-  <!-- Modal ยืนยันออกจากระบบ -->
+  <!-- Modal: ยืนยันออกจากระบบ -->
   <div class="logout-confirm-modal" id="logoutModal" aria-hidden="true">
-    <div class="logout-modal-content">
-      <h3><i class="fas fa-sign-out-alt"></i> ยืนยันการออกจากระบบ</h3>
+    <div class="logout-modal-content" role="dialog" aria-modal="true" aria-labelledby="logoutTitle">
+      <h3 id="logoutTitle"><i class="fas fa-sign-out-alt"></i> ยืนยันการออกจากระบบ</h3>
       <p>คุณต้องการออกจากระบบหรือไม่?</p>
       <div class="logout-modal-buttons">
         <button class="modal-btn cancel" id="cancelLogout">
@@ -128,69 +129,101 @@
     </div>
   </div>
 
+  <!-- Vendors -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Page Script -->
   <script>
-    // =============== JWT ===============
+    // --------- JWT ---------
     function parseJwt(token) {
       try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(
-          atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
-        );
-        return JSON.parse(jsonPayload);
-      } catch {
-        return null;
-      }
+        const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const json = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+        return JSON.parse(json);
+      } catch { return null; }
+    }
+
+    function handleTokenExpired() {
+      Swal.fire({ icon: 'warning', title: 'หมดเวลาการใช้งาน', text: 'กรุณาเข้าสู่ระบบใหม่อีกครั้ง' })
+        .then(() => { localStorage.clear(); location.href = 'student_login.html'; });
     }
 
     // แสดงชื่อมุมขวาบน
     (function showStudentName() {
       const token = localStorage.getItem('studentToken');
-      if (!token) return (window.location.href = 'student_login.html');
-      const payload = parseJwt(token);
-      if (payload?.name) {
-        const displayName = payload.student_id ? `${payload.student_id} ${payload.name}` : payload.name;
-        document.getElementById('studentName').innerText = displayName;
+      if (!token) return (location.href = 'student_login.html');
+      const p = parseJwt(token);
+      if (p?.name) {
+        const name = p.student_id ? `${p.student_id} ${p.name}` : p.name;
+        document.getElementById('studentName').textContent = name;
       }
     })();
 
-    function handleTokenExpired() {
-      Swal.fire({
-        icon: 'warning',
-        title: 'หมดเวลาการใช้งาน',
-        text: 'กรุณาเข้าสู่ระบบใหม่อีกครั้ง',
-        confirmButtonText: 'ตกลง',
-        confirmButtonColor: '#3085d6'
-      }).then(() => {
-        localStorage.clear();
-        window.location.href = 'student_login.html';
-      });
+    // ปุ่มเข้าสอบ
+    const startBtn = document.getElementById('startExamBtn');
+    const viewBtn = document.getElementById('viewResultBtn');
+    const sr = document.getElementById('srStatus');
+
+    const setBtnState = (btn, on) => {
+      if (!btn) return;
+      btn.disabled = !on;
+      btn.setAttribute('aria-disabled', on ? 'false' : 'true');
+    };
+
+    // โหลด booking ล่าสุดเพื่อคุมปุ่ม "เข้าสอบ"
+    let fetching = false;
+    async function loadLatestBooking() {
+      if (fetching) return; fetching = true;
+
+      const token = localStorage.getItem('studentToken');
+      if (!token) { fetching = false; return handleTokenExpired(); }
+
+      try {
+        const res = await fetch('/walkin-exam-system/api/get_latest_booking.php', {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+          cache: 'no-store'
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (res.status === 401 || res.status === 403) return handleTokenExpired();
+
+        if (res.ok && data.status === 'success' && data.booking_id && data.slot_id) {
+          localStorage.setItem('booking_id', String(data.booking_id));
+          localStorage.setItem('slot_id', String(data.slot_id));
+          setBtnState(startBtn, true);
+          if (sr) sr.textContent = 'พร้อมเข้าสอบแล้ว';
+        } else {
+          localStorage.removeItem('booking_id');
+          localStorage.removeItem('slot_id');
+          setBtnState(startBtn, false);
+          if (sr) sr.textContent = 'ยังไม่พบรอบสอบล่าสุด';
+        }
+      } catch {
+        setBtnState(startBtn, false);
+      } finally { fetching = false; }
     }
 
-    // ป้องกันคลิกซ้ำ
-    let isStarting = false;
+    document.addEventListener('DOMContentLoaded', () => {
+      loadLatestBooking();
+      // เปิด/ปิด view result ตามว่ามี session ที่จบแล้วหรือไม่ (จาก localStorage ก่อน)
+      const hasSession = !!(localStorage.getItem('exam_session_id') || localStorage.getItem('session_id'));
+      setBtnState(viewBtn, hasSession);
+    });
+    window.addEventListener('focus', loadLatestBooking);
 
-    // =============== เริ่มสอบ ===============
-    async function handleStartExam(e) {
-      if (e) e.preventDefault();
-      if (isStarting) return;
+    // เริ่มสอบ
+    let isStarting = false;
+    startBtn.addEventListener('click', async () => {
+      if (isStarting || startBtn.disabled) return;
       isStarting = true;
 
       const token = localStorage.getItem('studentToken');
       const slotId = Number(localStorage.getItem('slot_id'));
-      const booking = localStorage.getItem('booking_id') || '';
-
       if (!token) { isStarting = false; return handleTokenExpired(); }
-      if (!slotId) {
-        isStarting = false;
-        return Swal.fire('เกิดข้อผิดพลาด', 'ไม่พบรอบสอบล่าสุดของคุณ (slot_id ว่าง)', 'error');
-      }
+      if (!slotId) { isStarting = false; return Swal.fire('เกิดข้อผิดพลาด', 'ไม่พบรอบสอบล่าสุดของคุณ', 'error'); }
 
-      const btn = e?.currentTarget;
-      const oldHTML = btn?.innerHTML;
-      if (btn) btn.disabled = true;
-
-      Swal.fire({ title: 'กำลังเตรียมข้อสอบ...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
+      const loading = Swal.fire({ title: 'กำลังเตรียมข้อสอบ...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
 
       try {
         const res = await fetch('/walkin-exam-system/api/start_exam.php', {
@@ -200,133 +233,42 @@
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          credentials: 'include',
           body: JSON.stringify({ slot_id: slotId })
         });
 
-        if (res.status === 401) {
-          Swal.close(); isStarting = false; if (btn) btn.disabled = false;
-          return handleTokenExpired();
-        }
+        if (res.status === 401) { Swal.close(); isStarting = false; return handleTokenExpired(); }
 
-        const raw = await res.text();
-        let data = null; try { data = raw ? JSON.parse(raw) : null; } catch { }
-
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           if (data?.status === 'not_started') {
             Swal.fire('ยังไม่ถึงเวลาเริ่มสอบ', `เริ่มได้เวลา ${data.exam_start_at}`, 'warning');
             return;
           }
-          const msg = data?.message || raw || `HTTP ${res.status}`;
-          throw new Error(msg);
+          throw new Error(data?.message || `HTTP ${res.status}`);
         }
+        if (!data || data.status !== 'success') throw new Error(data?.message || 'ไม่สามารถเริ่มสอบได้');
 
-        if (!data || data.status !== 'success') {
-          throw new Error(data?.message || 'ไม่สามารถเริ่มสอบได้');
-        }
-
-        // ✔ เก็บ session ล่าสุด
         localStorage.setItem('exam_session_id', String(data.session_id));
         localStorage.setItem('slot_id', String(slotId));
-        if (booking) localStorage.setItem('booking_id', booking); // ใช้ชื่อ key ให้สอดคล้อง
 
         Swal.close();
-        window.location.href = 'student_exam.html';
+        location.href = 'student_exam.html';
       } catch (err) {
         Swal.fire('เชื่อมต่อไม่สำเร็จ', String(err.message || err), 'error');
       } finally {
         isStarting = false;
-        if (btn) btn.disabled = false;
-        if (btn && oldHTML != null) btn.innerHTML = oldHTML;
       }
-    }
+    });
 
-    // =============== โหลด booking ล่าสุด -> คุมปุ่มเข้าสอบ ===============
-    (() => {
-      const startBtn = document.getElementById('startExamBtn');
-      const sr = document.getElementById('srStatus');
-
-      const setEnabled = (on) => {
-        if (!startBtn) return;
-        startBtn.disabled = !on;
-        startBtn.setAttribute('aria-disabled', on ? 'false' : 'true');
-        if (sr) sr.textContent = on ? 'พร้อมเข้าสอบแล้ว' : 'ยังไม่พบรอบสอบล่าสุด';
-      };
-
-      let fetching = false;
-
-      document.addEventListener('DOMContentLoaded', loadLatestBooking);
-      window.addEventListener('focus', loadLatestBooking);
-
-      async function loadLatestBooking() {
-        if (fetching) return;
-        fetching = true;
-
-        const token = localStorage.getItem('studentToken');
-        if (!token) {
-          window.location.href = 'student_login.html';
-          fetching = false;
-          return;
-        }
-
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 8000);
-
-        try {
-          const res = await fetch('/walkin-exam-system/api/get_latest_booking.php', {
-            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-            cache: 'no-store',
-            signal: ctrl.signal
-          });
-
-          if (res.status === 401 || res.status === 403) {
-            localStorage.removeItem('studentToken');
-            window.location.href = 'student_login.html';
-            return;
-          }
-
-          let data;
-          const ct = res.headers.get('content-type') || '';
-          if (ct.includes('application/json')) {
-            data = await res.json();
-          } else {
-            const text = await res.text();
-            try { data = JSON.parse(text); } catch { data = { status: 'error', message: text }; }
-          }
-
-          if (res.ok && data.status === 'success' && data.booking_id && data.slot_id) {
-            localStorage.setItem('booking_id', String(data.booking_id));
-            localStorage.setItem('slot_id', String(data.slot_id));
-            setEnabled(true);
-          } else {
-            localStorage.removeItem('booking_id');
-            localStorage.removeItem('slot_id');
-            setEnabled(false);
-            console.warn('No latest booking:', data?.message ?? `HTTP ${res.status}`);
-          }
-        } catch (err) {
-          console.error('Error loading latest booking:', err);
-          setEnabled(false);
-        } finally {
-          clearTimeout(timer);
-          fetching = false;
-        }
-      }
-    })();
-
-    // =============== ดูผลคะแนน ===============
-    document.getElementById('viewResultBtn').addEventListener('click', async (e) => {
-      e.preventDefault();
+    // ดูผลคะแนน
+    viewBtn.addEventListener('click', async () => {
+      if (viewBtn.disabled) return;
       const token = localStorage.getItem('studentToken');
       if (!token) return handleTokenExpired();
 
-      // 1) ใช้ค่าที่มีอยู่ในเครื่องก่อน
       const sessionId = localStorage.getItem('exam_session_id') || localStorage.getItem('session_id');
-      if (sessionId) {
-        return (window.location.href = 'student_view_result.html');
-      }
+      if (sessionId) return (location.href = 'student_view_result.html');
 
-      // 2) Fallback: ดึง session ล่าสุดที่ “จบแล้ว” จากเซิร์ฟเวอร์ (ถ้ามี API นี้)
       try {
         const res = await fetch('/walkin-exam-system/api/get_latest_finished_session.php', {
           headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
@@ -335,30 +277,18 @@
         const data = await res.json().catch(() => ({}));
         if (res.ok && data?.status === 'success' && data.session_id) {
           localStorage.setItem('exam_session_id', String(data.session_id));
-          return (window.location.href = 'student_view_result.html');
+          return (location.href = 'student_view_result.html');
         }
-      } catch (_) { /* เงียบไว้เป็น fallback */ }
+      } catch { }
 
-      Swal.fire({
-        icon: 'warning',
-        title: 'ไม่พบข้อมูลการสอบ',
-        text: 'คุณยังไม่มีข้อมูลการสอบที่สามารถดูผลคะแนนได้',
-        confirmButtonText: 'ตกลง',
-        confirmButtonColor: '#3085d6'
-      });
+      Swal.fire({ icon: 'warning', title: 'ไม่พบข้อมูลการสอบ', text: 'คุณยังไม่มีข้อมูลการสอบที่สามารถดูผลคะแนนได้' });
     });
 
-    // =============== Logout ===============
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      document.getElementById('logoutModal').style.display = 'flex';
-    });
-    document.getElementById('cancelLogout').addEventListener('click', () => {
-      document.getElementById('logoutModal').style.display = 'none';
-    });
-    document.getElementById('confirmLogout').addEventListener('click', () => {
-      localStorage.clear();
-      window.location.href = 'student_login.html';
-    });
+    // Logout modal
+    const logoutModal = document.getElementById('logoutModal');
+    document.getElementById('logoutBtn').addEventListener('click', () => logoutModal.style.display = 'flex');
+    document.getElementById('cancelLogout').addEventListener('click', () => logoutModal.style.display = 'none');
+    document.getElementById('confirmLogout').addEventListener('click', () => { localStorage.clear(); location.href = 'student_login.html'; });
   </script>
 </body>
 

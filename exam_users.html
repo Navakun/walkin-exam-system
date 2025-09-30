@@ -100,6 +100,15 @@
       padding: 8px 14px;
       cursor: pointer
     }
+
+    .mismatch-note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #fff7e6;
+      border: 1px solid #ffe0b3;
+      color: #7c4a03;
+    }
   </style>
 </head>
 
@@ -211,7 +220,22 @@
       return false;
     }
     function getTeacherToken() {
-      return localStorage.getItem('teacherToken') || sessionStorage.getItem('teacherToken');
+      // รองรับทั้ง local/session และทั้งชื่อ teacherToken / instructorToken
+      return (
+        localStorage.getItem('teacherToken') ||
+        localStorage.getItem('instructorToken') ||
+        sessionStorage.getItem('teacherToken') ||
+        sessionStorage.getItem('instructorToken') ||
+        null
+      );
+    }
+
+    // (ตัวช่วย debug) ดู role ใน payload ได้ทันทีที่โหลดหน้า
+    function _peekRole(token) {
+      try {
+        const p = JSON.parse(atob(token.split('.')[1]));
+        console.log('[JWT role]', p.role || p.user_role || p.typ || p.scope, p);
+      } catch { }
     }
 
     // ---------- Boot ----------
@@ -256,8 +280,13 @@
         const raw = await resp.text();
         console.log('RAW:', raw);
 
-        if (resp.status === 401 || resp.status === 403) {
-          errorBox.textContent = 'สิทธิ์ไม่เพียงพอหรือโทเคนหมดอายุ กรุณาเข้าสู่ระบบใหม่';
+        if (resp.status === 401) {
+          errorBox.textContent = 'โทเคนหมดอายุ กรุณาเข้าสู่ระบบใหม่';
+          errorBox.style.display = 'block';
+          return;
+        }
+        if (resp.status === 403) {
+          errorBox.textContent = 'สิทธิ์ไม่เพียงพอ (ใช้โทเค็นนิสิต?)';
           errorBox.style.display = 'block';
           return;
         }
@@ -409,13 +438,12 @@
         exam_title: row.dataset.examTitle || '-',
         start_time: row.dataset.startTime || '-',
         end_time: row.dataset.endTime || '-',
-        score: row.dataset.score || '-', // แสดงเป็นเปอร์เซ็นต์ (หาก API ยังไม่ส่ง)
         status: row.dataset.status || '-',
       };
 
       openDetailModal();
       fillDetailMeta(base);
-      fillKPIs({ total: '-', correct: '-', wrong: '-', score: base.score });
+      fillKPIs({ total: '-', correct: '-', wrong: '-', score: '-' });
       drawChart(0, 0);
       renderWrongList([]);
 
@@ -423,8 +451,7 @@
         const url = `${ENDPOINT_DETAILS}?session_id=${encodeURIComponent(sessionId)}`;
         const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
         const raw = await resp.text();
-        let payload = {};
-        try { payload = JSON.parse(raw); } catch { }
+        let payload = {}; try { payload = JSON.parse(raw); } catch { }
 
         if (!resp.ok || payload?.status === 'error') {
           console.warn('details fetch failed:', resp.status, payload);
@@ -432,33 +459,47 @@
         }
 
         const items = Array.isArray(payload?.items) ? payload.items : [];
-        const total = Number(payload?.total_questions ?? (items.length || 0));
+        // อ่าน total/correct/wrong จาก API ก่อน ถ้าไม่มีค่อยคำนวณจาก items
+        let total = Number(payload?.total_questions);
+        if (!Number.isFinite(total) || total <= 0) total = items.length;
 
-        // 1) อ่านเปอร์เซ็นต์จาก API ก่อน
-        let scorePercent = (payload?.score != null) ? Number(payload.score) : NaN;
-        // 2) ถ้าไม่มี → ใช้จาก cell ตาราง
-        if (!Number.isFinite(scorePercent) && row.dataset.score) scorePercent = Number(row.dataset.score);
-        // 3) ถ้ายังไม่มี → คำนวณจากจำนวนถูก/ผิด
-        if (!Number.isFinite(scorePercent)) {
-          const correctByFlag = items.filter(x =>
-            x.is_correct === 1 || x.is_correct === '1' ||
-            (typeof x.is_correct === 'string' && x.is_correct.toLowerCase() === 'true')
-          ).length;
-          scorePercent = total ? +((correctByFlag / total) * 100).toFixed(2) : 0;
+        let correct = Number(payload?.correct_count);
+        if (!Number.isFinite(correct)) {
+          correct = items.filter(x => x.is_correct === 1 || x.is_correct === '1' ||
+            (typeof x.is_correct === 'string' && x.is_correct.toLowerCase() === 'true')).length;
         }
-
-        const correct = Math.round((scorePercent / 100) * total);
         const wrong = Math.max(0, total - correct);
 
-        fillKPIs({ total, correct, wrong, score: +scorePercent.toFixed(2) });
+        // คะแนนจาก “รายการคำตอบจริง”
+        const scoreFromItems = total ? +((correct / total) * 100).toFixed(2) : null;
+
+        // คะแนนที่ “บันทึกไว้” ในตารางก่อนหน้า (ถ้ามี)
+        const recordedScore = row.dataset.score ? Number(row.dataset.score) : null;
+
+        // คะแนนที่จะแสดง = จาก items > จาก payload.score > จากค่าที่บันทึกไว้
+        let displayScore = scoreFromItems;
+        if (!Number.isFinite(displayScore) && payload?.score != null) displayScore = Number(payload.score);
+        if (!Number.isFinite(displayScore) && recordedScore != null) displayScore = recordedScore;
+        if (!Number.isFinite(displayScore)) displayScore = 0;
+
+        fillKPIs({ total, correct, wrong, score: displayScore });
         drawChart(correct, wrong);
         renderWrongList(items);
 
-        // sync แถวในตาราง
-        row.dataset.score = String(scorePercent);
+        // ซิงก์ค่าในแถว (ให้ตารางโชว์ตรงกับโมดัล)
+        row.dataset.score = String(displayScore);
         const scoreCell = row.children?.[3];
-        if (scoreCell) scoreCell.textContent = (+scorePercent).toFixed(2);
+        if (scoreCell) scoreCell.textContent = (+displayScore).toFixed(2);
 
+        // แจ้งเตือนถ้าคะแนนที่บันทึกไว้ไม่ตรงกับที่คำนวณจากคำตอบ
+        if (Number.isFinite(recordedScore) && Number.isFinite(scoreFromItems) &&
+          Math.abs(recordedScore - scoreFromItems) > 0.5) {
+          const warn = document.createElement('div');
+          warn.className = 'mismatch-note';
+          warn.innerHTML = `⚠️ คะแนนที่บันทึกไว้ <b>${recordedScore.toFixed(2)}</b>% 
+                          ไม่สอดคล้องกับคะแนนตามคำตอบจริง <b>${scoreFromItems.toFixed(2)}</b>%`;
+          document.getElementById('detailMeta').appendChild(warn);
+        }
       } catch (e) {
         console.warn('details fetch error:', e);
       }
