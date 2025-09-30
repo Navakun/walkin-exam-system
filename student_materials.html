@@ -31,7 +31,11 @@
             </div>
         </div>
         <div class="right">
-            <button class="btn btn-outline-light btn-sm" id="backBtn">กลับหน้าหลัก</button>
+            <button id="backBtn" class="btn btn-outline-light btn-sm d-inline-flex align-items-center gap-1"
+                title="กลับไปแดชบอร์ดนิสิต" aria-label="กลับไปแดชบอร์ดนิสิต">
+                <i class="fa-solid fa-arrow-left-long"></i>
+                <span>กลับหน้าหลัก</span>
+            </button>
             <button class="btn btn-danger btn-sm" id="logoutBtn">ออกจากระบบ</button>
         </div>
     </header>
@@ -363,6 +367,29 @@
         }
         function stopAllSpeech() { speechSynthesis.cancel(); }
 
+        function smartBack() {
+            try { stopAllSpeech?.(); } catch { }
+            const fallback = 'student_dashboard.html';
+            const ref = document.referrer || '';
+
+            // ย้อนกลับถ้ากลับได้และมาจากโดเมนเดียวกัน
+            try {
+                const sameOrigin = ref && new URL(ref, location.href).origin === location.origin;
+                if (history.length > 1 && sameOrigin) {
+                    history.back();
+
+                    // กันเคสบางเบราว์เซอร์ไม่ยอมกลับ ให้ fallback
+                    setTimeout(() => {
+                        if (!document.hidden) location.href = fallback;
+                    }, 400);
+                    return;
+                }
+            } catch { }
+
+            // ไม่มี History → ไปแดชบอร์ด
+            location.href = fallback;
+        }
+
         // ------- boot -------
         document.addEventListener('DOMContentLoaded', () => {
             // สร้าง/อ้างอิง canvas ให้แน่ใจว่าอยู่ใน DOM
@@ -390,7 +417,15 @@
             on('ttsResume', 'click', () => { if (speechSynthesis.paused) speechSynthesis.resume(); });
             on('ttsStop', 'click', stopAllSpeech);
 
-            on('backBtn', 'click', () => location.href = 'student_dashboard.html');
+            on('backBtn', 'click', smartBack);
+
+            // คีย์ลัด: Alt + B = Back
+            window.addEventListener('keydown', (e) => {
+                if ((e.key === 'b' || e.key === 'B') && e.altKey && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    smartBack();
+                }
+            });
             on('logoutBtn', 'click', () => { localStorage.clear(); location.href = 'student_login.html'; });
 
             // TTS UI
@@ -402,6 +437,8 @@
             // โหลดรายการไฟล์
             fetchMaterials();
         });
+
+
     </script>
 
 </body>
