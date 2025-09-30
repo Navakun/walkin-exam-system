@@ -1,22 +1,141 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
   <meta charset="UTF-8" />
   <title>ดูผลคะแนนสอบ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="favicon.ico" />
+  <!-- Bootstrap + Font -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Your CSS -->
   <link rel="stylesheet" href="assets/css/main.css">
   <link rel="stylesheet" href="assets/css/student.css">
   <link rel="stylesheet" href="assets/css/student-result.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: "Prompt", sans-serif;
+    }
+
+    .result-main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+
+    .course-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid #eee;
+      background: #fff;
+    }
+
+    .logo-text {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .center-title {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .student-info-box {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .05);
+      padding: 18px 18px 8px;
+      margin-bottom: 16px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 4px;
+      border-bottom: 1px dashed #eee;
+    }
+
+    .info-row:last-child {
+      border-bottom: 0;
+    }
+
+    .info-label {
+      color: #6b7280;
+    }
+
+    .info-value {
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .table-container {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .05);
+      padding: 18px;
+    }
+
+    .result-table {
+      width: 100%;
+    }
+
+    .result-table th {
+      background: #f7f7fb;
+      font-weight: 600;
+    }
+
+    .stat-badge {
+      display: inline-block;
+      min-width: 64px;
+      text-align: center;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-weight: 600;
+    }
+
+    .stat-total {
+      background: #eef2ff;
+      color: #4338ca;
+    }
+
+    .stat-correct {
+      background: #ecfdf5;
+      color: #047857;
+    }
+
+    .stat-wrong {
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+
+    .stat-time {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .summary-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: -4px 0 10px;
+    }
+  </style>
 </head>
+
 <body>
   <header class="course-header">
     <div class="logo-text">
-      <img src="nulogo.png" alt="Logo" height="60">
+      <img src="nulogo.png" alt="Logo" height="56">
       <div class="course-title">
-        <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ<br>มหาวิทยาลัยนเรศวร</h2>
+        <h2 class="m-0 fs-5">รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ<br class="d-none d-md-block">มหาวิทยาลัยนเรศวร</h2>
       </div>
     </div>
     <div class="ms-auto d-flex gap-2">
@@ -26,70 +145,59 @@
   </header>
 
   <main class="result-main">
+    <!-- แบนเนอร์แจ้งเตือน -->
     <div id="bannerArea"></div>
-    
-    <!-- Student Information Card -->
-    <div class="student-info-box">
-      <h3 class="center-title"><i class="fas fa-user-graduate me-2"></i>ข้อมูลนิสิต</h3>
-      <div class="info-row">
-        <span class="info-label">รหัสนิสิต</span>
-        <span class="info-value" id="studentId">
-          <i class="fas fa-user-graduate me-2"></i>—
-        </span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">ชื่อ - นามสกุล</span>
-        <span class="info-value" id="studentName">
-          <i class="fas fa-user me-2"></i>—
-        </span>
-      </div>
+
+    <!-- สรุปผลสอบ (แทนป้าย % และ ไม่ผ่าน เดิม) -->
+    <div class="mini-metrics" id="examSummary">
+      <span class="metric">
+        <i class="fas fa-star"></i>
+        คะแนนรวม: <span id="summaryScore">—</span>
+      </span>
+
+      <span class="metric">
+        <i class="fas fa-flag-checkered"></i>
+        สถานะ: <span id="summaryStatus" class="badge rounded-pill bg-secondary-subtle text-secondary">—</span>
+      </span>
+
+      <span class="metric">
+        <i class="fas fa-hourglass-half"></i>
+        เวลาเฉลี่ย/ข้อ: <span id="avgPerItem">—</span>
+      </span>
     </div>
 
-    <!-- Exam Results -->
+    <h3 class="center-title">ผลการทำข้อสอบ</h3>
+    <div class="info-row">
+      <span class="info-label">รหัสนิสิต</span>
+      <span class="info-value" id="studentId"><i class="fas fa-user-graduate me-2"></i>—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">ชื่อ - นามสกุล</span>
+      <span class="info-value" id="studentName"><i class="fas fa-user me-2"></i>—</span>
+    </div>
+    </div>
+
+    <!-- ตารางสรุปผล -->
     <div class="table-container">
-      <table class="result-table">
+      <table class="result-table table table-borderless align-middle">
         <thead>
           <tr>
-            <th>
-              <i class="fas fa-tasks me-2"></i>รวมข้อ
-            </th>
-            <th>
-              <i class="fas fa-check-circle me-2"></i>ถูก
-            </th>
-            <th>
-              <i class="fas fa-times-circle me-2"></i>ผิด
-            </th>
-            <th>
-              <i class="fas fa-hourglass-start me-2"></i>เริ่มทำ
-            </th>
-            <th>
-              <i class="fas fa-hourglass-end me-2"></i>เวลาที่ข้อสอบเสร็จ
-            </th>
-            <th>
-              <i class="fas fa-clock me-2"></i>เวลาที่ใช้
-            </th>
+            <th><i class="fas fa-tasks me-2"></i>จำนวข้อทั้งหมด</th>
+            <th><i class="fas fa-check-circle me-2"></i>ถูก</th>
+            <th><i class="fas fa-times-circle me-2"></i>ผิด</th>
+            <th><i class="fas fa-hourglass-start me-2"></i>เวลาที่เริ่มทำ</th>
+            <th><i class="fas fa-hourglass-end me-2"></i>เวลาที่ข้อสอบเสร็จ</th>
+            <th><i class="fas fa-clock me-2"></i>เวลาที่ใช้</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>
-              <span class="stat-badge stat-total" id="totalValue">—</span>
-            </td>
-            <td>
-              <span class="stat-badge stat-correct" id="correctValue">—</span>
-            </td>
-            <td>
-              <span class="stat-badge stat-wrong" id="wrongValue">—</span>
-            </td>
-            <td>
-              <span class="stat-badge stat-time" id="startTime">—</span>
-            </td>
-            <td>
-              <span class="stat-badge stat-time" id="endTime">—</span>
-            </td>
-            <td>
-              <span class="stat-badge stat-time" id="duration">—</span>
-            </td>
+            <td><span class="stat-badge stat-total" id="totalValue">—</span></td>
+            <td><span class="stat-badge stat-correct" id="correctValue">—</span></td>
+            <td><span class="stat-badge stat-wrong" id="wrongValue">—</span></td>
+            <td><span class="stat-badge stat-time" id="startTime">—</span></td>
+            <td><span class="stat-badge stat-time" id="endTime">—</span></td>
+            <td><span class="stat-badge stat-time" id="duration">—</span></td>
           </tr>
         </tbody>
       </table>
@@ -97,127 +205,165 @@
   </main>
 
   <script>
-    const $ = (id) => document.getElementById(id);
-    function showBanner(msg, type = 'success', timeout = 3500) {
-      const bannerArea = document.getElementById('bannerArea');
-      bannerArea.innerHTML = `<div class="alert alert-${type} banner" role="alert">${msg}</div>`;
-      if (timeout) setTimeout(() => bannerArea.innerHTML = '', timeout);
-    }
+    (() => {
+      /** ---------------- Utils ---------------- */
+      const $ = (id) => document.getElementById(id);
 
-    function fmtDuration(ms) {
-      if (!ms || ms < 0) return '—';
-      const sec = Math.floor(ms / 1000);
-      const h = Math.floor(sec / 3600);
-      const m = Math.floor((sec % 3600) / 60);
-      const s = sec % 60;
-      const pad = (n) => (n < 10 ? '0' + n : '' + n);
-      return (h ? `${h}:` : '') + `${pad(m)}:${pad(s)}`;
-    }
+      const showBanner = (msg = '', type = 'danger') => {
+        const el = $('bannerArea');
+        if (!el) return;
+        el.innerHTML = msg ? `<div class="alert alert-${type}" role="alert">${msg}</div>` : '';
+      };
 
-    function safeParseJSON(raw) {
-      try { return JSON.parse(raw); } catch { return null; }
-    }
+      const parseJwt = (token) => {
+        try { return JSON.parse(atob(token.split('.')[1])); }
+        catch { return null; }
+      };
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      const sessionId = localStorage.getItem('session_id');
-      const token = localStorage.getItem('studentToken');
+      const toDate = (t) => t ? new Date(t.replace(' ', 'T') + 'Z') : null;
 
-      if (!token) {
-        alert('กรุณาเข้าสู่ระบบใหม่');
-        location.href = 'student_login.html';
-        return;
-      }
-      if (!sessionId) {
-        showBanner('ไม่พบ session_id', 'danger', 5000);
-        return;
-      }
+      const fmtDMYHM = (t) => {
+        const d = toDate(t);
+        if (!d || isNaN(d)) return '—';
+        const dd = String(d.getUTCDate()).padStart(2, '0');
+        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const yy = d.getUTCFullYear();
+        const hh = String(d.getUTCHours()).padStart(2, '0');
+        const mi = String(d.getUTCMinutes()).padStart(2, '0');
+        return `${dd}/${mm}/${yy} ${hh}:${mi}`;
+      };
 
-      try {
-        const resp = await fetch(`api/get_result.php?session_id=${encodeURIComponent(sessionId)}`, {
-          headers: { 'Authorization': 'Bearer ' + token },
-          cache: 'no-store'
-        });
+      const fmtDuration = (ms) => {
+        if (ms == null || isNaN(ms) || ms < 0) return '—';
+        const s = Math.floor(ms / 1000);
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const ss = s % 60;
+        const pad = (n) => (n < 10 ? '0' + n : '' + n);
+        return (h ? `${h}:` : '') + `${pad(m)}:${pad(ss)}`;
+      };
 
-        const raw = await resp.text();
-        const data = safeParseJSON(raw);
-        if (!data) {
-          showBanner('เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON', 'danger', 5000);
-          console.error('RAW:', raw);
+      const getSessionId = () =>
+        new URL(location.href).searchParams.get('session_id') || localStorage.getItem('session_id');
+
+      /** ---------------- Main ---------------- */
+      document.addEventListener('DOMContentLoaded', async () => {
+        const token = localStorage.getItem('studentToken');
+        const sessionId = getSessionId();
+
+        if (!token) {
+          location.href = 'student_login.html';
           return;
         }
-        if (!resp.ok || data.status !== 'success') {
-          showBanner(data.message || `ดึงผลสอบไม่สำเร็จ (HTTP ${resp.status})`, 'danger', 5000);
+        if (!sessionId) {
+          showBanner('ไม่พบรหัสการทดสอบ (session_id)');
           return;
         }
-        // ดึงข้อมูลจาก API
-        const d = data.data || {};
-        const total   = d.total_questions ?? data.total_questions ?? data.total ?? data.questions_total ?? null;
-        const correct = d.correct_count ?? data.correct_count ?? data.correct ?? data.corrects ?? null;
-        const wrong   = (total != null && correct != null) ? (total - correct) : (d.wrong_count ?? data.wrong_count ?? data.wrong ?? null);
-        const startTime = d.start_time ?? data.start_time ?? d.started_at ?? data.started_at ?? null;
-        const endTime   = d.end_time ?? data.end_time ?? d.ended_at ?? data.ended_at ?? null;
-        const studentId = d.student_id ?? data.student_id ?? d.student ?? data.student ?? localStorage.getItem('student_id') ?? '—';
-        // ดึงชื่อ-นามสกุลจาก JWT token
-        function parseJwt(token) {
-          try { return JSON.parse(atob(token.split('.')[1])); } catch { return null; }
-        }
-        let studentName = '—';
-        const tokenStr = localStorage.getItem('studentToken');
-        if (tokenStr) {
-          const payload = parseJwt(tokenStr);
-          if (payload && payload.name) studentName = payload.name;
-        }
 
-        // ฟังก์ชันแปลงวันที่เป็น dd/mm/yyyy HH:MM
-        function formatDateDMYHM(dt) {
-          if (!dt) return '—';
-          const d = parseDateStr(dt);
-          if (isNaN(d)) return '—';
-          const day = d.getUTCDate().toString().padStart(2, '0');
-          const month = (d.getUTCMonth() + 1).toString().padStart(2, '0');
-          const year = d.getUTCFullYear();
-          const hour = d.getUTCHours().toString().padStart(2, '0');
-          const min = d.getUTCMinutes().toString().padStart(2, '0');
-          return `${day}/${month}/${year} ${hour}:${min}`;
-        }
-        function parseDateStr(dt) {
-          if (!dt) return null;
-          if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dt)) {
-            return new Date(dt.replace(' ', 'T') + 'Z');
-          }
-          return new Date(dt);
-        }
-        // เวลาที่ใช้
-        let durationText = '—';
-        if (startTime && endTime) {
-          const st = parseDateStr(startTime);
-          const en = parseDateStr(endTime);
-          if (!isNaN(st) && !isNaN(en)) {
-            durationText = fmtDuration(en - st);
-          }
-        } else if (d.duration_ms ?? data.duration_ms) {
-          durationText = fmtDuration(d.duration_ms ?? data.duration_ms);
-        }
+        try {
+          showBanner(''); // clear banner
+          const res = await fetch(`api/get_result.php?session_id=${encodeURIComponent(sessionId)}`, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+            cache: 'no-store'
+          });
 
-        // แสดงผลใน HTML
-        $('totalValue').textContent   = (total != null) ? total : '—';
-        $('correctValue').textContent = (correct != null) ? correct : '—';
-        $('wrongValue').textContent   = (wrong != null) ? wrong : '—';
-        $('startTime').textContent    = startTime ? formatDateDMYHM(startTime) : '—';
-        $('endTime').textContent      = endTime ? formatDateDMYHM(endTime) : '—';
-        $('duration').textContent     = durationText;
-        $('studentId').textContent    = studentId;
-        $('studentName').textContent  = studentName;
-      } catch (error) {
-        showBanner('เกิดข้อผิดพลาดในการดึงข้อมูล', 'danger', 5000);
-        console.error('ERROR:', error);
-      }
-    });
-    document.getElementById('backBtn').onclick = () => window.location.href = 'student_dashboard.html';
-    document.getElementById('logoutBtn').onclick = () => {
-      localStorage.removeItem('studentToken');
-      window.location.href = 'student_login.html';
-    };
+          const raw = await res.text();
+          let json; try { json = JSON.parse(raw); } catch { json = null; }
+
+          if (!res.ok || !json || json.status !== 'success') {
+            console.error('get_result.php raw:', raw);
+            showBanner(json?.message || `ดึงข้อมูลไม่สำเร็จ (HTTP ${res.status})`);
+            return;
+          }
+
+          const d = json.data || {};
+
+          // --------- โลโก้ชื่อ/รหัสนิสิต ---------
+          const payload = parseJwt(token) || {};
+          if ($('studentId')) $('studentId').textContent = d.student_id || payload.student_id || '—';
+          if ($('studentName')) $('studentName').textContent = payload.name || '—';
+
+          // --------- รวมข้อ / ถูก / ผิด ---------
+          const total = Number(
+            d.total_questions ?? (Array.isArray(d.answers) ? d.answers.length : 0) ?? 0
+          );
+
+          const correct = Number(
+            (d.correct_count != null)
+              ? d.correct_count
+              : (Array.isArray(d.answers)
+                ? d.answers.filter(a => Number(a.is_correct) === 1).length
+                : 0)
+          );
+
+          // ✅ แก้บั๊ก: ใช้ wrongCount แทนตัวแปร wrong
+          const wrongCount = Math.max(0, total - (isFinite(correct) ? correct : 0));
+
+          if ($('totalValue')) $('totalValue').textContent = String(total);
+          if ($('correctValue')) $('correctValue').textContent = String(isFinite(correct) ? correct : 0);
+          if ($('wrongValue')) $('wrongValue').textContent = String(wrongCount);
+
+          // --------- เวลาเริ่ม/จบ/เวลาที่ใช้ ---------
+          const startTime = d.start_time || null;
+          const endTime = d.end_time || null;
+          const durationMs = Number.isFinite(d.duration_ms)
+            ? Number(d.duration_ms)
+            : (startTime && endTime ? (toDate(endTime) - toDate(startTime)) : null);
+
+          if ($('startTime')) $('startTime').textContent = fmtDMYHM(startTime);
+          if ($('endTime')) $('endTime').textContent = fmtDMYHM(endTime);
+          if ($('duration')) $('duration').textContent = fmtDuration(durationMs);
+
+          // --------- สรุปบนหัว: คะแนน/เปอร์เซ็นต์/สถานะ/เฉลี่ยต่อข้อ ---------
+          const PASS_THRESHOLD = 60; // เกณฑ์ผ่าน (%)
+          const percent = total ? Math.round((correct / total) * 100) : 0;
+
+          // 1) คะแนนรวม + เปอร์เซ็นต์
+          if ($('summaryScore')) {
+            $('summaryScore').textContent = `${correct}/${total} (${percent}%)`;
+          }
+
+          // 2) สถานะ (ผ่าน/ไม่ผ่าน) + สี badge
+          if ($('summaryStatus')) {
+            const isPass = percent >= PASS_THRESHOLD;
+            $('summaryStatus').textContent = isPass ? 'ผ่าน' : 'ไม่ผ่าน';
+            $('summaryStatus').className = `badge rounded-pill ${isPass ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'
+              }`;
+            $('summaryStatus').title = `เกณฑ์ผ่าน ${PASS_THRESHOLD}%`; // tooltip เล็กๆ
+          }
+
+          // 3) เวลาเฉลี่ย/ข้อ
+          if ($('avgPerItem')) {
+            const avg = (durationMs && total) ? Math.round(durationMs / total) : null;
+            $('avgPerItem').textContent = avg != null ? fmtDuration(avg) : '—';
+          }
+
+          if ($('statusBadge')) {
+            $('statusBadge').textContent = pass ? 'ผ่าน' : 'ไม่ผ่าน';
+            // ล้าง class เดิม ๆ ที่อาจติด
+            $('statusBadge').classList.remove('badge-danger', 'bg-danger', 'badge-success', 'bg-success');
+            $('statusBadge').classList.add(pass ? 'bg-success' : 'bg-danger');
+          }
+
+          const avgPerQ = (total && durationMs != null) ? Math.round(durationMs / total) : null;
+          if ($('avgPerQ')) $('avgPerQ').textContent = fmtDuration(avgPerQ);
+
+          // ถ้ามี progress bar
+          if ($('scoreBar')) $('scoreBar').style.width = `${percent}%`;
+
+        } catch (err) {
+          console.error(err);
+          showBanner('เกิดข้อผิดพลาดในการดึงข้อมูล');
+        }
+      });
+
+      /** ---------------- Buttons ---------------- */
+      if ($('backBtn')) $('backBtn').onclick = () => (location.href = 'student_dashboard.html');
+      if ($('logoutBtn')) $('logoutBtn').onclick = () => { localStorage.clear(); location.href = 'student_login.html'; };
+
+    })();
   </script>
+
 </body>
+
 </html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8" />
+    <title>สถิติการสอบ (อาจารย์)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="favicon.ico" />
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- ใช้ CDN CSS ของ Font Awesome (แทน kit.js ที่โดน 403) -->
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="assets/css/exam-stats.css">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+
+<body>
+    <div class="page-wrap">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="h5 mb-0">สถิติการสอบ</h2>
+            <div class="d-flex gap-2">
+                <a class="btn btn-outline-secondary btn-sm" href="instructor_dashboard.html">กลับหน้าหลัก</a>
+                <button id="logoutBtn" class="btn btn-danger btn-sm">ออกจากระบบ</button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label for="examsetSelect" class="form-label">ชุดข้อสอบ (Examset)</label>
+                <select id="examsetSelect" class="form-select" aria-label="เลือกชุดข้อสอบ">
+                    <option value="">— ทั้งหมด —</option>
+                    <!-- options -->
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label for="fromDate" class="form-label">ตั้งแต่ (From)</label>
+                <input id="fromDate" type="date" class="form-control" placeholder="ตั้งแต่" aria-label="ตั้งแต่วันที่">
+            </div>
+
+            <div class="col-md-3">
+                <label for="toDate" class="form-label">ถึง (To)</label>
+                <input id="toDate" type="date" class="form-control" placeholder="ถึง" aria-label="ถึงวันที่">
+            </div>
+
+            <div class="col-md-2 d-grid">
+                <button id="showBtn" class="btn btn-primary" aria-label="แสดงสถิติ">แสดงสถิติ</button>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="row g-2 mb-3">
+            <div class="col-md-3">
+                <div class="card card-kpi p-3">
+                    <div class="text-muted">จำนวน Sessions</div>
+                    <div id="kpiSessions" class="num">—</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-kpi p-3">
+                    <div class="text-muted">จำนวนข้อในชุด</div>
+                    <div id="kpiQuestions" class="num">—</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-kpi p-3">
+                    <div class="text-muted">ค่าเฉลี่ยข้อที่ถูก</div>
+                    <div id="kpiAvgCorrect" class="num">—</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-kpi p-3">
+                    <div class="text-muted">คะแนนเฉลี่ย (%)</div>
+                    <div id="kpiAvgScore" class="num">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="row g-3">
+            <div class="col-md-7">
+                <div class="chart-card">
+                    <h5 class="h6 mb-3">จำนวน “ถูก” ต่อข้อ</h5>
+                    <canvas id="perQuestionChart" height="220"></canvas>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="chart-card">
+                    <h5 class="h6 mb-3">จำนวนคนตามจำนวนข้อที่ทำถูก</h5>
+                    <canvas id="histChart" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- สถิติรายข้อ -->
+    <section class="panel mt-3">
+        <div class="panel-head">
+            <h3 class="panel-title mb-0">สถิติรายข้อ</h3>
+
+            <div class="panel-head-actions">
+                <button id="qExport" class="btn btn-sm btn-outline-secondary btn-icon"
+                    aria-label="ส่งออกสถิติรายข้อเป็นไฟล์ CSV">
+                    <i class="fa-solid fa-file-export"></i><span>Export CSV</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="panel-controls">
+            <div class="control-item">
+                <label for="qSearch" class="form-label">ค้นหาเลขข้อ / คำถาม</label>
+                <input id="qSearch" class="form-control form-control-sm" placeholder="เช่น 12 หรือคำหลักของคำถาม"
+                    aria-label="ค้นหาเลขข้อหรือข้อความคำถาม">
+            </div>
+
+            <div class="control-item">
+                <label for="qSort" class="form-label">การเรียงข้อมูล</label>
+                <select id="qSort" class="form-select form-select-sm q-sort" aria-label="วิธีการเรียงตารางรายข้อ">
+                    <option value="id_asc">เรียงตามเลขข้อ (น้อย→มาก)</option>
+                    <option value="id_desc">เรียงตามเลขข้อ (มาก→น้อย)</option>
+                    <option value="pct_desc">เรียงตาม % ถูก (มาก→น้อย)</option>
+                    <option value="pct_asc">เรียงตาม % ถูก (น้อย→มาก)</option>
+                    <option value="wrong_desc">เรียงตามจำนวนผิด (มาก→น้อย)</option>
+                    <option value="wrong_asc">เรียงตามจำนวนผิด (น้อย→มาก)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="panel-body">
+            <div class="table-responsive table-wrap">
+                <table class="table table-sm table-hover align-middle table-sticky table-zebra" id="qTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="q-col-id">ข้อ</th>
+                            <th>คำถาม (ย่อ)</th>
+                            <th class="text-end">ทำทั้งหมด (คน)</th>
+                            <th class="text-end text-success">ถูก (คน)</th>
+                            <th class="text-end text-danger">ผิด (คน)</th>
+                            <th class="text-end">% ถูก</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel-foot d-flex justify-content-between align-items-center">
+            <small id="qInfo" class="text-muted"></small>
+            <div class="btn-group btn-group-sm">
+                <button id="qPrev" class="btn btn-outline-secondary" type="button"><i
+                        class="fa-solid fa-chevron-left"></i> ก่อนหน้า</button>
+                <button id="qNext" class="btn btn-outline-secondary" type="button">ถัดไป <i
+                        class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </section>
+
+
+
+    <script>
+        // ---------- Helpers (อย่าประกาศซ้ำ) ----------
+        const $ = (sel, root = document) => root.querySelector(sel);
+        const escapeHTML = s =>
+            String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+
+        const token = localStorage.getItem('instructorToken') || localStorage.getItem('teacherToken');
+        if (!token) { alert('กรุณาเข้าสู่ระบบ'); location.href = 'instructor_login.html'; }
+
+        let perQuestionChart, histChart;
+
+        async function fetchStats() {
+            const ex = $('#examsetSelect').value;
+            const f = $('#fromDate').value;
+            const t = $('#toDate').value;
+
+            const params = new URLSearchParams();
+            if (ex) params.set('examset_id', ex);
+            if (f) params.set('from', f);
+            if (t) params.set('to', t);
+
+            const url = 'api/get_exam_statistics.php' + (params.toString() ? '?' + params.toString() : '');
+
+            const res = await fetch(url, {
+                headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+                cache: 'no-store'
+            });
+            const raw = await res.text();
+            let data; try { data = JSON.parse(raw); } catch { data = null; }
+
+            if (!data || data.status !== 'success') {
+                console.error('bad stats response:', raw);
+                alert(data?.message || 'โหลดสถิติไม่สำเร็จ');
+                return null;
+            }
+            return data.data;
+        }
+
+        function fillExamsetOptions(arr) {
+            const sel = $('#examsetSelect');
+            const now = sel.value;
+            sel.innerHTML = '<option value="">— ทั้งหมด —</option>';
+            (arr || []).forEach(id => {
+                const opt = document.createElement('option');
+                opt.value = String(id);
+                opt.textContent = String(id);
+                sel.appendChild(opt);
+            });
+            if (now) sel.value = now;
+        }
+
+        function renderKPI(t) {
+            $('#kpiSessions').textContent = t.sessions ?? '0';
+            $('#kpiQuestions').textContent = t.total_questions ?? '0';
+            $('#kpiAvgCorrect').textContent = (t.avg_correct ?? 0).toString();
+            $('#kpiAvgScore').textContent = (t.avg_score_percent ?? 0).toString() + '%';
+        }
+
+        function drawPerQuestionChart(rows) {
+            const ctx = document.getElementById('perQuestionChart');
+            const labels = rows.map(r => 'ข้อ ' + r.question_id);
+            const corrects = rows.map(r => r.corrects);
+            const attempts = rows.map(r => r.attempts);
+
+            perQuestionChart?.destroy();
+            perQuestionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'ถูก (คน)', data: corrects },
+                        { label: 'ทำทั้งหมด (คน)', data: attempts }
+                    ]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        function drawHistogram(rows) {
+            const ctx = document.getElementById('histChart');
+            const labels = rows.map(r => r.corrects);
+            const students = rows.map(r => r.students);
+
+            histChart?.destroy();
+            histChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'จำนวนนักศึกษาที่ทำถูก n ข้อ', data: students }] },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { title: { display: true, text: 'จำนวนข้อที่ทำถูก' } },
+                        y: { beginAtZero: true, title: { display: true, text: 'จำนวนคน' } }
+                    }
+                }
+            });
+        }
+
+        // ===== รายข้อ =====
+        const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+        const fmtPct = n => isFinite(n) ? (Math.round(n * 1000) / 10).toFixed(1) : '0.0';
+
+        let Q_ALL = [], Q_FILTERED = [], Q_PAGE = 1;
+        const Q_PER_PAGE = 20;
+
+        function renderQuestionTable(perQuestionRaw) {
+            Q_ALL = (perQuestionRaw || []).map(row => {
+                const id = Number(row.question_id ?? row.id ?? 0);
+                const attempts = Number(row.attempts ?? 0);
+                const corrects = Number(row.corrects ?? 0);
+                const wrongs = Math.max(0, attempts - corrects);
+                const pct = attempts > 0 ? (corrects / attempts) : 0;
+                const text = String(row.question_text || row.title || '').trim();
+                return { id, attempts, corrects, wrongs, pct, text };
+            });
+
+            $('#qSort').value = 'id_asc';
+            Q_PAGE = 1;
+            applyQFilters();
+        }
+
+        function applyQFilters() {
+            const kw = $('#qSearch').value.trim().toLowerCase();
+
+            Q_FILTERED = Q_ALL.filter(q =>
+                !kw || String(q.id).includes(kw) || (q.text && q.text.toLowerCase().includes(kw))
+            );
+
+            const sort = $('#qSort').value;
+            const cmp = {
+                'id_asc': (a, b) => a.id - b.id,
+                'id_desc': (a, b) => b.id - a.id,
+                'pct_desc': (a, b) => b.pct - a.pct || a.id - b.id,
+                'pct_asc': (a, b) => a.pct - b.pct || a.id - b.id,
+                'wrong_desc': (a, b) => b.wrongs - a.wrongs || a.id - b.id,
+                'wrong_asc': (a, b) => a.wrongs - b.wrongs || a.id - b.id,
+            }[sort] || ((a, b) => a.id - b.id);
+
+            Q_FILTERED.sort(cmp);
+
+            Q_PAGE = clamp(Q_PAGE, 1, Math.max(1, Math.ceil(Q_FILTERED.length / Q_PER_PAGE)));
+            paintQTable();
+        }
+
+        function paintQTable() {
+            const tbody = $('#qTable tbody');
+            tbody.innerHTML = '';
+
+            const total = Q_FILTERED.length;
+            const pages = Math.max(1, Math.ceil(total / Q_PER_PAGE));
+            const start = (Q_PAGE - 1) * Q_PER_PAGE;
+            const slice = Q_FILTERED.slice(start, start + Q_PER_PAGE);
+
+            slice.forEach(q => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+        <td class="fw-semibold">ข้อ ${q.id}</td>
+        <td>${escapeHTML(q.text || '—')}</td>
+        <td class="text-end">${q.attempts}</td>
+        <td class="text-end text-success">${q.corrects}</td>
+        <td class="text-end text-danger">${q.wrongs}</td>
+        <td class="text-end">${fmtPct(q.pct)}%</td>`;
+                tbody.appendChild(tr);
+            });
+
+            $('#qInfo').textContent =
+                `แสดง ${start + 1}-${start + slice.length} จากทั้งหมด ${total} ข้อ • หน้า ${Q_PAGE}/${pages}`;
+            $('#qPrev').disabled = (Q_PAGE <= 1);
+            $('#qNext').disabled = (Q_PAGE >= pages);
+        }
+
+        function exportQCSV() {
+            const rows = [
+                ['question_id', 'question_text', 'attempts', 'corrects', 'wrongs', 'correct_percent'],
+                ...Q_FILTERED.map(q => [q.id, q.text || '', q.attempts, q.corrects, q.wrongs, (q.pct * 100).toFixed(2)])
+            ];
+            const csv = rows.map(r => r.map(cell => {
+                const s = String(cell ?? '');
+                return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+            }).join(',')).join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `question_stats_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a); a.click(); a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        // events
+        $('#qSearch').addEventListener('input', () => { Q_PAGE = 1; applyQFilters(); });
+        $('#qSort').addEventListener('change', () => { Q_PAGE = 1; applyQFilters(); });
+        $('#qPrev').addEventListener('click', () => { Q_PAGE = Math.max(1, Q_PAGE - 1); paintQTable(); });
+        $('#qNext').addEventListener('click', () => { Q_PAGE += 1; paintQTable(); });
+        $('#qExport').addEventListener('click', exportQCSV);
+
+        async function run() {
+            const stats = await fetchStats();
+            if (!stats) return;
+
+            fillExamsetOptions(stats.examsets);
+            renderKPI(stats.totals || {});
+            drawPerQuestionChart(stats.per_question || []);
+            drawHistogram(stats.histogram || []);
+            renderQuestionTable(stats.per_question || []);
+        }
+
+        // ปุ่มกด/ล็อกเอาต์
+        document.getElementById('showBtn').onclick = run;           // <-- เดิมผูกกับ applyBtn (ไม่มีอยู่จริง)
+        document.getElementById('logoutBtn').onclick = () => { localStorage.clear(); location.href = 'instructor_login.html'; };
+
+        // โหลดครั้งแรก
+        run();
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,130 @@
+        body {
+            background: #f7f8fb
+        }
+
+        .page-wrap {
+            max-width: 1200px;
+            margin: 24px auto;
+            padding: 0 16px
+        }
+
+        .card-kpi .num {
+            font-size: 28px;
+            font-weight: 700
+        }
+
+        .chart-card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 16px
+        }
+        /* assets/css/exam-stats.css */
+.q-sort { max-width: 220px; }         /* เดิม style="max-width:220px" */
+.chart-box { height: 320px; }         /* เดิม style="height:320px" */
+.table-fixed { table-layout: fixed; } /* ถ้าจำเป็น */
+
+/* --- Panel/Card แบบเดียวกับด้านบน --- */
+.panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 6px 16px rgba(0,0,0,.04);
+  padding: 16px;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eef1f4;
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.panel-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.panel-body {
+  margin-top: 8px;
+}
+
+.panel-foot {
+  padding-top: 10px;
+  border-top: 1px solid #eef1f4;
+}
+
+/* ความกว้างคอลัมน์ "ข้อ" เดิมที่เคย inline-style */
+.q-col-id { width: 80px; }
+
+/* ปรับโต๊ะให้พอดี card */
+.panel .table-responsive {
+  border-radius: 8px;
+}
+
+/* ปุ่มเล็กในหัว/ท้าย panel */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* โทนพื้นฐาน – มีอยู่แล้วในหน้า */
+body { background: #f7f8fb; }
+
+/* การ์ด/พาเนลให้โทนเดียวกับด้านบน */
+.panel{
+  background:#fff;border:1px solid #e5e7eb;border-radius:16px;
+  box-shadow:0 6px 16px rgba(0,0,0,.04);padding:16px;
+}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding-bottom:10px;border-bottom:1px solid #eef1f4}
+.panel-title{font-size:16px;font-weight:600;margin:0}
+.panel-controls{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
+.panel-controls .control-item{display:flex;flex-direction:column;gap:6px;min-width:220px}
+.panel-body{margin-top:12px}
+.panel-foot{padding-top:10px;border-top:1px solid #eef1f4}
+
+/* ตารางให้อ่านง่าย */
+.table-wrap{border-radius:10px;overflow:auto}
+.table-sticky thead th{position:sticky;top:0;background:#fff;z-index:2}
+.table-zebra tbody tr:nth-child(even){background:#fafbff}
+
+/* ความกว้างคอลัมน์เลขข้อให้คงที่ */
+.q-col-id{width:80px}
+
+/* ช่องตัวกรองและปุ่มให้เล็กลงพอดีสายตา */
+.q-sort{max-width:220px}
+
+/* ตัวเลขให้ใช้ฟอนต์ tabular (ถ้ามี) เพื่อเรียงแนว */
+td.text-end, th.text-end{font-variant-numeric: tabular-nums}
+
+/* กราฟให้สูงเท่ากัน */
+.chart-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px}
+.chart-box, #perQuestionChart, #histChart{height:320px}
+
+/* ปุ่มไอคอน */
+.btn-icon{display:inline-flex;align-items:center;gap:6px}
+
+/* KPI */
+.card-kpi .num{font-size:28px;font-weight:700}
+
+/* ระยะห่างรวมหน้า */
+.page-wrap{max-width:1200px;margin:24px auto;padding:0 16px}
+
+/* สีช่วยเน้นค่าเปอร์เซ็นต์ */
+#qTable td:last-child{font-weight:600}
+#qTable tr.low-pct   td:last-child{color:#DC2626;} /* < 30% */
+#qTable tr.mid-pct   td:last-child{color:#CA8A04;} /* 30-60% */
+#qTable tr.high-pct  td:last-child{color:#16A34A;} /* > 60% */

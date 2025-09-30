@@ -1,0 +1,87 @@
+:root{
+  --bg:#f7f8fb;
+  --card:#fff;
+  --ink:#111827;
+  --muted:#6b7280;
+  --brand:#2563eb;
+  --brand-weak:#dbeafe;
+  --line:#e5e7eb;
+  --pill:#f3f4f6;
+  --pill-ink:#374151;
+}
+
+/* ใช้เฉพาะหน้านี้ ด้วยคลาส .student-materials บน <body> */
+.student-materials{
+  font-family:"Prompt",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+  background:var(--bg);
+  color:var(--ink);
+}
+
+/* Header */
+.student-materials header.course-header{
+  display:flex;align-items:center;gap:16px;
+  padding:14px 18px;background:#0b1e44;color:#fff;
+}
+.student-materials header .logo-text{display:flex;align-items:center;gap:14px;}
+.student-materials header .logo-text img{height:52px;}
+.student-materials header .course-title h2{font-size:18px;line-height:1.25;margin:0;}
+.student-materials header .right{margin-left:auto;display:flex;gap:8px;}
+
+/* Layout */
+.student-materials .wrapper{max-width:1200px;margin:24px auto;padding:0 16px;}
+.student-materials .grid{display:grid;grid-template-columns:360px 1fr;gap:16px;}
+@media (max-width:960px){.student-materials .grid{grid-template-columns:1fr;}}
+
+/* Panel */
+.student-materials .panel{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  box-shadow:0 6px 16px rgba(0,0,0,.04);
+}
+.student-materials .panel h3{
+  font-size:16px;font-weight:600;
+  padding:14px 16px;border-bottom:1px solid var(--line);margin:0;
+}
+.student-materials .panel .content{padding:14px 16px;}
+.student-materials .panel--ghost{border:none!important;}
+
+/* รายการเอกสาร */
+.student-materials .mat-item{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px;background:#fff;
+  display:flex;gap:12px;align-items:center;justify-content:space-between;
+}
+.student-materials .mat-title{
+  font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.student-materials .mat-sub{font-size:12px;color:var(--muted);}
+.student-materials .mat-actions{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* ปุ่มสไตล์นุ่ม */
+.student-materials .btn-soft{
+  background:var(--pill);color:var(--pill-ink);
+  border:1px solid var(--line);padding:8px 10px;border-radius:10px;font-size:13px;
+}
+.student-materials .btn-soft.primary{
+  background:var(--brand-weak);color:var(--brand);border-color:#bfdbfe;
+}
+.student-materials .btn-soft.dl{
+  background:#fef3c7;color:#92400e;border-color:#fde68a;
+}
+
+/* Viewer */
+.student-materials .viewer{display:flex;flex-direction:column;gap:12px;}
+.student-materials .canvas-wrap{
+  background:#fff;border:1px solid var(--line);border-radius:12px;
+  padding:8px;display:flex;justify-content:center;align-items:center;min-height:420px;
+}
+.student-materials canvas{max-width:100%;height:auto;border-radius:8px;}
+
+/* ป้ายเล็ก */
+.student-materials .pill{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--pill);color:var(--pill-ink);
+  padding:6px 10px;border-radius:999px;font-size:12px;
+}

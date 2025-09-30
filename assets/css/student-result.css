@@ -1,203 +1,259 @@
-body {
-  background-color: #f5f7fa;
+/* ===========================
+   Student Result – v2
+   File: assets/css/student-result.css
+   =========================== */
+
+:root{
+  --bg: #f6f8fc;
+  --card: #ffffff;
+  --text: #243b53;
+  --muted: #6b7c93;
+  --line: #e7edf5;
+
+  --primary: #2f6fed;
+  --primary-weak: #eaf1ff;
+
+  --green: #19b46b;
+  --green-weak: #e9fbf3;
+
+  --red: #e55353;
+  --red-weak: #ffecec;
+
+  --amber: #ffb020;
+  --amber-weak: #fff4df;
+
+  --lavender: #7a7fe3;
+  --lavender-weak: #eeefff;
+
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 10px;
+
+  --shadow-1: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.1);
+  --shadow-2: 0 6px 24px rgba(31,41,55,.08), 0 2px 8px rgba(31,41,55,.06);
 }
 
-/* Page Container */
-.result-main {
-  max-width: 900px;
-  margin: 32px auto;
-  padding: 32px;
-  background: #fff;
-  border-radius: 20px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+html,body{
+  height:100%;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: 'Prompt', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-/* Student Info Box */
-.student-info-box {
-  background: linear-gradient(145deg, #f8fafc, #ffffff);
-  border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.1);
-  padding: 24px 32px;
-  margin-bottom: 32px;
-  font-size: 1.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-  border: 1px solid rgba(37, 99, 235, 0.1);
+/* ---------- Header ---------- */
+.course-header{
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  padding: .9rem 1.25rem;
+  display:flex;
+  align-items:center;
+  gap:1rem;
+  position: sticky;
+  top:0;
+  z-index: 10;
+}
+.course-header .logo-text{
+  display:flex; align-items:center; gap:12px;
+}
+.course-header .course-title h2{
+  font-weight: 600; font-size: 1.05rem; margin:0; color: var(--text);
 }
 
-.student-info-box .info-row {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  padding: 8px 0;
+/* ---------- Main wrapper ---------- */
+.result-main{
+  max-width: 1040px;
+  margin: 24px auto 56px;
+  padding: 0 16px;
 }
 
-.student-info-box .info-label {
-  font-weight: 600;
-  color: #4c6aa7;
-  min-width: 120px;
-  text-align: right;
+/* ---------- Student card ---------- */
+.student-info-box{
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  padding: 20px 22px;
+  margin-bottom: 18px;
   position: relative;
 }
 
-.student-info-box .info-label::after {
-  content: ":";
-  position: absolute;
-  right: -10px;
+.center-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 2px 0 12px;
+}
+.center-title .fa,
+.center-title i{ color: var(--primary); }
+
+/* small chips shown under title (เช่น %คะแนน, ผ่าน/ไม่ผ่าน, avg/ข้อ) */
+.chips{ display:flex; flex-wrap:wrap; gap:8px; margin:0 0 10px; }
+.pill{
+  display:inline-flex; align-items:center; gap:8px;
+  height: 28px; padding: 0 10px;
+  font-size:.82rem; font-weight:600;
+  border-radius: 999px; border:1px solid transparent;
+  background: var(--primary-weak); color: var(--primary);
+}
+.pill--success { background: var(--green-weak); color: var(--green); }
+.pill--danger  { background: var(--red-weak); color: var(--red); }
+.pill--muted   { background: var(--lavender-weak); color: var(--lavender); }
+
+/* rows inside student card */
+.info-row{
+  display:flex; align-items:center; gap:14px;
+  padding: 6px 0;
+  border-top: 1px dashed var(--line);
+}
+.info-row:first-of-type{ border-top:none; }
+.info-label{
+  min-width: 110px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.info-value{ color: var(--text); font-weight: 600; }
+
+/* ---------- Stat stripe ---------- */
+.table-container{
+  background: var(--card);
+  border:1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: 14px 14px 10px;
 }
 
-.student-info-box .info-value {
-  font-weight: 500;
-  color: #1e293b;
-  flex: 1;
-  font-size: 1.1rem;
-}
-
-.student-info-box .center-title {
-  text-align: center;
-  font-size: 1.5rem;
-    color: #4c6aa7;
-  margin-bottom: 16px;
-}
-
-/* Result Table */
-.table-container {
-  width: 100%;
-  margin: 0 auto;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-}
-
-.result-table {
-  width: 100%;
+.result-table{
+  width:100%;
   border-collapse: separate;
-  border-spacing: 0;
-  background: #fff;
+  border-spacing: 0 10px; /* row gaps look like chips on a rail */
 }
 
-.result-table th {
-  background: linear-gradient(145deg, #e99670, #c25f0f);
-  color: #fff;
-  font-weight: 600;
-  text-align: center;
-  padding: 16px;
-  font-size: 1.1rem;
-  letter-spacing: 0.5px;
-  border: none;
+.result-table thead th{
+  font-weight: 700; font-size:.95rem; color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 12px 12px;
+  white-space: nowrap;
 }
 
-.result-table td {
-  padding: 16px;
-  text-align: center;
-  font-size: 1.1rem;
-  border-bottom: 1px solid #e5e7eb;
-  transition: all 0.2s ease;
+.result-table tbody td{
+  padding: 12px 12px;
+  vertical-align: middle;
+  border-bottom: 1px dashed var(--line);
 }
 
-.result-table tbody tr {
-  background: #fff;
-  transition: all 0.2s ease;
+/* number badges */
+.stat-badge{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width: 44px; height: 36px; padding: 0 12px;
+  font-weight: 700; letter-spacing:.2px;
+  border-radius: 999px;
+  background: var(--primary-weak); color: var(--primary);
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,.03);
+}
+.stat-total{ background: var(--lavender-weak); color: var(--lavender); }
+.stat-correct{ background: var(--green-weak); color: var(--green); }
+.stat-wrong{ background: var(--red-weak); color: var(--red); }
+.stat-time{ background: var(--amber-weak); color: #9a6a00; }
+
+/* time chips look like iOS-style */
+.time-chip{
+  display:inline-flex; align-items:center; gap:8px;
+  height: 34px; padding: 0 12px;
+  background: #f4f6fb;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text); font-weight: 600;
 }
 
-.result-table tbody tr:hover {
-  background: rgba(59, 130, 246, 0.05);
-  transform: translateY(-1px);
-}
+/* ---------- Buttons in header (กลับ / ออก) harmonize with theme ---------- */
+.btn-outline-primary{ border-radius: 10px; }
 
-/* Stats Badges */
-.stat-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1.1rem;
-}
-
-.stat-total { background: #e0f2fe; color: #0369a1; }
-.stat-correct { background: #dcfce7; color: #15803d; }
-.stat-wrong { background: #fee2e2; color: #b91c1c; }
-.stat-time { background: #f3e8ff; color: #6b21a8; }
-
-/* Banner */
-.banner {
-  margin: 0 auto 24px;
-  max-width: 900px;
-  border-radius: 12px;
-  padding: 16px 24px;
-  font-size: 1.1rem;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.banner.alert-success {
-  background: #dcfce7;
-  color: #15803d;
-  border: 1px solid #86efac;
-}
-
-.banner.alert-danger {
-  background: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
-}
-
-/* Header */
-.course-header {
-  background: #fff;
-  padding: 16px 32px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  margin-bottom: 32px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.logo-text {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.course-title h2 {
-  font-size: 1.4rem;
-  color: #1e293b;
-  margin: 0;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-/* Responsive Design */
-@media (max-width: 900px) {
-  .result-main {
-    margin: 16px;
-    padding: 16px;
+/* ---------- Responsive ---------- */
+@media (max-width: 900px){
+  .result-table thead{ display:none; }
+  .result-table, .result-table tbody, .result-table tr, .result-table td{ display:block; width:100%; }
+  .result-table tbody tr{ background: transparent; }
+  .result-table tbody td{
+    display:flex; align-items:center; justify-content: space-between;
+    padding: 10px 6px;
+    border-bottom: 1px dashed var(--line);
   }
-
-  .student-info-box {
-    padding: 16px;
-    font-size: 1rem;
-  }
-
-  .result-table th,
-  .result-table td {
-    padding: 12px 8px;
-    font-size: 0.95rem;
-  }
-
-  .course-header {
-    padding: 12px;
-  }
-
-  .course-title h2 {
-    font-size: 1.1rem;
-  }
+  .result-table tbody td:first-child{ padding-top: 12px; }
+  .result-table tbody td:last-child{ border-bottom: none; padding-bottom: 12px; }
+  .info-row{ flex-wrap: wrap; }
+  .info-label{ min-width: 0; }
 }
+
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f172a; --card:#0b1220; --text:#e8eef7; --muted:#8aa2c0; --line:#1b2640;
+    --primary-weak:#0e2450; --green-weak:#092f22; --red-weak:#3d0f14; --amber-weak:#3b2a0b; --lavender-weak:#1a1c3d;
+  }
+  .btn-outline-primary{ color:var(--text); border-color:#2b3d6b; }
+}
+
+
+/* ===== Force LIGHT theme always (ชัดบนพื้นขาว) ===== */
+:root{
+  color-scheme: only light;
+  --bg:#ffffff;
+  --card:#ffffff;
+  --text:#111827;      /* ดำเข้มอ่านง่าย */
+  --muted:#475569;     /* เทาเข้มสำหรับ label */
+  --line:#e5e7eb;
+
+  /* สีพื้นของ badge ต่าง ๆ */
+  --primary-weak:#eaf1ff;
+  --green-weak:#e9fbf3;
+  --red-weak:#ffecec;
+  --amber-weak:#fff4df;
+  --lavender-weak:#eeefff;
+}
+
+/* พื้นหลัง+ตัวอักษร */
+html, body{
+  background:#ffffff !important;
+  color:#111827 !important;
+}
+
+/* Header และการ์ดให้ขาวชัด */
+.course-header,
+.student-info-box,
+.table-container{
+  background:#ffffff !important;
+  border-color:#e5e7eb !important;
+  color:#111827 !important;
+}
+
+/* ตัวหนังสือรอง/หัวตารางให้เข้มขึ้น */
+.info-label{ color:#374151 !important; }
+.result-table thead th{ color:#64748b !important; }
+
+/* ปรับสี time badge ให้คอนทราสต์ดีบนพื้นขาว */
+.stat-time{ background:#fff4df !important; color:#7a5300 !important; }
+
+/* ปิดผลของโหมดมืดระบบ: บังคับให้ใช้พาเลตขาวเสมอ */
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#ffffff; --card:#ffffff; --text:#111827; --muted:#475569; --line:#e5e7eb;
+    --primary-weak:#eaf1ff; --green-weak:#e9fbf3; --red-weak:#ffecec; --amber-weak:#fff4df; --lavender-weak:#eeefff;
+  }
+  .btn-outline-primary{ color:#1d4ed8; border-color:#1d4ed8; }
+}
+
+.mini-metrics{
+  display:flex; gap:14px; flex-wrap:wrap; align-items:center;
+  margin-top:8px;
+}
+.mini-metrics .metric{ color:#111827; font-weight:500; }
+.mini-metrics .metric i{ margin-right:6px; color:#64748b; }
+
+.badge-pass{ background:#e7f7ed; color:#0f5132; border:1px solid #b7e1c9; padding:.25rem .5rem; border-radius:.5rem; }
+.badge-fail{ background:#fdecec; color:#842029; border:1px solid #f5c2c7; padding:.25rem .5rem; border-radius:.5rem; }
+
+.mini-metrics .rule{ color:#64748b; margin-left:.35rem; }

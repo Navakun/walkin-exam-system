@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8" />
+    <title>เอกสารประกอบรายวิชา – นิสิต</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/walkin-exam-system/favicon.ico" />
+    <link rel="stylesheet" href="assets/css/student-materials.css">
+
+    <!-- Bootstrap (optional) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+</head>
+
+<body class="student-materials">
+    <header class="course-header">
+        <div class="logo-text">
+            <img src="nulogo.png" alt="NU Logo">
+            <div class="course-title">
+                <h2>เอกสารประกอบรายวิชา – นิสิต</h2>
+            </div>
+        </div>
+        <div class="right">
+            <button class="btn btn-outline-light btn-sm" id="backBtn">กลับหน้าหลัก</button>
+            <button class="btn btn-danger btn-sm" id="logoutBtn">ออกจากระบบ</button>
+        </div>
+    </header>
+
+    <div class="wrapper">
+        <div class="grid">
+            <!-- LEFT -->
+            <section class="panel">
+                <h3><i class="fa-solid fa-book-open me-2"></i>เอกสารรายวิชา</h3>
+                <div class="content">
+                    <div id="loadingState">กำลังโหลดเอกสาร...</div>
+                    <div id="emptyState" style="display:none">ยังไม่มีไฟล์</div>
+                    <ul id="materialsList" class="mat-list"></ul>
+                </div>
+            </section>
+
+            <!-- RIGHT -->
+            <section class="panel">
+                <h3><i class="fa-solid fa-file-pdf me-2"></i>ตัวแสดงเอกสาร</h3>
+                <div class="content viewer">
+
+                    <!-- ✅ ใส่ canvas จริง -->
+                    <div class="canvas-wrap">
+                        <canvas id="pdfCanvas" aria-label="ตัวแสดงไฟล์ PDF"></canvas>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="pill"><i class="fa-regular fa-file-pdf"></i> <span
+                                id="pageInfo">ยังไม่เปิดไฟล์</span></div>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-soft" id="prevPage" title="หน้าก่อนหน้า"
+                                aria-label="หน้าก่อนหน้า"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button type="button" class="btn btn-soft" id="nextPage" title="หน้าถัดไป"
+                                aria-label="หน้าถัดไป"><i class="fa-solid fa-chevron-right"></i></button>
+                            <button type="button" class="btn btn-soft" id="zoomOut" title="ซูมออก"
+                                aria-label="ซูมออก"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                            <button type="button" class="btn btn-soft" id="zoomIn" title="ซูมเข้า"
+                                aria-label="ซูมเข้า"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="panel panel--ghost">
+                        <div class="content tts">
+                            <div class="tts-row">
+                                <button type="button" class="btn btn-soft primary" id="ttsPlay"><i
+                                        class="fa-solid fa-play"></i> เล่นเสียงหน้านี้</button>
+                                <button type="button" class="btn btn-soft" id="ttsPause"><i
+                                        class="fa-solid fa-pause"></i> พัก</button>
+                                <button type="button" class="btn btn-soft" id="ttsResume"><i
+                                        class="fa-solid fa-play"></i> ต่อ</button>
+                                <button type="button" class="btn btn-soft" id="ttsStop"><i class="fa-solid fa-stop"></i>
+                                    หยุดทั้งหมด</button>
+                            </div>
+
+                            <div class="tts-row">
+                                <label for="voiceSelect" class="form-label me-2 mb-0">เลือกเสียง</label>
+                                <select id="voiceSelect" class="form-select form-select-sm"
+                                    aria-label="เลือกเสียงสำหรับอ่านออกเสียง"></select>
+                                <span class="badge-note">แนะนำเลือกเสียงภาษาไทย (th-TH)</span>
+                            </div>
+
+                            <div class="tts-row">
+                                <label for="rateRange" class="form-label me-2 mb-0">ความเร็ว</label>
+                                <input type="range" id="rateRange" min="0.6" max="1.6" step="0.1" value="1.0"
+                                    aria-label="ปรับความเร็วการอ่าน">
+                                <span id="rateVal" class="pill"><i
+                                        class="fa-solid fa-gauge-high"></i><span>1.0x</span></span>
+                            </div>
+
+                            <div class="tts-row">
+                                <label for="pitchRange" class="form-label me-2 mb-0">โทนเสียง</label>
+                                <input type="range" id="pitchRange" min="0.7" max="1.4" step="0.1" value="1.0"
+                                    aria-label="ปรับโทนเสียง">
+                                <span id="pitchVal" class="pill"><i
+                                        class="fa-solid fa-sliders"></i><span>1.0</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // ------- pdf.js state -------
+        let pdfDoc = null, pageNum = 1, scale = 1.25, rendering = false, pending = null;
+        let canvas, ctx;
+
+        async function openPdf(url, title = '') {
+            stopAllSpeech();
+            document.getElementById('pageInfo').textContent = 'กำลังโหลด…';
+
+            ensureCanvas(); // ✅ สร้าง canvas ถ้ายังไม่มี
+            canvas = document.getElementById('pdfCanvas');
+            ctx = canvas.getContext('2d');
+
+            try {
+                pdfDoc = await pdfjsLib.getDocument(url).promise;
+                pageNum = 1; scale = 1.25;
+                renderPage(pageNum);
+            } catch (e) {
+                document.getElementById('pageInfo').textContent = 'โหลดไฟล์ไม่สำเร็จ';
+                console.error(e);
+            }
+        }
+
+        const $ = (s, r = document) => r.querySelector(s);
+        const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+        const listEl = $('#materialsList');
+        const emptyEl = $('#emptyState');
+        const loadingEl = $('#loadingState');
+
+        // helper กันล้มถ้า element ไม่มี
+        function on(id, ev, fn) {
+            const el = document.getElementById(id);
+            if (!el) { console.warn('missing element:', id); return; }
+            el.addEventListener(ev, fn);
+        }
+
+        // ✅ เพิ่มฟังก์ชันนี้ (อยู่เหนือ renderMaterials)
+        function escapeHTML(s) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+            return String(s ?? '').replace(/[&<>"']/g, ch => map[ch]);
+        }
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // ------- materials -------
+        async function fetchMaterials() {
+            const token = localStorage.getItem('studentToken');
+            if (!token) { location.href = 'student_login.html'; return; }
+
+            const url = 'api/student_get_materials.php'; // ใช้ relative ป้องกัน path เพี้ยน
+            let res, text, data;
+
+            try {
+                res = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    cache: 'no-store'
+                });
+            } catch (netErr) {
+                console.error('NETWORK_ERROR', netErr);
+                alert('เชื่อมต่อไม่สำเร็จ: ' + (netErr?.message || 'NETWORK_ERROR'));
+                return;
+            }
+
+            text = await res.text();
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error('BAD_JSON', { status: res.status, text });
+                alert(`โหลดเอกสารล้มเหลว (HTTP ${res.status})`);
+                return;
+            }
+
+            if (res.status === 401 || res.status === 403) {
+                alert(data?.message || 'หมดเวลาการใช้งาน กรุณาเข้าสู่ระบบใหม่');
+                localStorage.removeItem('studentToken');
+                location.href = 'student_login.html';
+                return;
+            }
+
+            if (!res.ok || data.status !== 'success') {
+                console.error('API_ERROR', { status: res.status, data });
+                alert(data?.message || `โหลดเอกสารล้มเหลว (HTTP ${res.status})`);
+                return;
+            }
+
+            const rows = Array.isArray(data.data) ? data.data
+                : (Array.isArray(data.materials) ? data.materials : []);
+            renderMaterials(rows);
+        }
+
+        function normalizeMaterial(r) {
+            const title = r.title || r.name || r.filename || `เอกสาร #${r.id ?? r.material_id ?? ''}`;
+            const filename = r.filename || r.file || r.file_path || '';
+            const url = r.file_url || r.download_url ||
+                (filename.startsWith('http')
+                    ? filename
+                    : `/walkin-exam-system/uploads/materials/${encodeURIComponent(filename)}`);
+
+            const mime = String(r.file_type || r.type || '').toLowerCase();
+            const ext = (filename.split('.').pop() || '').toLowerCase();
+            const isPdf = mime.includes('pdf') || ext === 'pdf' || /\.pdf($|\?)/i.test(url);
+
+            const uploaded = r.upload_date || r.uploaded_at || r.created_at || '';
+
+            return { id: r.id ?? r.material_id ?? null, title, filename, url, uploadedAt: uploaded, mime, ext, isPdf };
+        }
+
+        function renderMaterials(rows) {
+            loadingEl.style.display = 'none';
+            listEl.innerHTML = '';
+
+            const items = rows.map(normalizeMaterial).filter(m => !!m.url);
+            if (items.length === 0) { emptyEl.style.display = 'block'; return; }
+            emptyEl.style.display = 'none';
+
+            items.forEach(m => {
+                const li = document.createElement('li');
+                li.className = 'mat-item mb-2';
+
+                const meta = document.createElement('div');
+                meta.className = 'meta';
+
+                const title = document.createElement('div');
+                title.className = 'mat-title';
+                title.textContent = m.title || '';
+                meta.appendChild(title);
+
+                const sub = document.createElement('div');
+                sub.className = 'mat-sub';
+                sub.innerHTML = `
+      <i class="fa-regular fa-clock me-1"></i>${m.uploadedAt || '-'}
+      &nbsp;•&nbsp;<i class="fa-regular fa-file-lines me-1"></i>${(m.mime || m.ext || '').toUpperCase()}
+    `;
+                meta.appendChild(sub);
+
+                const act = document.createElement('div');
+                act.className = 'mat-actions';
+
+                // ปุ่ม "เปิด" สำหรับ PDF เท่านั้น
+                if (m.isPdf) {
+                    const openBtn = document.createElement('button');
+                    openBtn.className = 'btn-soft primary';
+                    openBtn.innerHTML = `<i class="fa-solid fa-eye"></i> เปิด`;
+                    openBtn.addEventListener('click', () => openPdf(m.url, m.title));
+                    act.appendChild(openBtn);
+                }
+
+                // ปุ่มดาวน์โหลด (ทุกชนิดไฟล์)
+                const dl = document.createElement('a');
+                dl.className = 'btn-soft dl';
+                dl.href = m.url;
+                dl.setAttribute('download', '');
+                dl.innerHTML = `<i class="fa-solid fa-download"></i> ดาวน์โหลด`;
+                act.appendChild(dl);
+
+                li.appendChild(meta);
+                li.appendChild(act);
+                listEl.appendChild(li);
+            });
+        }
+
+
+        // ------- PDF viewer -------
+        async function openPdf(url, title = '') {
+            stopAllSpeech();
+            const pageInfo = document.getElementById('pageInfo'); if (pageInfo) pageInfo.textContent = 'กำลังโหลด…';
+            try {
+                pdfDoc = await pdfjsLib.getDocument(url).promise;
+                pageNum = 1; scale = 1.25;
+                renderPage(pageNum);
+            } catch (e) {
+                if (pageInfo) pageInfo.textContent = 'โหลดไฟล์ไม่สำเร็จ';
+                console.error(e);
+            }
+        }
+
+        function renderPage(num) {
+            rendering = true;
+            pdfDoc.getPage(num).then(page => {
+                const viewport = page.getViewport({ scale });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                page.render({ canvasContext: ctx, viewport }).promise.then(() => {
+                    rendering = false;
+                    const pageInfo = document.getElementById('pageInfo');
+                    if (pageInfo) pageInfo.textContent = `หน้า ${pageNum} / ${pdfDoc.numPages}`;
+                    if (pending !== null) { renderPage(pending); pending = null; }
+                });
+            });
+        }
+        function queueRender(num) { rendering ? (pending = num) : renderPage(num); }
+        function onPrev() { if (!pdfDoc || pageNum <= 1) return; pageNum--; queueRender(pageNum); stopAllSpeech(); }
+        function onNext() { if (!pdfDoc || pageNum >= pdfDoc.numPages) return; pageNum++; queueRender(pageNum); stopAllSpeech(); }
+        function onZoomIn() { if (!pdfDoc) return; scale = Math.min(scale + 0.1, 2.5); queueRender(pageNum); }
+        function onZoomOut() { if (!pdfDoc) return; scale = Math.max(scale - 0.1, 0.6); queueRender(pageNum); }
+
+        // ------- TTS -------
+        const voiceSelect = $('#voiceSelect');
+        const rateRange = $('#rateRange');
+        const pitchRange = $('#pitchRange');
+        const rateVal = $('#rateVal span');
+        const pitchVal = $('#pitchVal span');
+
+        let voices = [];
+        function loadVoices() {
+            voices = speechSynthesis.getVoices();
+            if (voiceSelect) {
+                voiceSelect.innerHTML = '';
+                voices
+                    .sort((a, b) => (a.lang || '').localeCompare(b.lang || '') || (a.name || '').localeCompare(b.name || ''))
+                    .forEach((v, i) => {
+                        const opt = document.createElement('option');
+                        opt.value = String(i);
+                        opt.textContent = `${v.name} – ${v.lang}`;
+                        voiceSelect.appendChild(opt);
+                    });
+                const idxTh = voices.findIndex(v => (v.lang || '').toLowerCase().startsWith('th'));
+                voiceSelect.value = idxTh >= 0 ? String(idxTh) : '0';
+            }
+        }
+        function chunkText(text, size = 220) {
+            const out = [], n = text.length; let i = 0, buf = '';
+            while (i < n) { buf += text[i]; if (buf.length >= size && /[\s\.\,\!\?]/.test(text[i])) { out.push(buf.trim()); buf = ''; } i++; }
+            if (buf.trim()) out.push(buf.trim());
+            return out;
+        }
+        function speakText(text) {
+            speechSynthesis.cancel();
+            if (!text) return;
+            const sel = voices[Number(voiceSelect?.value)] || voices[0];
+            chunkText(text).forEach(part => {
+                const u = new SpeechSynthesisUtterance(part);
+                if (sel) u.voice = sel;
+                u.rate = Number(rateRange?.value) || 1.0;
+                u.pitch = Number(pitchRange?.value) || 1.0;
+                speechSynthesis.speak(u);
+            });
+        }
+        function stopAllSpeech() { speechSynthesis.cancel(); }
+
+        // ------- boot -------
+        document.addEventListener('DOMContentLoaded', () => {
+            // สร้าง/อ้างอิง canvas ให้แน่ใจว่าอยู่ใน DOM
+            canvas = document.getElementById('pdfCanvas');
+            if (!canvas) {
+                canvas = document.createElement('canvas');
+                canvas.id = 'pdfCanvas';
+                (document.getElementById('viewerPane') || document.body).appendChild(canvas);
+            }
+            ctx = canvas.getContext('2d');
+
+            // ผูกอีเวนต์แบบกันล้ม
+            on('prevPage', 'click', onPrev);
+            on('nextPage', 'click', onNext);
+            on('zoomIn', 'click', onZoomIn);
+            on('zoomOut', 'click', onZoomOut);
+
+            on('ttsPlay', 'click', async () => {
+                if (!pdfDoc) return;
+                const txt = await (async () => { const p = await pdfDoc.getPage(pageNum); const t = await p.getTextContent(); return t.items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim(); })();
+                if (!txt) return alert('ไม่พบข้อความในหน้านี้');
+                speakText(txt);
+            });
+            on('ttsPause', 'click', () => { if (speechSynthesis.speaking) speechSynthesis.pause(); });
+            on('ttsResume', 'click', () => { if (speechSynthesis.paused) speechSynthesis.resume(); });
+            on('ttsStop', 'click', stopAllSpeech);
+
+            on('backBtn', 'click', () => location.href = 'student_dashboard.html');
+            on('logoutBtn', 'click', () => { localStorage.clear(); location.href = 'student_login.html'; });
+
+            // TTS UI
+            if (rateRange && rateVal) rateRange.addEventListener('input', () => rateVal.textContent = `${(+rateRange.value).toFixed(1)}x`);
+            if (pitchRange && pitchVal) pitchRange.addEventListener('input', () => pitchVal.textContent = (+pitchRange.value).toFixed(1));
+            loadVoices();
+            speechSynthesis.onvoiceschanged = loadVoices;
+
+            // โหลดรายการไฟล์
+            fetchMaterials();
+        });
+    </script>
+
+</body>
+
+</html>
