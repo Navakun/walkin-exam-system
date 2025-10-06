@@ -1,0 +1,175 @@
+/* ============================
+   Slot Scheduler Styles (Exam Slots)
+   File: assets/css/slot-scheduler.css
+   ============================ */
+
+/* ---- Design tokens ให้ตรงกับหน้าที่เหลือ ---- */
+:root{
+  --thai-font: "Prompt","Noto Sans Thai",system-ui,-apple-system,"Segoe UI",
+               Roboto,"Helvetica Neue",Arial,sans-serif;
+  --brand:#1e4fbf;
+  --brand-2:#4f7de8;
+  --bg:#f5f6fa;
+  --card:#ffffff;
+  --text:#1f2937;
+  --muted:#6b7280;
+  --border:#e5e7eb;
+  --shadow:0 12px 30px rgba(30,79,191,.08);
+  --ring:#93c5fd;
+  --ok:#10b981;
+  --warn:#f59e0b;
+  --err:#ef4444;
+}
+
+/* ---- Base / Layout ---- */
+html,body{ font-family:var(--thai-font); background:var(--bg); color:var(--text); }
+.teacher-dashboard{ max-width:1200px; margin:0 auto; padding:28px; }
+
+.time-slots{
+  background:var(--card);
+  border:1px solid var(--border);
+  box-shadow:var(--shadow);
+  border-radius:16px;
+  padding:22px 22px 26px;
+}
+
+.time-slots > h2{
+  font-size:1.35rem;
+  font-weight:700;
+  margin:0 0 18px;
+  color:var(--brand);
+}
+
+/* ---- Error box ---- */
+#errorBox .alert{ margin-bottom:14px; }
+
+/* ---- Form ---- */
+.time-slot-form{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(220px,1fr));
+  gap:14px 16px;
+  margin-bottom:22px;
+}
+
+.time-slot-form .form-group{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.time-slot-form label{
+  font-weight:600;
+  color:#334155;
+  font-size:.94rem;
+}
+
+.time-slot-form input[type="text"],
+.time-slot-form input[type="number"],
+.time-slot-form input[type="date"],
+.time-slot-form input[type="time"],
+.time-slot-form input[type="datetime-local"],
+.time-slot-form select{
+  appearance:none;
+  border:1px solid var(--border);
+  border-radius:10px;
+  height:44px;
+  padding:0 12px;
+  background:#fafbff;
+  transition:border-color .15s, box-shadow .15s, background .15s;
+}
+
+.time-slot-form input:focus,
+.time-slot-form select:focus{
+  outline:none;
+  border-color:var(--brand-2);
+  box-shadow:0 0 0 3px var(--ring);
+  background:#fff;
+}
+
+/* ปุ่มส่ง */
+#submitBtn{
+  grid-column:1 / -1;
+  justify-self:start;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border-radius:10px;
+  padding:10px 16px;
+  font-weight:600;
+  background:linear-gradient(180deg,var(--brand-2),var(--brand));
+  border:0;
+  box-shadow:0 8px 16px rgba(79,125,232,.25);
+}
+#submitBtn:hover{ filter:brightness(.98); transform:translateY(-1px); }
+#submitBtn:disabled{ filter:grayscale(.2) opacity(.8); transform:none; }
+
+/* ---- Table ---- */
+.slots-table{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:var(--shadow);
+}
+
+.slots-table thead th{
+  background:linear-gradient(180deg,#f8fbff,#eef4ff);
+  color:#334155;
+  font-weight:700;
+  border-bottom:1px solid var(--border);
+  position:sticky; top:0; z-index:1;
+}
+
+.slots-table th,
+.slots-table td{
+  padding:11px 12px;
+  vertical-align:middle;
+}
+
+.slots-table tbody tr{ transition:background .12s, transform .05s; }
+.slots-table tbody tr:hover{ background:#f9fbff; }
+
+/* แถบสีตามสถานะ (ใช้กับ <tr> หรือ <td> ก็ได้) */
+.status-pill{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 10px; border-radius:999px; font-weight:600; font-size:.85rem;
+}
+.status-available .status-pill,
+td.text-success .status-pill{
+  color:#065f46; background:#ecfdf5; border:1px solid #a7f3d0;
+}
+.status-full .status-pill,
+td.text-danger .status-pill{
+  color:#7f1d1d; background:#fef2f2; border:1px solid #fecaca;
+}
+.status-closed .status-pill{
+  color:#374151; background:#f3f4f6; border:1px solid #e5e7eb;
+}
+
+/* แถวพื้นหลังตามสถานะ (ถ้าอยากเน้นทั้งแถว) */
+.slots-table tr.status-available{ background:#f3fcf6; }
+.slots-table tr.status-full{ background:#fff7f7; }
+.slots-table tr.status-closed{ background:#f9fafb; }
+
+/* ปุ่มจัดการ */
+.delete-slot-btn{
+  border-radius:8px !important;
+  padding:6px 10px !important;
+  font-weight:600;
+}
+.delete-slot-btn i{ margin-right:6px; }
+
+/* ---- SweetAlert2 ปรับฟอนต์ให้เข้าชุด ---- */
+.swal2-popup{ font-family:var(--thai-font); }
+
+/* ---- Responsive ---- */
+@media (max-width: 1024px){
+  .time-slot-form{ grid-template-columns: repeat(2, minmax(220px,1fr)); }
+}
+@media (max-width: 600px){
+  .teacher-dashboard{ padding:18px; }
+  .time-slots{ padding:18px; }
+  .time-slot-form{ grid-template-columns: 1fr; }
+  #submitBtn{ width:100%; justify-content:center; }
+}

@@ -8,6 +8,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/main.css">
   <link rel="stylesheet" href="assets/css/teacher.css">
+  <link rel="stylesheet" href="assets/css/slot-scheduler.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <link rel="icon" href="data:,">
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
@@ -155,8 +156,7 @@
           const cap = parseInt(s.max_seats || s.capacity) || 0;
           const isFull = booked >= cap;
           const tr = document.createElement('tr');
-          tr.classList.add('status-available');
-          tr.style.backgroundColor = "#e8f8e8"; // เขียวอ่อน
+          tr.className = isFull ? 'status-full' : 'status-available';
           tr.innerHTML = `
             <td>${s.reg_open_at ? formatDateTime(s.reg_open_at) : 'ไม่ระบุ'}</td>
             <td>${s.reg_close_at ? formatDateTime(s.reg_close_at) : 'ไม่ระบุ'}</td>
@@ -250,40 +250,41 @@
   </script>
 
 </body>
+
 </html>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.getElementById('timeSlotForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
-        const submitBtn = document.getElementById('submitBtn');
-        const spinner = submitBtn.querySelector('.spinner-border');
-        spinner.classList.remove('d-none');
-        submitBtn.disabled = true;
-    
-        const token = localStorage.getItem('teacherToken') || '';
-        if (!token) return window.location.href = 'teacher_login.html';
-    
-        const formData = new FormData(this);
-        const payload = {};
-        formData.forEach((value, key) => { payload[key] = value; });
-    
-        try {
-            const res = await fetch('api/add_slot.php', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (res.ok && data.status === 'success') {
-            Swal.fire({ icon: 'success', title: 'เพิ่มสำเร็จ', timer: 1200, showConfirmButton: false });
-            this.reset();
-            location.reload();
-            } else throw new Error(data.message || 'เพิ่มไม่สำเร็จ');
-        } catch (e) {
-            document.getElementById('errorBox').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
-        } finally {
-            spinner.classList.add('d-none');
-            submitBtn.disabled = false;
-        }
-        });
-    </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.getElementById('timeSlotForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const submitBtn = document.getElementById('submitBtn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    spinner.classList.remove('d-none');
+    submitBtn.disabled = true;
+
+    const token = localStorage.getItem('teacherToken') || '';
+    if (!token) return window.location.href = 'teacher_login.html';
+
+    const formData = new FormData(this);
+    const payload = {};
+    formData.forEach((value, key) => { payload[key] = value; });
+
+    try {
+      const res = await fetch('api/add_slot.php', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        Swal.fire({ icon: 'success', title: 'เพิ่มสำเร็จ', timer: 1200, showConfirmButton: false });
+        this.reset();
+        location.reload();
+      } else throw new Error(data.message || 'เพิ่มไม่สำเร็จ');
+    } catch (e) {
+      document.getElementById('errorBox').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+    } finally {
+      spinner.classList.add('d-none');
+      submitBtn.disabled = false;
+    }
+  });
+</script>
