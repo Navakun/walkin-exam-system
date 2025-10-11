@@ -80,6 +80,7 @@
     let timerInterval = null;
     let syncInterval = null;
     let sending = false;
+    let questionStartTs = null;
 
     // ====== token + session ======
     const token = localStorage.getItem('studentToken');
@@ -105,21 +106,33 @@
     }
 
     // ====== API helper ======
+    function toastApiError(err, title = 'เกิดข้อผิดพลาด') {
+      const msg = (err && err.message) ? String(err.message) : String(err || 'Unknown');
+      Swal.fire({ icon: 'error', title, text: msg });
+      console.error('[API ERROR]', title, err);
+    }
+
     async function apiPost(path, payload) {
       const res = await fetch(buildApiUrl(path), {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token,
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
         },
         body: JSON.stringify(payload || {})
       });
-      const text = await res.text();
-      let data;
-      try { data = text ? JSON.parse(text) : null; }
-      catch { throw new Error(text || `HTTP ${res.status}`); }
-      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+
+      const raw = await res.text();
+      let data = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch (_) { /* ไม่ใช่ JSON ก็เก็บ raw ไว้โชว์ */ }
+
+      if (!res.ok) {
+        const serverMsg = (data && data.message) ? data.message : (raw || `HTTP ${res.status}`);
+        throw new Error(serverMsg);
+      }
+
       return data;
     }
 
@@ -205,11 +218,12 @@
 
     async function loadNextQuestion() {
       try {
-        const data = await apiPost(API_SUBMIT, {
+        const payload = {
           session_id: Number(sessionId),
           question_id: currentQuestion?.question_id || 0,
-          selected_choice_id: null
-        });
+          prev_question_id: currentQuestion?.question_id || 0
+        };
+        const data = await apiPost(API_SUBMIT, payload);
 
         if (data.total_questions != null) TOTAL_QUESTIONS = Number(data.total_questions) || TOTAL_QUESTIONS;
         if (data.answered_count != null) questionsAnswered = Number(data.answered_count) || questionsAnswered;
@@ -220,12 +234,13 @@
           finishExam(data.score);
         } else if (data.status === 'continue') {
           currentQuestion = data.question;
+          questionStartTs = Date.now();           // เริ่มจับเวลาเพื่อส่ง response_time_sec
           displayQuestion();
         } else {
           throw new Error(data.message || 'เกิดข้อผิดพลาด');
         }
       } catch (err) {
-        Swal.fire('เกิดข้อผิดพลาด', String(err.message || err), 'error');
+        toastApiError(err, 'ขอข้อถัดไปล้มเหลว');
       }
     }
 
@@ -253,6 +268,7 @@
       });
 
       updateChoiceSelectedUI();
+      questionStartTs = Date.now(); // เริ่มจับเวลาเมื่อแสดงข้อใหม่
     }
 
     function updateChoiceSelectedUI() {
@@ -281,17 +297,18 @@
         sending = true;
         setSubmitEnabled(false);
 
+        const response_time_sec = questionStartTs ? Math.max(0, Math.round((Date.now() - questionStartTs) / 1000)) : 0;
+
         const data = await apiPost(API_SUBMIT, {
           session_id: Number(sessionId),
           question_id: currentQuestion.question_id,
-          selected_choice_id: Number(selected.value)
+          selected_choice_id: Number(selected.value),
+          response_time_sec
         });
 
         if (data.total_questions != null) TOTAL_QUESTIONS = Number(data.total_questions) || TOTAL_QUESTIONS;
         if (data.answered_count != null) questionsAnswered = Number(data.answered_count);
-        else questionsAnswered++;
-
-        updateProgressBar();
+        else questionsAnswered++; updateProgressBar();
 
         if (data.status === 'finished') {
           finishExam(data.score);
@@ -302,7 +319,7 @@
           throw new Error(data.message || 'เกิดข้อผิดพลาด');
         }
       } catch (err) {
-        Swal.fire('เกิดข้อผิดพลาด', String(err.message || err), 'error');
+        toastApiError(err, 'ส่งคำตอบล้มเหลว');
       } finally {
         sending = false;
         // ถ้ายังไม่มีการเลือกในข้อใหม่ ปล่อย disabled เอาไว้

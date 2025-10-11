@@ -1,124 +1,96 @@
 <?php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
 
-require_once '../config/db.php';
-require_once '../vendor/autoload.php';
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
+declare(strict_types=1);
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-// Allow CORS
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Content-Type: application/json");
-
-// Handle preflight requests
-if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
-// Get request body
-$json = file_get_contents('php://input');
-$data = json_decode($json, true);
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/helpers/jwt_helper.php'; // ถ้ามีอยู่แล้วในโปรเจกต์
 
-if (!isset($data['booking_id']) || !isset($data['student_id'])) {
-    http_response_code(400);
-    echo json_encode(['status' => 'error', 'message' => 'ข้อมูลไม่ครบถ้วน']);
+function out($o, int $code = 200)
+{
+    http_response_code($code);
+    echo json_encode($o, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-$booking_id = $data['booking_id'];
-$student_id = $data['student_id'];
-
-// Get and verify authorization header
-$headers = getallheaders();
-$auth_header = isset($headers['Authorization']) ? $headers['Authorization'] : '';
-
-if (!$auth_header) {
-    error_log('No Authorization header found');
-    http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => 'กรุณาเข้าสู่ระบบใหม่อีกครั้ง']);
-    exit;
+/* ===== Auth (Bearer) ===== */
+$h = array_change_key_case(getallheaders(), CASE_LOWER);
+if (!isset($h['authorization']) || !preg_match('/bearer\s+(\S+)/i', $h['authorization'], $m)) {
+    out(['status' => 'error', 'message' => 'กรุณาเข้าสู่ระบบใหม่อีกครั้ง'], 401);
 }
+$claims = decodeToken($m[1]);
+if (!$claims) out(['status' => 'error', 'message' => 'โทเคนไม่ถูกต้อง'], 401);
+$student_id = (string)($claims->student_id ?? $claims->sub ?? '');
+if ($student_id === '') out(['status' => 'error', 'message' => 'โทเคนไม่ระบุรหัสนิสิต'], 401);
 
-// Extract token
-$token = str_replace('Bearer ', '', $auth_header);
+/* ===== Body ===== */
+$body = json_decode(file_get_contents('php://input'), true) ?: [];
+$booking_id = (int)($body['booking_id'] ?? 0);
+$reason     = trim((string)($body['reason'] ?? ''));
+
+if ($booking_id <= 0) out(['status' => 'error', 'message' => 'ข้อมูลไม่ครบถ้วน'], 400);
 
 try {
-    // Verify JWT token
-    $decoded = JWT::decode($token, new Key($jwt_key, 'HS256'));
-    
-    if (!isset($decoded->student_id) || $decoded->student_id !== $student_id) {
-        throw new Exception('Invalid token');
+    $pdo = pdo();
+    $pdo->exec("SET time_zone = '+07:00'");
+
+    // 1) ดึง booking + วันสอบ (exam_date) และตรวจสิทธิ์ + สถานะ
+    $sql = "
+    SELECT b.id, b.student_id, b.slot_id, b.status,
+           s.exam_date
+    FROM exam_booking b
+    JOIN exam_slots s ON s.id = b.slot_id
+    WHERE b.id = :bid
+    LIMIT 1
+  ";
+    $st = $pdo->prepare($sql);
+    $st->execute([':bid' => $booking_id]);
+    $bk = $st->fetch(PDO::FETCH_ASSOC);
+
+    if (!$bk) out(['status' => 'error', 'message' => 'ไม่พบข้อมูลการจอง'], 404);
+    if ($bk['student_id'] !== $student_id) out(['status' => 'error', 'message' => 'ไม่มีสิทธิ์ยกเลิกการจองนี้'], 403);
+    if ($bk['status'] !== 'booked') out(['status' => 'error', 'message' => 'การจองนี้ถูกยกเลิกแล้วหรือไม่อยู่ในสถานะยกเลิกได้'], 400);
+
+    // 2) เช็คเงื่อนไข ≥ 3 วันก่อนวันสอบ
+    $today = new DateTime('today');                      // 00:00 ของวันนี้
+    $exam  = new DateTime($bk['exam_date'] . ' 00:00:00'); // 00:00 ของวันสอบ
+    $diffDays = (int)$today->diff($exam)->format('%r%a'); // อาจเป็นลบถ้าเลยวันสอบไปแล้ว
+    if ($diffDays < 3) {
+        out(['status' => 'error', 'message' => 'ต้องยกเลิกล่วงหน้าอย่างน้อย 3 วันก่อนวันสอบ'], 400);
     }
 
-    // Connect to database
-    $conn = pdo();
+    // 3) ยกเลิก (txn กันแข่งกันกด)
+    $pdo->beginTransaction();
 
-    // Debug data
-    error_log('Booking ID: ' . $booking_id);
-    error_log('Student ID: ' . $student_id);
-    
-    // ตรวจสอบการจองและวันที่สอบ
-    $sql = "SELECT es.slot_date, er.id
-            FROM exam_slots es
-            JOIN exam_registrations er ON es.id = er.slot_id
-            WHERE er.id = :booking_id 
-            AND er.student_id = :student_id 
-            AND er.status = 'registered'";
-            
-    $stmt = $conn->prepare($sql);
-    $stmt->execute([
-        ':booking_id' => $booking_id,
-        ':student_id' => $student_id
+    $u = $pdo->prepare("
+    UPDATE exam_booking
+    SET status='cancelled',
+        cancelled_at = NOW(),
+        cancel_reason = :rs
+    WHERE id = :bid AND student_id = :sid AND status='booked'
+  ");
+    $u->execute([
+        ':rs'  => ($reason !== '' ? $reason : null),
+        ':bid' => $booking_id,
+        ':sid' => $student_id
     ]);
-    
-    error_log('SQL Query: ' . $sql);
-    
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$row) {
-        throw new Exception('ไม่พบการจองหรือถูกยกเลิกไปแล้ว');
+    if ($u->rowCount() === 0) {
+        $pdo->rollBack();
+        out(['status' => 'error', 'message' => 'ยกเลิกไม่สำเร็จ (สถานะถูกเปลี่ยนก่อนหน้า?)'], 409);
     }
 
-    // ตรวจสอบจำนวนวันก่อนสอบ
-    $slot_date = new DateTime($row['slot_date']);
-    $today = new DateTime();
-    $interval = $today->diff($slot_date);
-    $days_until_exam = $interval->days;
-
-    if ($days_until_exam < 3 || $slot_date <= $today) {
-        throw new Exception('ไม่สามารถยกเลิกการจองได้ เนื่องจากใกล้วันสอบเกินไป (ต้องยกเลิกล่วงหน้าอย่างน้อย 3 วัน)');
-    }
-
-    // ทำการยกเลิกการจอง
-    $sql = "UPDATE exam_registrations SET status = 'cancelled', cancelled_at = NOW() WHERE id = :booking_id AND student_id = :student_id";
-    $stmt = $conn->prepare($sql);
-    $stmt->execute([
-        ':booking_id' => $booking_id,
-        ':student_id' => $student_id
-    ]);
-    
-    error_log('Update SQL: ' . $sql);
-
-    if ($stmt->rowCount() === 0) {
-        throw new Exception('ไม่สามารถยกเลิกการจองได้');
-    }
-
-    echo json_encode(['status' => 'success', 'message' => 'ยกเลิกการจองสำเร็จ']);
-
-} catch (Exception $e) {
-    error_log('Error in cancel_booking.php: ' . $e->getMessage());
-    $status_code = 400;
-    
-    if ($e->getMessage() === 'Invalid token') {
-        $status_code = 401;
-    } else if ($e->getMessage() === 'ไม่พบการจองหรือถูกยกเลิกไปแล้ว') {
-        $status_code = 404;
-    }
-    
-    http_response_code($status_code);
-    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    $pdo->commit();
+    out(['status' => 'success', 'message' => 'ยกเลิกการจองสำเร็จ']);
+} catch (Throwable $e) {
+    if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+    out(['status' => 'error', 'message' => 'Server error'], 500);
 }
