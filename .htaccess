@@ -1,7 +1,16 @@
+# --- หน้าแรกของเว็บ ---
 DirectoryIndex homepage.html index.php index.html
 
+# --- เปิด mod_rewrite ---
 RewriteEngine On
+
+# --- บังคับใช้ HTTPS ---
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# --- ส่งต่อ Authorization header (สำหรับ JWT/Token) ---
 RewriteCond %{HTTP:Authorization} .
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# --- ปลอดภัยขึ้นเล็กน้อย (ปิดรายชื่อไฟล์ในโฟลเดอร์) ---
+Options -Indexes
