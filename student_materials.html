@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet">
-    <link rel="icon" type="image/png" href="/walkin-exam-system/favicon.ico" />
+    <link rel="icon" href="/favicon.ico">
     <link rel="stylesheet" href="assets/css/student-materials.css">
 
     <!-- Bootstrap (optional) -->
@@ -120,6 +120,12 @@
     </div>
 
     <script>
+        // ===== Base paths (โปรเจกต์อยู่ที่ public_html) =====
+        const BASE_URL = location.origin;               // https://slateblue-wildcat-210524.hostingersite.com
+        const API_BASE = BASE_URL + '/api';
+        const MATERIALS_DIR = BASE_URL + '/uploads/materials';
+
+        // ===== pdf.js =====
         pdfjsLib.GlobalWorkerOptions.workerSrc =
             'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -127,24 +133,7 @@
         let pdfDoc = null, pageNum = 1, scale = 1.25, rendering = false, pending = null;
         let canvas, ctx;
 
-        async function openPdf(url, title = '') {
-            stopAllSpeech();
-            document.getElementById('pageInfo').textContent = 'กำลังโหลด…';
-
-            ensureCanvas(); // ✅ สร้าง canvas ถ้ายังไม่มี
-            canvas = document.getElementById('pdfCanvas');
-            ctx = canvas.getContext('2d');
-
-            try {
-                pdfDoc = await pdfjsLib.getDocument(url).promise;
-                pageNum = 1; scale = 1.25;
-                renderPage(pageNum);
-            } catch (e) {
-                document.getElementById('pageInfo').textContent = 'โหลดไฟล์ไม่สำเร็จ';
-                console.error(e);
-            }
-        }
-
+        // ===== helpers =====
         const $ = (s, r = document) => r.querySelector(s);
         const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
@@ -152,28 +141,48 @@
         const emptyEl = $('#emptyState');
         const loadingEl = $('#loadingState');
 
-        // helper กันล้มถ้า element ไม่มี
         function on(id, ev, fn) {
             const el = document.getElementById(id);
             if (!el) { console.warn('missing element:', id); return; }
             el.addEventListener(ev, fn);
         }
 
-        // ✅ เพิ่มฟังก์ชันนี้ (อยู่เหนือ renderMaterials)
         function escapeHTML(s) {
             const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
             return String(s ?? '').replace(/[&<>"']/g, ch => map[ch]);
         }
 
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        // สร้าง/อ้างอิง canvas ให้แน่ใจว่ามีใน DOM
+        function ensureCanvas() {
+            canvas = document.getElementById('pdfCanvas');
+            if (!canvas) {
+                canvas = document.createElement('canvas');
+                canvas.id = 'pdfCanvas';
+                (document.getElementById('viewerPane') || document.body).appendChild(canvas);
+            }
+            ctx = canvas.getContext('2d');
+        }
 
-        // ------- materials -------
+        // ประกอบ URL ไฟล์เอกสารให้ถูกกับโฮสต์จริง
+        function materialUrl(filenameOrPath) {
+            if (!filenameOrPath) return '';
+            // absolute URL
+            if (/^https?:\/\//i.test(filenameOrPath)) return filenameOrPath;
+            // พาธในเว็บ (เช่น "uploads/materials/xxx.pdf" หรือ "/uploads/materials/xxx.pdf")
+            if (filenameOrPath.includes('/')) {
+                const cleaned = filenameOrPath.replace(/^\/+/, '');
+                return `${BASE_URL}/${cleaned.split('/').map(encodeURIComponent).join('/')}`;
+            }
+            // ชื่อไฟล์ล้วน
+            return `${MATERIALS_DIR}/${encodeURIComponent(filenameOrPath)}`;
+        }
+
+        // ===== materials =====
         async function fetchMaterials() {
             const token = localStorage.getItem('studentToken');
             if (!token) { location.href = 'student_login.html'; return; }
 
-            const url = 'api/student_get_materials.php'; // ใช้ relative ป้องกัน path เพี้ยน
+            const url = `${API_BASE}/student_get_materials.php`;
             let res, text, data;
 
             try {
@@ -220,27 +229,26 @@
         function normalizeMaterial(r) {
             const title = r.title || r.name || r.filename || `เอกสาร #${r.id ?? r.material_id ?? ''}`;
             const filename = r.filename || r.file || r.file_path || '';
-            const url = r.file_url || r.download_url ||
-                (filename.startsWith('http')
-                    ? filename
-                    : `/walkin-exam-system/uploads/materials/${encodeURIComponent(filename)}`);
+            const url = r.file_url || r.download_url || materialUrl(filename);
 
             const mime = String(r.file_type || r.type || '').toLowerCase();
             const ext = (filename.split('.').pop() || '').toLowerCase();
             const isPdf = mime.includes('pdf') || ext === 'pdf' || /\.pdf($|\?)/i.test(url);
 
             const uploaded = r.upload_date || r.uploaded_at || r.created_at || '';
-
-            return { id: r.id ?? r.material_id ?? null, title, filename, url, uploadedAt: uploaded, mime, ext, isPdf };
+            return {
+                id: r.id ?? r.material_id ?? null,
+                title, filename, url, uploadedAt: uploaded, mime, ext, isPdf
+            };
         }
 
         function renderMaterials(rows) {
-            loadingEl.style.display = 'none';
+            loadingEl && (loadingEl.style.display = 'none');
             listEl.innerHTML = '';
 
             const items = rows.map(normalizeMaterial).filter(m => !!m.url);
-            if (items.length === 0) { emptyEl.style.display = 'block'; return; }
-            emptyEl.style.display = 'none';
+            if (!items.length) { emptyEl && (emptyEl.style.display = 'block'); return; }
+            emptyEl && (emptyEl.style.display = 'none');
 
             items.forEach(m => {
                 const li = document.createElement('li');
@@ -257,15 +265,15 @@
                 const sub = document.createElement('div');
                 sub.className = 'mat-sub';
                 sub.innerHTML = `
-      <i class="fa-regular fa-clock me-1"></i>${m.uploadedAt || '-'}
-      &nbsp;•&nbsp;<i class="fa-regular fa-file-lines me-1"></i>${(m.mime || m.ext || '').toUpperCase()}
-    `;
+        <i class="fa-regular fa-clock me-1"></i>${escapeHTML(m.uploadedAt || '-')}
+        &nbsp;•&nbsp;<i class="fa-regular fa-file-lines me-1"></i>${escapeHTML((m.mime || m.ext || '').toUpperCase())}
+      `;
                 meta.appendChild(sub);
 
                 const act = document.createElement('div');
                 act.className = 'mat-actions';
 
-                // ปุ่ม "เปิด" สำหรับ PDF เท่านั้น
+                // ปุ่ม "เปิด" เฉพาะ PDF
                 if (m.isPdf) {
                     const openBtn = document.createElement('button');
                     openBtn.className = 'btn-soft primary';
@@ -288,13 +296,20 @@
             });
         }
 
-
-        // ------- PDF viewer -------
+        // ===== PDF viewer =====
         async function openPdf(url, title = '') {
             stopAllSpeech();
-            const pageInfo = document.getElementById('pageInfo'); if (pageInfo) pageInfo.textContent = 'กำลังโหลด…';
+            const pageInfo = document.getElementById('pageInfo');
+            if (pageInfo) pageInfo.textContent = 'กำลังโหลด…';
+
+            ensureCanvas();
+
             try {
-                pdfDoc = await pdfjsLib.getDocument(url).promise;
+                // เช็คไฟล์มีจริงก่อน (กัน MissingPDFException)
+                const head = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+                if (!head.ok) throw new Error(`ไม่พบไฟล์: ${url}`);
+
+                pdfDoc = await pdfjsLib.getDocument({ url, withCredentials: true }).promise;
                 pageNum = 1; scale = 1.25;
                 renderPage(pageNum);
             } catch (e) {
@@ -323,7 +338,7 @@
         function onZoomIn() { if (!pdfDoc) return; scale = Math.min(scale + 0.1, 2.5); queueRender(pageNum); }
         function onZoomOut() { if (!pdfDoc) return; scale = Math.max(scale - 0.1, 0.6); queueRender(pageNum); }
 
-        // ------- TTS -------
+        // ===== TTS =====
         const voiceSelect = $('#voiceSelect');
         const rateRange = $('#rateRange');
         const pitchRange = $('#pitchRange');
@@ -371,45 +386,33 @@
             try { stopAllSpeech?.(); } catch { }
             const fallback = 'student_dashboard.html';
             const ref = document.referrer || '';
-
-            // ย้อนกลับถ้ากลับได้และมาจากโดเมนเดียวกัน
             try {
                 const sameOrigin = ref && new URL(ref, location.href).origin === location.origin;
                 if (history.length > 1 && sameOrigin) {
                     history.back();
-
-                    // กันเคสบางเบราว์เซอร์ไม่ยอมกลับ ให้ fallback
-                    setTimeout(() => {
-                        if (!document.hidden) location.href = fallback;
-                    }, 400);
+                    setTimeout(() => { if (!document.hidden) location.href = fallback; }, 400);
                     return;
                 }
             } catch { }
-
-            // ไม่มี History → ไปแดชบอร์ด
             location.href = fallback;
         }
 
-        // ------- boot -------
+        // ===== boot =====
         document.addEventListener('DOMContentLoaded', () => {
-            // สร้าง/อ้างอิง canvas ให้แน่ใจว่าอยู่ใน DOM
-            canvas = document.getElementById('pdfCanvas');
-            if (!canvas) {
-                canvas = document.createElement('canvas');
-                canvas.id = 'pdfCanvas';
-                (document.getElementById('viewerPane') || document.body).appendChild(canvas);
-            }
-            ctx = canvas.getContext('2d');
+            ensureCanvas();
 
-            // ผูกอีเวนต์แบบกันล้ม
+            // ปุ่มควบคุม viewer
             on('prevPage', 'click', onPrev);
             on('nextPage', 'click', onNext);
             on('zoomIn', 'click', onZoomIn);
             on('zoomOut', 'click', onZoomOut);
 
+            // TTS controls
             on('ttsPlay', 'click', async () => {
                 if (!pdfDoc) return;
-                const txt = await (async () => { const p = await pdfDoc.getPage(pageNum); const t = await p.getTextContent(); return t.items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim(); })();
+                const p = await pdfDoc.getPage(pageNum);
+                const t = await p.getTextContent();
+                const txt = t.items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
                 if (!txt) return alert('ไม่พบข้อความในหน้านี้');
                 speakText(txt);
             });
@@ -418,27 +421,20 @@
             on('ttsStop', 'click', stopAllSpeech);
 
             on('backBtn', 'click', smartBack);
-
-            // คีย์ลัด: Alt + B = Back
             window.addEventListener('keydown', (e) => {
                 if ((e.key === 'b' || e.key === 'B') && e.altKey && !e.ctrlKey && !e.metaKey) {
-                    e.preventDefault();
-                    smartBack();
+                    e.preventDefault(); smartBack();
                 }
             });
             on('logoutBtn', 'click', () => { localStorage.clear(); location.href = 'student_login.html'; });
 
-            // TTS UI
             if (rateRange && rateVal) rateRange.addEventListener('input', () => rateVal.textContent = `${(+rateRange.value).toFixed(1)}x`);
             if (pitchRange && pitchVal) pitchRange.addEventListener('input', () => pitchVal.textContent = (+pitchRange.value).toFixed(1));
-            loadVoices();
-            speechSynthesis.onvoiceschanged = loadVoices;
+            loadVoices(); speechSynthesis.onvoiceschanged = loadVoices;
 
             // โหลดรายการไฟล์
             fetchMaterials();
         });
-
-
     </script>
 
 </body>

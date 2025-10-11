@@ -14,3 +14,5 @@ RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
 # --- ปลอดภัยขึ้นเล็กน้อย (ปิดรายชื่อไฟล์ในโฟลเดอร์) ---
 Options -Indexes
+
+# ---
