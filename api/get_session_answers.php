@@ -4,17 +4,47 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
-require_once __DIR__ . '/../config/db.php';
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+ini_set('error_log', __DIR__ . '/get_session_answers_error.log');
 
-$sid = isset($_GET['session_id']) ? (int)$_GET['session_id'] : 0;
-if ($sid <= 0) {
-  http_response_code(400);
-  echo json_encode(['status' => 'error', 'message' => 'missing session_id'], JSON_UNESCAPED_UNICODE);
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/helpers/jwt_helper.php';
+
+function out(array $o, int $code = 200): void
+{
+  http_response_code($code);
+  echo json_encode($o, JSON_UNESCAPED_UNICODE);
   exit;
 }
 
+/* ---------- auth: ต้องเป็นอาจารย์/ผู้สอน ---------- */
+$h = array_change_key_case(getallheaders(), CASE_LOWER);
+if (!isset($h['authorization']) || !preg_match('/bearer\s+(\S+)/i', $h['authorization'], $m)) {
+  out(['status' => 'error', 'message' => 'Unauthorized'], 401);
+}
+$claims = decodeToken($m[1]);
+if (!$claims) out(['status' => 'error', 'message' => 'Unauthorized'], 401);
+$claims = (array)$claims;
+
+$allowRoles = ['teacher', 'instructor', 'admin', 'lecturer', 'staff'];
+$roleStr = strtolower((string)($claims['role'] ?? $claims['user_role'] ?? $claims['typ'] ?? ''));
+$scopes  = strtolower((string)($claims['scope'] ?? $claims['scopes'] ?? $claims['roles'] ?? ''));
+$rolesOk = in_array($roleStr, $allowRoles, true)
+  || array_intersect(preg_split('/[\s,]+/', $scopes), $allowRoles)
+  || !empty($claims['instructor_id']);
+if (!$rolesOk) out(['status' => 'error', 'message' => 'Forbidden'], 403);
+
+/* ---------- input ---------- */
+$sid = isset($_GET['session_id']) ? (int)$_GET['session_id'] : 0;
+if ($sid <= 0) out(['status' => 'error', 'message' => 'missing session_id'], 400);
+
 try {
-  // 1) meta + question_ids (ดึง examset ผ่าน exam_slots)
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $pdo->exec("SET time_zone = '+07:00'");
+  $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+  /* 1) meta */
   $st = $pdo->prepare("
     SELECT
       s.session_id,
@@ -29,71 +59,79 @@ try {
         ELSE 'registered'
       END AS status
     FROM examsession s
-    JOIN student st     ON st.student_id = s.student_id
+    JOIN student st      ON st.student_id = s.student_id
     LEFT JOIN exam_slots sl ON sl.id = s.slot_id
-    LEFT JOIN examset   es ON es.examset_id = sl.examset_id
+    LEFT JOIN examset   es  ON es.examset_id = sl.examset_id
     WHERE s.session_id = :sid
     LIMIT 1
   ");
   $st->execute([':sid' => $sid]);
   $meta = $st->fetch(PDO::FETCH_ASSOC);
-  if (!$meta) {
-    http_response_code(404);
-    echo json_encode(['status' => 'error', 'message' => 'session not found'], JSON_UNESCAPED_UNICODE);
-    exit;
-  }
+  if (!$meta) out(['status' => 'error', 'message' => 'session not found'], 404);
 
   $examsetId = (int)($meta['examset_id'] ?? 0);
 
-  // 2) รวบรวม question_id
+  /* 2) สร้างรายการ question_id ที่ใช้เรียง */
   $qidList = [];
   if (!empty($meta['question_ids'])) {
     $tmp = json_decode($meta['question_ids'], true);
-    if (is_array($tmp)) foreach ($tmp as $q) {
-      $q = (int)$q;
-      if ($q > 0) $qidList[] = $q;
+    if (is_array($tmp)) {
+      foreach ($tmp as $q) {
+        $q = (int)$q;
+        if ($q > 0) $qidList[] = $q;
+      }
     }
   }
   if (!$qidList) {
-    // ถ้ามีตาราง mapping
     try {
+      // เผื่อไม่มีตาราง mapping จะโดน catch แล้วข้ามไป
       $pdo->query("SELECT 1 FROM exam_set_question LIMIT 1");
-      $st = $pdo->prepare("SELECT question_id FROM exam_set_question WHERE examset_id=:es ORDER BY COALESCE(seq, question_id)");
+      $st = $pdo->prepare("
+        SELECT question_id
+        FROM exam_set_question
+        WHERE examset_id = :es
+        ORDER BY COALESCE(seq, question_id)
+      ");
       $st->execute([':es' => $examsetId]);
       $qidList = array_map('intval', array_column($st->fetchAll(PDO::FETCH_ASSOC), 'question_id'));
-    } catch (Throwable $e) {
+    } catch (Throwable $e) { /* ignore */
     }
   }
   if (!$qidList) {
-    $st = $pdo->prepare("SELECT DISTINCT question_id FROM answer WHERE session_id=:sid ORDER BY answer_id");
+    $st = $pdo->prepare("
+      SELECT question_id
+      FROM answer
+      WHERE session_id = :sid
+      GROUP BY question_id
+      ORDER BY MIN(answer_id)
+    ");
     $st->execute([':sid' => $sid]);
     $qidList = array_map('intval', array_column($st->fetchAll(PDO::FETCH_ASSOC), 'question_id'));
   }
   $qidList = array_values(array_unique(array_filter($qidList, fn($v) => $v > 0)));
 
   if (!$qidList) {
-    echo json_encode([
+    out([
       'status' => 'success',
       'details' => [
-        'session_id' => (int)$meta['session_id'],
-        'student_id' => $meta['student_id'],
+        'session_id'   => (int)$meta['session_id'],
+        'student_id'   => $meta['student_id'],
         'student_name' => $meta['student_name'],
-        'exam_title' => $meta['exam_title'],
-        'start_time' => $meta['start_time'],
-        'end_time' => $meta['end_time'],
-        'status' => $meta['status'],
-        'attempt_no' => (int)$meta['attempt_no'],
-        'score' => is_null($meta['score']) ? null : (float)$meta['score'],
+        'exam_title'   => $meta['exam_title'],
+        'start_time'   => $meta['start_time'],
+        'end_time'     => $meta['end_time'],
+        'status'       => $meta['status'],
+        'attempt_no'   => (int)$meta['attempt_no'],
+        'score'        => is_null($meta['score']) ? null : (float)$meta['score'],
       ],
       'total_questions' => 0,
-      'correct_count' => 0,
-      'wrong_count' => 0,
-      'items' => []
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
+      'correct_count'   => 0,
+      'wrong_count'     => 0,
+      'items'           => []
+    ], 200);
   }
 
-  // 3) ดึงรายละเอียดคำถาม + คำตอบล่าสุดของ session นี้
+  /* 3) ดึงรายละเอียดแบบปลอดภัยเรื่องคอลลเลชัน + เลือกคำตอบล่าสุด */
   $params = [':sid' => $sid];
   $ph = [];
   $case = [];
@@ -112,7 +150,7 @@ try {
       a.selected_choice AS student_choice,
       CASE
         WHEN a.selected_choice IS NULL THEN 0
-        WHEN a.selected_choice = q.correct_choice THEN 1
+        WHEN CAST(a.selected_choice AS BINARY) = CAST(q.correct_choice AS BINARY) THEN 1
         ELSE 0
       END AS is_correct,
       co.content AS student_choice_text,
@@ -133,8 +171,12 @@ try {
         GROUP BY question_id
       ) la ON la.last_id = a1.answer_id
     ) a  ON a.question_id = q.question_id
-    LEFT JOIN choice co ON co.question_id = q.question_id AND co.label = a.selected_choice
-    LEFT JOIN choice cc ON cc.question_id = q.question_id AND cc.label = q.correct_choice
+    LEFT JOIN choice co
+           ON co.question_id = q.question_id
+          AND CAST(co.label AS BINARY) = CAST(a.selected_choice AS BINARY)
+    LEFT JOIN choice cc
+           ON cc.question_id = q.question_id
+          AND CAST(cc.label AS BINARY) = CAST(q.correct_choice AS BINARY)
     ORDER BY q.ordx, q.question_id
   ";
   $st = $pdo->prepare($sql);
@@ -144,27 +186,28 @@ try {
   $total = count($items);
   $correct = 0;
   foreach ($items as $r) if ((int)$r['is_correct'] === 1) $correct++;
-  $wrong = $total - $correct;
+  $wrong = max(0, $total - $correct);
 
-  echo json_encode([
+  out([
     'status' => 'success',
     'details' => [
-      'session_id' => (int)$meta['session_id'],
-      'student_id' => $meta['student_id'],
+      'session_id'   => (int)$meta['session_id'],
+      'student_id'   => $meta['student_id'],
       'student_name' => $meta['student_name'],
-      'exam_title' => $meta['exam_title'],
-      'start_time' => $meta['start_time'],
-      'end_time' => $meta['end_time'],
-      'status' => $meta['status'],
-      'attempt_no' => (int)$meta['attempt_no'],
-      'score' => is_null($meta['score']) ? null : (float)$meta['score'],
+      'exam_title'   => $meta['exam_title'],
+      'start_time'   => $meta['start_time'],
+      'end_time'     => $meta['end_time'],
+      'status'       => $meta['status'],
+      'attempt_no'   => (int)$meta['attempt_no'],
+      'score'        => is_null($meta['score']) ? null : (float)$meta['score'],
     ],
     'total_questions' => $total,
-    'correct_count' => $correct,
-    'wrong_count' => $wrong,
-    'items' => $items
-  ], JSON_UNESCAPED_UNICODE);
+    'correct_count'   => $correct,
+    'wrong_count'     => $wrong,
+    'items'           => $items
+  ], 200);
 } catch (Throwable $e) {
-  http_response_code(500);
-  echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+  // ล็อกเต็ม ๆ เพื่อไล่ 500 ง่าย ๆ
+  error_log('[get_session_answers] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+  out(['status' => 'error', 'message' => 'Server error'], 500);
 }

@@ -448,62 +448,63 @@
       renderWrongList([]);
 
       try {
-        const url = `${ENDPOINT_DETAILS}?session_id=${encodeURIComponent(sessionId)}`;
+        // กัน cache + log raw response
+        const url = `${ENDPOINT_DETAILS}?session_id=${encodeURIComponent(sessionId)}&t=${Date.now()}`;
+        console.log('[details] GET', url);
         const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
         const raw = await resp.text();
-        let payload = {}; try { payload = JSON.parse(raw); } catch { }
+        console.log('[details][raw]', raw);
 
-        if (!resp.ok || payload?.status === 'error') {
-          console.warn('details fetch failed:', resp.status, payload);
+        let payload;
+        try { payload = JSON.parse(raw); }
+        catch (e) {
+          console.warn('[details] JSON parse error', e);
+          $('wrongContainer').innerHTML = `<div class="mismatch-note">❌ ตอบกลับไม่ใช่ JSON</div>`;
           return;
         }
 
-        const items = Array.isArray(payload?.items) ? payload.items : [];
-        // อ่าน total/correct/wrong จาก API ก่อน ถ้าไม่มีค่อยคำนวณจาก items
-        let total = Number(payload?.total_questions);
+        if (!resp.ok || payload?.status === 'error') {
+          console.warn('[details] bad response', resp.status, payload);
+          $('wrongContainer').innerHTML =
+            `<div class="mismatch-note">❌ โหลดรายละเอียดไม่สำเร็จ: ${esc(payload?.message || ('HTTP ' + resp.status))}</div>`;
+          return;
+        }
+
+        const items = Array.isArray(payload.items) ? payload.items : [];
+        let total = Number(payload.total_questions);
         if (!Number.isFinite(total) || total <= 0) total = items.length;
 
-        let correct = Number(payload?.correct_count);
+        let correct = Number(payload.correct_count);
         if (!Number.isFinite(correct)) {
-          correct = items.filter(x => x.is_correct === 1 || x.is_correct === '1' ||
-            (typeof x.is_correct === 'string' && x.is_correct.toLowerCase() === 'true')).length;
+          correct = items.filter(x =>
+            x.is_correct === 1 || x.is_correct === '1' ||
+            (typeof x.is_correct === 'string' && x.is_correct.toLowerCase() === 'true')
+          ).length;
         }
         const wrong = Math.max(0, total - correct);
 
-        // คะแนนจาก “รายการคำตอบจริง”
-        const scoreFromItems = total ? +((correct / total) * 100).toFixed(2) : null;
+        let score = Number(payload.score);
+        if (!Number.isFinite(score) && total) score = +((correct / total) * 100).toFixed(2);
 
-        // คะแนนที่ “บันทึกไว้” ในตารางก่อนหน้า (ถ้ามี)
-        const recordedScore = row.dataset.score ? Number(row.dataset.score) : null;
-
-        // คะแนนที่จะแสดง = จาก items > จาก payload.score > จากค่าที่บันทึกไว้
-        let displayScore = scoreFromItems;
-        if (!Number.isFinite(displayScore) && payload?.score != null) displayScore = Number(payload.score);
-        if (!Number.isFinite(displayScore) && recordedScore != null) displayScore = recordedScore;
-        if (!Number.isFinite(displayScore)) displayScore = 0;
-
-        fillKPIs({ total, correct, wrong, score: displayScore });
+        fillKPIs({ total, correct, wrong, score: Number.isFinite(score) ? score : '-' });
         drawChart(correct, wrong);
         renderWrongList(items);
 
-        // ซิงก์ค่าในแถว (ให้ตารางโชว์ตรงกับโมดัล)
-        row.dataset.score = String(displayScore);
-        const scoreCell = row.children?.[3];
-        if (scoreCell) scoreCell.textContent = (+displayScore).toFixed(2);
-
-        // แจ้งเตือนถ้าคะแนนที่บันทึกไว้ไม่ตรงกับที่คำนวณจากคำตอบ
-        if (Number.isFinite(recordedScore) && Number.isFinite(scoreFromItems) &&
-          Math.abs(recordedScore - scoreFromItems) > 0.5) {
-          const warn = document.createElement('div');
-          warn.className = 'mismatch-note';
-          warn.innerHTML = `⚠️ คะแนนที่บันทึกไว้ <b>${recordedScore.toFixed(2)}</b>% 
-                          ไม่สอดคล้องกับคะแนนตามคำตอบจริง <b>${scoreFromItems.toFixed(2)}</b>%`;
-          document.getElementById('detailMeta').appendChild(warn);
+        // sync คอลัมน์คะแนนในตาราง
+        if (Number.isFinite(score)) {
+          row.dataset.score = String(score);
+          const scoreCell = row.children?.[3];
+          if (scoreCell) scoreCell.textContent = score.toFixed(2);
         }
+
+        console.log('[details][parsed]', { total, correct, wrong, score, itemsCount: items.length });
       } catch (e) {
-        console.warn('details fetch error:', e);
+        console.warn('[details] fetch error', e);
+        $('wrongContainer').innerHTML =
+          `<div class="mismatch-note">❌ เกิดข้อผิดพลาดขณะเชื่อมต่อเซิร์ฟเวอร์</div>`;
       }
     }
+
   </script>
 
 </body>

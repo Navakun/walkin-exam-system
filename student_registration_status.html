@@ -2,8 +2,8 @@
 <html lang="th">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>สถานะการลงทะเบียน & ประวัติการชำระเงิน</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
@@ -36,11 +36,8 @@
       </div>
       <div class="card-body">
         <ul id="currentRegDetail" class="mb-3"></ul>
-
         <div class="d-flex gap-2 flex-wrap">
           <div id="payBtn" style="display:none;"></div>
-
-          <!-- ปุ่มยกเลิก (แสดงเมื่อยกเลิกได้) -->
           <button id="cancelBtnCard" class="btn btn-outline-danger btn-cancel-reg" style="display:none;">
             <i class="bi bi-x-circle me-1"></i> ยกเลิกการลงทะเบียน
           </button>
@@ -74,20 +71,23 @@
   </div>
 
   <script>
+    // ================== CONFIG ==================
+    const API_BASE = '/walkin-exam-system/api/';
     const token = localStorage.getItem('studentToken');
     if (!token) { window.location.href = "student_login.html"; }
 
-    // ---------- helpers ----------
+    // ================== HELPERS ==================
+    const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const $ = (s) => document.querySelector(s);
+
     function formatThaiDate(dateStr) {
-      if (!dateStr) return "-";
+      if (!dateStr) return '-';
       const d = new Date(dateStr);
-      if (isNaN(d)) return "-";
-      const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-      return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+      if (isNaN(d)) return '-';
+      return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
     }
-    function formatTime(timeStr) { return timeStr?.slice(0, 5) || ''; }
+    function formatTime(t) { return t?.slice(0, 5) || ''; }
     function isFuture(dateStr) {
-      // เทียบแค่ "วัน" (ไม่เอาเวลา) เพื่อความแฟร์
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const target = new Date(dateStr); target.setHours(0, 0, 0, 0);
       return target.getTime() > today.getTime();
@@ -95,158 +95,141 @@
     function daysUntil(dateStr) {
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const target = new Date(dateStr); target.setHours(0, 0, 0, 0);
-      const diff = (target - today) / (1000 * 60 * 60 * 24);
-      return Math.floor(diff);
+      return Math.floor((target - today) / (1000 * 60 * 60 * 24));
     }
     function canCancel(reg) {
-      // ยกเลิกได้ถ้า: ยังไม่ชำระเงิน (pending หรือ free) และห่างวันสอบ >= 3 วัน และยังไม่ถูกยกเลิกไปก่อน
+      if (reg.payment_status === 'cancelled' || reg.booking_status === 'cancelled') return false;
       const notPaid = (reg.payment_status === 'pending' || reg.payment_status === 'free');
       const d = daysUntil(reg.slot_date);
-      const timeOk = d >= 3;
-      const notAlreadyCancelled = (reg.booking_status ? reg.booking_status !== 'cancelled' : true); // เผื่อ API ส่งสถานะการจองมา
-      return notPaid && timeOk && notAlreadyCancelled && isFuture(reg.slot_date);
+      return notPaid && d >= 3 && isFuture(reg.slot_date);
     }
 
-    // ---------- main ----------
+    // ✅ ฟังก์ชันใหม่: render การดำเนินการ "แบบเดียว" ต่อแถว
+    function renderActionsCell(r) {
+      const wrap = (html) => `<div class="btn-group" role="group">${html}</div>`;
+      const status = (r.payment_status || '').toLowerCase();
+
+      // cancelled/paid/free/waived => ป้ายอย่างเดียว
+      if (status === 'cancelled') return `<span class="text-muted">ถูกยกเลิกแล้ว</span>`;
+      if (status === 'paid') return `<span class="text-success">ชำระแล้ว</span>`;
+      if (status === 'free' || status === 'waived') return `<span class="text-info">สิทธิ์สอบฟรี</span>`;
+
+      // pending/unknown => ปุ่มจ่าย + อัปโหลด (+ ยกเลิกถ้าได้)
+      const payBtns = `
+        <button class="btn btn-sm btn-primary" onclick="payNow(${r.registration_id})">
+          <i class="bi bi-credit-card me-1"></i>ชำระเงิน
+        </button>
+        <a href="student_payment_upload.html?registration_id=${r.registration_id}"
+           class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-upload me-1"></i>อัปโหลดสลิป
+        </a>`;
+      if (canCancel(r) && r.booking_id) {
+        const cancelBtn = `
+          <button class="btn btn-sm btn-outline-danger"
+                  onclick="cancelRegister(${r.registration_id}, ${r.booking_id})">
+            <i class="bi bi-x-circle me-1"></i>ยกเลิก
+          </button>`;
+        return wrap(payBtns + cancelBtn);
+      }
+      return wrap(payBtns);  // ไม่เติมข้อความอธิบายเพิ่ม เพื่อเลี่ยง “ดูเหมือนซ้ำ”
+    }
+
+    // ================== MAIN ==================
     async function loadRegs() {
       try {
-        const res = await fetch("api/get_my_registrations.php", {
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await fetch(API_BASE + "get_my_registrations.php", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store'
         });
         const data = await res.json();
-
-        const tbody = document.querySelector("#regTable tbody");
+        const tbody = $("#regTable tbody");
         tbody.innerHTML = "";
 
-        if (data.status === "success") {
-          if (!data.registrations || !data.registrations.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่พบประวัติการลงทะเบียน</td></tr>';
-            document.getElementById('currentRegCard').style.display = 'none';
-            return;
-          }
-
-          // ✅ รายการล่าสุดเป็น Current
-          const current = data.registrations[0];
-          showCurrentReg(current);
-
-          data.registrations.forEach(r => {
-            const tr = document.createElement("tr");
-
-            const statusBadge = {
-              'pending': '<span class="badge bg-warning text-dark">รอชำระเงิน</span>',
-              'paid': '<span class="badge bg-success">ชำระแล้ว</span>',
-              'free': '<span class="badge bg-info">สิทธิ์ฟรี</span>'
-            }[r.payment_status] || '<span class="badge bg-secondary">ไม่ทราบสถานะ</span>';
-
-            const rowClass = {
-              'pending': 'table-warning',
-              'paid': 'table-success',
-              'free': 'table-info'
-            }[r.payment_status] || '';
-
-            tr.className = rowClass;
-
-            const actions = [];
-            if (r.payment_status === "pending") {
-              actions.push(`
-                <button class="btn btn-sm btn-primary" onclick="payNow(${r.registration_id})">
-                  <i class="bi bi-credit-card me-1"></i>ชำระเงิน
-                </button>
-              `);
-              actions.push(`
-                <a href="student_payment_upload.html?registration_id=${r.registration_id}" 
-                   class="btn btn-sm btn-outline-primary">
-                  <i class="bi bi-upload me-1"></i>อัปโหลดสลิป
-                </a>
-              `);
-            } else if (r.payment_status === "paid") {
-              actions.push(`<span class="text-success">ชำระแล้ว</span>`);
-            } else {
-              actions.push(`<span class="text-info">สิทธิ์สอบฟรี</span>`);
-            }
-
-            // ปุ่มยกเลิก (ถ้ายกเลิกได้)
-            if (canCancel(r)) {
-              const bid = r.booking_id ?? null; // ถ้า API ใส่มาด้วยจะใช้ cancel_booking.php
-              actions.push(`
-                <button class="btn btn-sm btn-outline-danger btn-cancel-reg"
-                        onclick="cancelRegister(${r.registration_id}${bid ? ',' + bid : ''})">
-                  <i class="bi bi-x-circle me-1"></i>ยกเลิก
-                </button>
-              `);
-            } else {
-              // แสดงคำอธิบายสั้นๆ ทำไมกดยกเลิกไม่ได้
-              const dleft = daysUntil(r.slot_date);
-              let reason = '';
-              if (r.payment_status === 'paid') reason = 'ชำระเงินแล้ว';
-              else if (!isFuture(r.slot_date) || dleft < 0) reason = 'เลยวันสอบ';
-              else if (dleft < 3) reason = `ต้องยกเลิกล่วงหน้า ≥ 3 วัน (เหลือ ${dleft} วัน)`;
-              if (reason) {
-                actions.push(`<span class="text-muted small">${reason}</span>`);
-              }
-            }
-
-            tr.innerHTML = `
-              <td>${formatThaiDate(r.slot_date)}</td>
-              <td>${formatTime(r.start_time)} - ${formatTime(r.end_time)}</td>
-              <td>${r.attempt_no}</td>
-              <td>${r.fee_amount > 0 ? r.fee_amount + ' บาท' : 'ฟรี'}</td>
-              <td>${statusBadge}</td>
-              <td>${r.ref_no || '-'}</td>
-              <td>${r.paid_at ? new Date(r.paid_at).toLocaleString('th-TH') : '-'}</td>
-              <td><div class="btn-group" role="group">${actions.join('')}</div></td>
-            `;
-            tbody.appendChild(tr);
-          });
-
-        } else {
-          throw new Error(data.message || 'โหลดไม่สำเร็จ');
+        if (data.status !== "success") throw new Error(data.message || 'โหลดไม่สำเร็จ');
+        if (!data.registrations?.length) {
+          tbody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่พบประวัติการลงทะเบียน</td></tr>';
+          $("#currentRegCard").style.display = 'none';
+          return;
         }
+
+        // current = รายการแรก
+        showCurrentReg(data.registrations[0]);
+
+        data.registrations.forEach(r => {
+          const tr = document.createElement('tr');
+
+          const statusBadge = {
+            pending: '<span class="badge bg-warning text-dark">รอชำระเงิน</span>',
+            paid: '<span class="badge bg-success">ชำระแล้ว</span>',
+            free: '<span class="badge bg-info">สิทธิ์ฟรี</span>',
+            cancelled: '<span class="badge bg-secondary">ยกเลิกแล้ว</span>'
+          }[r.payment_status] || '<span class="badge bg-secondary">ไม่ทราบสถานะ</span>';
+
+          const rowClass = {
+            pending: 'table-warning', paid: 'table-success', free: 'table-info', cancelled: 'table-secondary'
+          }[r.payment_status] || '';
+
+          tr.className = rowClass;
+
+          const actionsHtml = renderActionsCell(r);
+
+          tr.innerHTML = `
+            <td>${formatThaiDate(r.slot_date)}</td>
+            <td>${formatTime(r.start_time)} - ${formatTime(r.end_time)}</td>
+            <td>${r.attempt_no}</td>
+            <td>${r.fee_amount > 0 ? r.fee_amount + ' บาท' : 'ฟรี'}</td>
+            <td>${statusBadge}</td>
+            <td>${r.ref_no || '-'}</td>
+            <td>${r.paid_at ? new Date(r.paid_at).toLocaleString('th-TH') : '-'}</td>
+            <td>${actionsHtml}</td>`;
+          tbody.appendChild(tr);
+        });
+
       } catch (err) {
         console.error(err);
-        Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+        Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: err.message || 'กรุณาลองใหม่อีกครั้ง' });
       }
     }
 
     function showCurrentReg(reg) {
-      const card = document.getElementById("currentRegCard");
-      const detail = document.getElementById("currentRegDetail");
-      const payBtnWrap = document.getElementById("payBtn");
-      const header = document.getElementById("currentRegHeader");
-      const cancelBtn = document.getElementById("cancelBtnCard");
-
+      const card = $("#currentRegCard");
+      const detail = $("#currentRegDetail");
+      const payBtnWrap = $("#payBtn");
+      const header = $("#currentRegHeader");
+      const cancelBtn = $("#cancelBtnCard");
       card.style.display = "block";
 
-      if (reg.payment_status === "pending") {
-        header.className = "card-header bg-warning text-dark";
-      } else if (reg.payment_status === "paid") {
-        header.className = "card-header bg-success text-white";
-      } else {
-        header.className = "card-header bg-info text-white";
-      }
+      header.className = ({
+        pending: "card-header bg-warning text-dark",
+        paid: "card-header bg-success text-white",
+        free: "card-header bg-info text-white",
+        cancelled: "card-header bg-secondary text-white"
+      }[reg.payment_status] || "card-header bg-secondary text-white");
+
+      const statusBadge = {
+        pending: '<span class="badge bg-warning text-dark">รอชำระเงิน</span>',
+        paid: '<span class="badge bg-success">ชำระแล้ว</span>',
+        free: '<span class="badge bg-info">ฟรี</span>',
+        cancelled: '<span class="badge bg-secondary">ยกเลิกแล้ว</span>'
+      }[reg.payment_status] || '<span class="badge bg-secondary">ไม่ทราบสถานะ</span>';
 
       detail.innerHTML = `
         <li><strong>วันที่สอบ:</strong> ${formatThaiDate(reg.slot_date)}</li>
         <li><strong>เวลา:</strong> ${formatTime(reg.start_time)} - ${formatTime(reg.end_time)}</li>
         <li><strong>ครั้งที่:</strong> ${reg.attempt_no}</li>
         <li><strong>ค่าธรรมเนียม:</strong> ${reg.fee_amount > 0 ? reg.fee_amount + ' บาท' : 'ฟรี'}</li>
-        <li><strong>สถานะ:</strong> ${reg.payment_status === "pending" ? '<span class="badge bg-warning text-dark">รอชำระเงิน</span>' :
-          reg.payment_status === "paid" ? '<span class="badge bg-success">ชำระแล้ว</span>' :
-            '<span class="badge bg-info">ฟรี</span>'
-        }</li>
+        <li><strong>สถานะ:</strong> ${statusBadge}</li>
         <li><strong>เลขที่อ้างอิง:</strong> ${reg.ref_no || '-'}</li>
-        <li><strong>วันเวลาชำระเงิน:</strong> ${reg.paid_at ? new Date(reg.paid_at).toLocaleString('th-TH') : '-'}</li>
-      `;
+        <li><strong>วันเวลาชำระเงิน:</strong> ${reg.paid_at ? new Date(reg.paid_at).toLocaleString('th-TH') : '-'}</li>`;
 
-      // ปุ่มชำระ/อัปสลิป
-      if (reg.payment_status === "pending") {
+      if (reg.payment_status === 'pending') {
         payBtnWrap.style.display = "block";
         payBtnWrap.innerHTML = `
           <div class="btn-group">
             <button class="btn btn-primary" onclick="payNow(${reg.registration_id})">
               <i class="bi bi-credit-card me-1"></i>ชำระเงิน
             </button>
-            <a href="student_payment_upload.html?registration_id=${reg.registration_id}" 
+            <a href="student_payment_upload.html?registration_id=${reg.registration_id}"
                class="btn btn-outline-primary">
               <i class="bi bi-upload me-1"></i>อัปโหลดสลิป
             </a>
@@ -256,7 +239,6 @@
         payBtnWrap.innerHTML = '';
       }
 
-      // ปุ่มยกเลิก
       if (canCancel(reg)) {
         cancelBtn.style.display = "inline-block";
         cancelBtn.onclick = () => cancelRegister(reg.registration_id, reg.booking_id ?? null);
@@ -266,65 +248,65 @@
       }
     }
 
-    // ---------- cancel flow ----------
+    // ================== CANCEL FLOW ==================
     async function cancelRegister(registrationId, bookingId = null) {
-      const dleft = daysUntilForConfirm(registrationId);
-      const { value: reason, isConfirmed } = await Swal.fire({
-        icon: 'warning',
-        title: 'ยกเลิกการลงทะเบียน?',
-        html: `<div class="text-start">
-                 ต้องยกเลิกอย่างน้อย <b>3 วัน</b> ก่อนวันสอบ<br>
-                 <label class="form-label mt-2">เหตุผล (ไม่บังคับ)</label>
-                 <textarea id="reason" class="form-control" rows="3" placeholder="ระบุเหตุผล"></textarea>
-               </div>`,
-        showCancelButton: true,
-        confirmButtonText: 'ยืนยันยกเลิก',
-        cancelButtonText: 'ไม่ยกเลิก',
-        preConfirm: () => document.getElementById('reason').value.trim()
-      });
-      if (!isConfirmed) return;
+      const btnEl = document.activeElement?.closest('button');
+      if (btnEl) { btnEl.disabled = true; btnEl.dataset._oldText = btnEl.innerHTML; btnEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังยกเลิก...'; }
 
       try {
-        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        const { value: reason, isConfirmed } = await Swal.fire({
+          icon: 'warning',
+          title: 'ยกเลิกการลงทะเบียน?',
+          html: `<div class="text-start">
+                  ต้องยกเลิกอย่างน้อย <b>3 วัน</b> ก่อนวันสอบ<br>
+                  <label class="form-label mt-2">เหตุผล (ไม่บังคับ)</label>
+                  <textarea id="reason" class="form-control" rows="3" placeholder="ระบุเหตุผล"></textarea>
+                </div>`,
+          showCancelButton: true,
+          confirmButtonText: 'ยืนยันยกเลิก',
+          cancelButtonText: 'ไม่ยกเลิก',
+          preConfirm: () => (document.getElementById('reason')?.value ?? '').trim()
+        });
+        if (!isConfirmed) return;
 
-        // ถ้ามี booking_id ให้ยิง API ใหม่ (exam_booking)
-        if (bookingId) {
-          const resp = await fetch('api/cancel_booking.php', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ booking_id: bookingId, reason })
-          });
-          const data = await resp.json();
-          if (!resp.ok || data.status !== 'success') throw new Error(data.message || 'ยกเลิกไม่สำเร็จ');
-        } else {
-          // fallback เดิม: ยกเลิกด้วย registration_id (ถ้าคุณยังมี API เดิมอยู่)
-          const resp = await fetch('api/cancel_registration.php', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ registration_id: registrationId, reason })
-          });
-          const data = await resp.json();
-          if (!resp.ok || data.status !== 'success') throw new Error(data.message || 'ยกเลิกไม่สำเร็จ');
+        const url = (bookingId != null && bookingId !== '') ? API_BASE + 'cancel_booking.php' : API_BASE + 'cancel_registration.php';
+        const body = (bookingId != null && bookingId !== '') ? { booking_id: Number(bookingId), reason } : { registration_id: Number(registrationId), reason };
+
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(body),
+          cache: 'no-store'
+        });
+
+        const raw = await resp.text();
+        let data; try { data = JSON.parse(raw); } catch { throw new Error(`HTTP ${resp.status}: ${raw.slice(0, 200)}`); }
+
+        const msg = (data?.message || data?.msg || '').toString();
+        const ok = (resp.ok && data.status === 'success') || /already\s*cancel/i.test(msg) || /success/i.test(msg);
+        if (!ok) {
+          if (/missing.+booking_id/i.test(msg)) throw new Error('ระบบต้องใช้หมายเลขการจอง (booking_id) สำหรับรายการนี้');
+          if (/too\s*late|less\s*than\s*3\s*days/i.test(msg)) throw new Error('ต้องยกเลิกล่วงหน้าอย่างน้อย 3 วันก่อนวันสอบ');
+          throw new Error(msg || `ยกเลิกไม่สำเร็จ (HTTP ${resp.status})`);
         }
 
-        await Swal.fire({ icon: 'success', title: 'ยกเลิกสำเร็จ', timer: 1400, showConfirmButton: false });
-        loadRegs();
+        await Swal.fire({ icon: 'success', title: /already\s*cancel/i.test(msg) ? 'ยกเลิกไว้ก่อนแล้ว' : 'ยกเลิกสำเร็จ', timer: 1400, showConfirmButton: false });
+        await loadRegs();
+
       } catch (e) {
         console.error(e);
         Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: e.message || 'โปรดลองใหม่' });
+      } finally {
+        if (btnEl) { btnEl.disabled = false; if (btnEl.dataset._oldText) btnEl.innerHTML = btnEl.dataset._oldText; delete btnEl.dataset._oldText; }
       }
     }
 
-    // ใช้หา days left ใน confirm (ถ้าต้องการโชว์ในอนาคต)
-    function daysUntilForConfirm(registrationId) { return null; }
-
-    // ---------- payment flow (เดิม) ----------
+    // ================== PAYMENT FLOW ==================
     async function payNow(regId) {
       const { value: formValues, isConfirmed } = await Swal.fire({
         title: "ยืนยันการชำระเงิน",
-        html: `
-          <input id="refInput" class="swal2-input" placeholder="Ref No. อย่างน้อย 10 หลัก">
-          <input type="file" id="slipInput" class="swal2-file">`,
+        html: `<input id="refInput" class="swal2-input" placeholder="Ref No. อย่างน้อย 10 หลัก">
+              <input type="file" id="slipInput" class="swal2-file">`,
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: "ยืนยัน",
@@ -338,7 +320,6 @@
           return { ref, slip: document.getElementById('slipInput').files[0] };
         }
       });
-
       if (!isConfirmed) return;
 
       try {
@@ -347,26 +328,23 @@
         fd.append("ref_no", formValues.ref);
         if (formValues.slip) fd.append("slip_file", formValues.slip);
 
-        const res = await fetch("api/pay_registration.php", {
+        const res = await fetch(API_BASE + "pay_registration.php", {
           method: "POST",
           headers: { "Authorization": `Bearer ${token}` },
           body: fd
         });
-
         const data = await res.json();
-        if (data.status === "success") {
-          await Swal.fire({ icon: "success", title: "ชำระเงินสำเร็จ", text: `เลขที่อ้างอิง: ${data.ref_no}`, timer: 2000 });
-          await loadRegs();
-        } else {
-          throw new Error(data.message);
-        }
+        if (data.status !== "success") throw new Error(data.message);
+
+        await Swal.fire({ icon: "success", title: "ชำระเงินสำเร็จ", text: `เลขที่อ้างอิง: ${data.ref_no}`, timer: 2000 });
+        await loadRegs();
       } catch (err) {
         console.error(err);
         Swal.fire({ icon: "error", title: "ชำระเงินไม่สำเร็จ", text: err.message || "กรุณาลองใหม่อีกครั้ง" });
       }
     }
 
-    // boot
+    // ================== BOOT ==================
     loadRegs();
   </script>
 </body>

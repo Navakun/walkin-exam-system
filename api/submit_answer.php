@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
-header('X-Submit-Answer-Version: 2025-10-11-0718');
+header('X-Submit-Answer-Version: 2025-10-11-0826'); // ← เวอร์ชัน
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
@@ -27,9 +27,9 @@ function asInt($v): int
 function hasColumn(PDO $pdo, string $table, string $col): bool
 {
     $st = $pdo->prepare("
-        SELECT 1 FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1
-    ");
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1
+  ");
     $st->execute([$table, $col]);
     return (bool)$st->fetchColumn();
 }
@@ -69,12 +69,12 @@ $prev_qid           = asInt($body['prev_question_id'] ?? 0);
 if ($session_id <= 0) out(['status' => 'error', 'message' => 'Missing session_id'], 400);
 
 try {
-    // คอนเนกชัน/โซนเวลา/คอลลเลชัน
+    // โซนเวลา + character set
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->exec("SET time_zone = '+07:00'");
     $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
 
-    /* คอลัมน์ข้อความคำถาม */
+    /* ---------- column helpers ---------- */
     $qTextCol = hasColumn($pdo, 'question', 'question_text') ? 'question_text'
         : (hasColumn($pdo, 'question', 'content') ? 'content'
             : (hasColumn($pdo, 'question', 'text') ? 'text' : null));
@@ -83,20 +83,19 @@ try {
 
     /* ---------- โหลด session (เทียบ student_id แบบ byte-for-byte) ---------- */
     $sqlSession = "
-        SELECT se.session_id, se.student_id, se.slot_id, se.start_time, se.end_time,
-               se.questions_answered, se.correct_count, se.answer_pattern,
-               se.question_ids, se.ability_est, se.last_difficulty, se.avg_response_time,
-               s.exam_date, s.start_time AS slot_start_time, s.end_time AS slot_end_time, s.examset_id,
-               es.duration_minutes, es.easy_count, es.medium_count, es.hard_count
-        FROM examsession se
-        LEFT JOIN exam_slots s ON s.id = se.slot_id
-        LEFT JOIN examset es   ON es.examset_id = s.examset_id
-        WHERE se.session_id = ?
-          AND CAST(se.student_id AS BINARY) = CAST(? AS BINARY)
-        LIMIT 1
-    ";
+    SELECT se.session_id, se.student_id, se.slot_id, se.start_time, se.end_time,
+           se.questions_answered, se.correct_count, se.answer_pattern,
+           se.question_ids, se.ability_est, se.last_difficulty, se.avg_response_time,
+           s.exam_date, s.start_time AS slot_start_time, s.end_time AS slot_end_time, s.examset_id,
+           es.duration_minutes, es.easy_count, es.medium_count, es.hard_count
+    FROM examsession se
+    LEFT JOIN exam_slots s ON s.id = se.slot_id
+    LEFT JOIN examset es   ON es.examset_id = s.examset_id
+    WHERE se.session_id = ?
+      AND CAST(se.student_id AS BINARY) = CAST(? AS BINARY)
+    LIMIT 1
+  ";
     $st = $pdo->prepare($sqlSession);
-    error_log('[SQL] session.load');
     $st->execute([$session_id, $student_id]);
     $S = $st->fetch(PDO::FETCH_ASSOC);
     if (!$S) out(['status' => 'error', 'message' => 'Session not found'], 404);
@@ -126,66 +125,67 @@ try {
         out(['status' => 'finished', 'message' => 'Time is over', 'score' => $score, 'time_remaining' => 0]);
     }
 
-    /* ---------- จำนวนข้อทั้งหมด ---------- */
+    /* ---------- จำนวนข้อทั้งหมด (มาจาก examset) ---------- */
     $maxQ = asInt(($S['easy_count'] ?? 0) + ($S['medium_count'] ?? 0) + ($S['hard_count'] ?? 0));
-    if ($maxQ <= 0) $maxQ = 15;
+    if ($maxQ <= 0) $maxQ = 15; // fallback
 
-    /* ---------- สถิติจาก answer (หลีกเลี่ยง collation) ---------- */
+    /* ---------- สถิติจาก answer ---------- */
     $hasIsCorrect = hasColumn($pdo, 'answer', 'is_correct');
     if ($hasIsCorrect) {
         $sqlAgg = "
-            SELECT COUNT(*) AS answered, COALESCE(SUM(a.is_correct),0) AS correct
-            FROM answer a
-            WHERE a.session_id = ?
-        ";
+      SELECT COUNT(*) AS answered, COALESCE(SUM(a.is_correct),0) AS correct
+      FROM answer a
+      WHERE a.session_id = ?
+    ";
     } else {
         $sqlAgg = "
-            SELECT COUNT(*) AS answered,
-                   SUM(
-                     CASE
-                       WHEN CAST(a.selected_choice AS BINARY) = CAST(q.correct_choice AS BINARY)
-                       THEN 1 ELSE 0
-                     END
-                   ) AS correct
-            FROM answer a
-            JOIN question q ON q.question_id = a.question_id
-            WHERE a.session_id = ?
-        ";
+      SELECT COUNT(*) AS answered,
+             SUM(CASE WHEN BINARY a.selected_choice = BINARY q.correct_choice THEN 1 ELSE 0 END) AS correct
+      FROM answer a
+      JOIN question q ON q.question_id = a.question_id
+      WHERE a.session_id = ?
+    ";
     }
     $agg = $pdo->prepare($sqlAgg);
-    error_log('[SQL] agg.prepare hasIsCorrect=' . ($hasIsCorrect ? 1 : 0));
     $agg->execute([$session_id]);
     $sum = $agg->fetch(PDO::FETCH_ASSOC) ?: ['answered' => 0, 'correct' => 0];
     $answered_count = (int)$sum['answered'];
     $correct_count  = (int)$sum['correct'];
 
-    // รายการคำถามที่ตอบไปแล้ว
+    // รายการคำถามที่ตอบไปแล้ว (กัน question_id ซ้ำ)
     $ansQ = $pdo->prepare("SELECT question_id FROM answer WHERE session_id=?");
-    error_log('[SQL] answered.list');
     $ansQ->execute([$session_id]);
     $answeredIds = array_map('intval', array_column($ansQ->fetchAll(PDO::FETCH_ASSOC), 'question_id'));
+
+    // รายการ hash ของโจทย์ที่ใช้ไปแล้ว (กันข้อความซ้ำ)
+    $hSt = $pdo->prepare("
+    SELECT DISTINCT q.question_text_hash
+    FROM answer a
+    JOIN question q ON q.question_id = a.question_id
+    WHERE a.session_id = ? AND q.question_text_hash IS NOT NULL
+  ");
+    $hSt->execute([$session_id]);
+    $answeredHashes = array_values(array_filter(array_map(fn($r) => (string)$r[0], $hSt->fetchAll(PDO::FETCH_NUM))));
 
     $ability       = (float)($S['ability_est'] ?? 0.0);
     $answerPattern = (string)($S['answer_pattern'] ?? '');
     $avgResp       = asInt($S['avg_response_time'] ?? 0);
 
     /* ===================================================================
-     1) ส่งคำตอบเข้ามา → บันทึกลง answer
+     1) ถ้ามีส่งคำตอบมา → บันทึกลง answer
      ===================================================================*/
     if ($selected_choice_id !== null) {
         if ($question_id <= 0) out(['status' => 'error', 'message' => 'Missing question_id'], 400);
 
-        // choice
+        // ตรวจสอบ choice
         $cSt = $pdo->prepare("SELECT choice_id, question_id, label FROM choice WHERE choice_id = ? LIMIT 1");
-        error_log('[SQL] choice.get');
         $cSt->execute([$selected_choice_id]);
         $C = $cSt->fetch(PDO::FETCH_ASSOC);
         if (!$C) out(['status' => 'error', 'message' => 'Choice not found'], 404);
         if (asInt($C['question_id']) !== $question_id) out(['status' => 'error', 'message' => 'Choice does not belong to question'], 400);
 
-        // question
+        // ดึงคำตอบที่ถูกต้องของข้อ
         $qSt = $pdo->prepare("SELECT correct_choice, " . ($hasDifficulty ? 'item_difficulty' : '0 AS item_difficulty') . " FROM question WHERE question_id=? LIMIT 1");
-        error_log('[SQL] question.get');
         $qSt->execute([$question_id]);
         $Q = $qSt->fetch(PDO::FETCH_ASSOC);
         if (!$Q) out(['status' => 'error', 'message' => 'Question not found'], 404);
@@ -194,17 +194,16 @@ try {
         $correct_label  = strtoupper(substr((string)$Q['correct_choice'], 0, 1));
         $isCorrect      = (int)(strcasecmp($selected_label, $correct_label) === 0);
 
-        // upsert
+        // upsert คำตอบ (มี trigger ช่วย normalize/คำนวณซ้ำอีกชั้น)
         $ins = $pdo->prepare("
-          INSERT INTO answer (session_id, question_id, selected_choice, is_correct, answered_at, response_time)
-          VALUES (:sid, :qid, :sel, :isc, NOW(), :rt)
-          ON DUPLICATE KEY UPDATE
-            selected_choice = VALUES(selected_choice),
-            is_correct      = VALUES(is_correct),
-            answered_at     = VALUES(answered_at),
-            response_time   = VALUES(response_time)
-        ");
-        error_log('[SQL] answer.upsert');
+      INSERT INTO answer (session_id, question_id, selected_choice, is_correct, answered_at, response_time)
+      VALUES (:sid, :qid, :sel, :isc, NOW(), :rt)
+      ON DUPLICATE KEY UPDATE
+        selected_choice = VALUES(selected_choice),
+        is_correct      = VALUES(is_correct),
+        answered_at     = VALUES(answered_at),
+        response_time   = VALUES(response_time)
+    ");
         $ins->execute([
             ':sid' => $session_id,
             ':qid' => $question_id,
@@ -214,14 +213,13 @@ try {
         ]);
 
         // รีเฟรชสถิติ
-        error_log('[SQL] agg.refresh');
         $agg->execute([$session_id]);
         $sum2 = $agg->fetch(PDO::FETCH_ASSOC) ?: ['answered' => 0, 'correct' => 0];
         $answered_count = (int)$sum2['answered'];
         $correct_count  = (int)$sum2['correct'];
         $score          = round($correct_count * 100.0 / max(1, $maxQ), 2);
 
-        // ปรับสถิติ
+        // ปรับสถิติ session
         $avgResp = $avgResp <= 0
             ? $response_time_sec
             : (int)round(($avgResp * max(0, $answered_count - 1) + $response_time_sec) / max(1, $answered_count));
@@ -250,72 +248,153 @@ try {
         }
         if ($sets) {
             $upd = $pdo->prepare("UPDATE examsession SET " . implode(',', $sets) . " WHERE session_id=:sid");
-            error_log('[SQL] session.update');
             $upd->execute($params);
         }
 
-        // ครบจำนวนข้อ → จบสอบ
+        // ครบจำนวนข้อ → จบสอบเลย
         if ($answered_count >= $maxQ) {
             if (hasColumn($pdo, 'examsession', 'end_time')) {
                 $pdo->prepare("UPDATE examsession SET end_time=NOW() WHERE session_id=?")->execute([$session_id]);
             }
-            out(['status' => 'finished', 'score' => $score, 'answered_count' => $answered_count, 'correct_count' => $correct_count, 'total_questions' => $maxQ, 'time_remaining' => $timeRemaining]);
+            out([
+                'status' => 'finished',
+                'score'  => $score,
+                'answered_count' => $answered_count,
+                'correct_count'  => $correct_count,
+                'total_questions' => $maxQ,
+                'time_remaining' => $timeRemaining
+            ]);
         }
 
+        // เก็บ id/hash ที่เพิ่งใช้
         if (!in_array($question_id, $answeredIds, true)) $answeredIds[] = $question_id;
+        $h2 = $pdo->prepare("SELECT question_text_hash FROM question WHERE question_id=?");
+        $h2->execute([$question_id]);
+        $ph = (string)$h2->fetchColumn();
+        if ($ph) {
+            $answeredHashes[] = $ph;
+            $answeredHashes = array_values(array_unique($answeredHashes));
+        }
     }
+
+    // ถ้า client ลืมส่ง prev_question_id มา ให้ใช้ question_id เดิมเป็น prev_qid
+    if ($selected_choice_id === null && $question_id > 0 && $prev_qid === 0) {
+        $prev_qid = $question_id;
+    }
+    // กันรีเฟรช/ย้อนทันที: กัน hash ของ prev_qid ด้วย
+    if ($prev_qid > 0) {
+        $h2 = $pdo->prepare("SELECT question_text_hash FROM question WHERE question_id=?");
+        $h2->execute([$prev_qid]);
+        $ph = (string)$h2->fetchColumn();
+        if ($ph) {
+            $answeredHashes[] = $ph;
+            $answeredHashes = array_values(array_unique($answeredHashes));
+        }
+    }
+
+    /* ---------- นับโควตาความยากแบบไม่ซ้ำข้อความ ---------- */
+    $diffCountStmt = $pdo->prepare("
+    SELECT
+      COUNT(DISTINCT CASE WHEN q.item_difficulty <= 0.33 THEN q.question_text_hash END) AS e_cnt,
+      COUNT(DISTINCT CASE WHEN q.item_difficulty >  0.33 AND q.item_difficulty <= 0.66 THEN q.question_text_hash END) AS m_cnt,
+      COUNT(DISTINCT CASE WHEN q.item_difficulty >  0.66 THEN q.question_text_hash END) AS h_cnt
+    FROM answer a
+    JOIN question q ON q.question_id = a.question_id
+    WHERE a.session_id = ?
+  ");
+    $diffCountStmt->execute([$session_id]);
+    $dc = $diffCountStmt->fetch(PDO::FETCH_ASSOC) ?: ['e_cnt' => 0, 'm_cnt' => 0, 'h_cnt' => 0];
+
+    // เป้าหมายจาก examset (0/NULL = ไม่บังคับ)
+    $targetE = (int)($S['easy_count']   ?? 0);
+    $targetM = (int)($S['medium_count'] ?? 0);
+    $targetH = (int)($S['hard_count']   ?? 0);
+
+    $needE = $targetE > 0 ? max(0, $targetE - (int)$dc['e_cnt']) : 0;
+    $needM = $targetM > 0 ? max(0, $targetM - (int)$dc['m_cnt']) : 0;
+    $needH = $targetH > 0 ? max(0, $targetH - (int)$dc['h_cnt']) : 0;
 
     /* ===================================================================
      2) ขอ “ข้อถัดไป”
      ===================================================================*/
     $diffExpr = '(CASE WHEN q.item_difficulty <= 0.33 THEN -1
-                     WHEN q.item_difficulty <= 0.66 THEN  0
-                     ELSE 1 END)';
-    $bucketCond = '1=1';
-    if ($hasDifficulty) {
-        if ($ability >=  0.5)     $bucketCond = "$diffExpr >= 0";
-        elseif ($ability <= -0.5) $bucketCond = "$diffExpr <= 0";
-        else                      $bucketCond = "$diffExpr = 0";
-    }
+                   WHEN q.item_difficulty <= 0.66 THEN  0
+                   ELSE 1 END)';
 
-    // exclude = ข้อที่ตอบแล้ว + ข้อก่อนหน้า
+    $targetBuckets = [];
+    if ($needE > 0) $targetBuckets[] = -1;
+    if ($needM > 0) $targetBuckets[] =  0;
+    if ($needH > 0) $targetBuckets[] =  1;
+
+    if (!$targetBuckets) {
+        if ($ability >=  0.5)     $targetBuckets = [1, 0, -1];
+        elseif ($ability <= -0.5) $targetBuckets = [-1, 0, 1];
+        else                      $targetBuckets = [0, 1, -1];
+    }
+    $bucketCond = '(' . implode(' OR ', array_map(fn($b) => "$diffExpr = $b", $targetBuckets)) . ')';
+
+    // exclude = id ที่ใช้แล้ว + prev_qid
     $exclude = $answeredIds;
     if ($prev_qid > 0) $exclude[] = $prev_qid;
     $exclude = array_values(array_unique(array_map('intval', $exclude)));
 
-    $excludeSql = '';
-    $params = [];
+    $excludeIdSql = '';
+    $idParams = [];
     if ($exclude) {
-        $excludeSql = ' AND q.question_id NOT IN (' . implode(',', array_fill(0, count($exclude), '?')) . ')';
-        $params = $exclude;
+        $excludeIdSql = ' AND q.question_id NOT IN (' . implode(',', array_fill(0, count($exclude), '?')) . ')';
+        $idParams = $exclude;
+    }
+
+    // กัน hash ซ้ำใน session
+    $excludeHashSql = '';
+    $hashParams = [];
+    if (!empty($answeredHashes)) {
+        $excludeHashSql = ' AND (q.question_text_hash IS NULL OR q.question_text_hash NOT IN (' .
+            implode(',', array_fill(0, count($answeredHashes), '?')) . '))';
+        $hashParams = $answeredHashes;
     }
 
     $qTextSelect = ($qTextCol === "CAST(question_id AS CHAR)")
         ? "$qTextCol AS question_text"
         : "q.$qTextCol AS question_text";
 
-    // 2.1 ตาม bucket
-    $st1 = $pdo->prepare("SELECT q.question_id, $qTextSelect FROM question q WHERE $bucketCond $excludeSql ORDER BY RAND() LIMIT 1");
-    error_log('[SQL] next.bucket');
-    $st1->execute($params);
+    // 2.1 เลือกตาม bucket
+    $sql1 = "SELECT q.question_id, $qTextSelect
+           FROM question q
+           WHERE $bucketCond
+             $excludeIdSql
+             $excludeHashSql
+           ORDER BY RAND()
+           LIMIT 1";
+    $st1 = $pdo->prepare($sql1);
+    $params1 = array_merge($idParams, $hashParams);
+    $st1->execute($params1);
     $Qn = $st1->fetch(PDO::FETCH_ASSOC);
 
-    // 2.2 ไม่เจอ → ทั้งคลัง
+    // 2.2 ถ้ายังไม่เจอ เลือกจากทั้งคลัง
     if (!$Qn) {
-        $st2 = $pdo->prepare("SELECT q.question_id, $qTextSelect FROM question q WHERE 1=1 $excludeSql ORDER BY RAND() LIMIT 1");
-        error_log('[SQL] next.any');
-        $st2->execute($params);
+        $sql2 = "SELECT q.question_id, $qTextSelect
+             FROM question q
+             WHERE 1=1
+               $excludeIdSql
+               $excludeHashSql
+             ORDER BY RAND()
+             LIMIT 1";
+        $st2 = $pdo->prepare($sql2);
+        $params2 = array_merge($idParams, $hashParams);
+        $st2->execute($params2);
         $Qn = $st2->fetch(PDO::FETCH_ASSOC);
     }
 
-    // 2.3 ไม่มีเหลือ → ปิดสอบ
+    // 2.3 ไม่มีเหลือแล้ว → ปิดสอบ
     if (!$Qn) {
         $score = round($correct_count * 100.0 / max(1, $maxQ), 2);
         if (hasColumn($pdo, 'examsession', 'score')) {
             $pdo->prepare("UPDATE examsession SET end_time=NOW(), score=:sc WHERE session_id=:sid")
                 ->execute([':sc' => $score, ':sid' => $session_id]);
         } else {
-            $pdo->prepare("UPDATE examsession SET end_time=NOW() WHERE session_id=:sid")->execute([':sid' => $session_id]);
+            $pdo->prepare("UPDATE examsession SET end_time=NOW() WHERE session_id=:sid")
+                ->execute([':sid' => $session_id]);
         }
         out([
             'status'          => 'finished',
@@ -328,9 +407,8 @@ try {
         ]);
     }
 
-    // ตัวเลือกของข้อ
+    // โหลดตัวเลือกของข้อ
     $ch = $pdo->prepare("SELECT choice_id,label,content FROM choice WHERE question_id=? ORDER BY label ASC");
-    error_log('[SQL] choices.load');
     $ch->execute([$Qn['question_id']]);
     $choices = array_map(fn($r) => [
         'choice_id'   => (int)$r['choice_id'],
