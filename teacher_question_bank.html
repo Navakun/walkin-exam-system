@@ -11,8 +11,8 @@
     <link rel="icon" href="data:," />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- SweetAlert2 via CDN -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
     <style>
         .text-center {
             text-align: center;
@@ -39,7 +39,7 @@
         }
 
         table th {
-            background-color: #f8f9fa;
+            background: #f8f9fa;
             padding: 12px;
         }
 
@@ -63,21 +63,21 @@
         }
 
         .btn-edit {
-            background-color: #ffc107;
+            background: #ffc107;
             color: #000;
         }
 
         .btn-delete {
-            background-color: #dc3545;
+            background: #dc3545;
             color: #fff;
         }
 
         .btn-edit:hover {
-            background-color: #e0a800;
+            background: #e0a800;
         }
 
         .btn-delete:hover {
-            background-color: #c82333;
+            background: #c82333;
         }
 
         .select-filter {
@@ -85,10 +85,10 @@
             border-radius: 5px;
             border: 1px solid #e0e0e0;
             font-size: 14px;
-            min-width: 250px;
-            background-color: white;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            min-width: 220px;
+            background: #fff;
+            transition: .2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, .05);
             appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
@@ -98,13 +98,57 @@
 
         .select-filter:hover {
             border-color: #bdbdbd;
-            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, .1);
         }
 
         .select-filter:focus {
             outline: none;
             border-color: #2196F3;
-            box-shadow: 0 3px 8px rgba(33, 150, 243, 0.2);
+            box-shadow: 0 3px 8px rgba(33, 150, 243, .2);
+        }
+
+        /* Pagination */
+        .pager {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 14px;
+        }
+
+        .pager .btn {
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .pager .btn:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+
+        .pager .info {
+            color: #64748b;
+            font-size: 14px;
+            margin: 0 4px;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .select--compact {
+            min-width: 120px;
         }
     </style>
 </head>
@@ -125,22 +169,33 @@
 
     <main class="teacher-dashboard">
         <h1>คลังข้อสอบ</h1>
-        <div id="errorBox" class="message error" style="display: none;"></div>
+        <div id="errorBox" class="message error" style="display:none;"></div>
+
         <div class="action-bar">
-            <button id="addQuestionBtn" class="btn-add"><i class="fas fa-plus"></i>&nbsp; เพิ่มคำถามใหม่</button>
-            <div class="filter-group">
-                <label for="examsetFilter"
-                    style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">กรองชุดข้อสอบ</label>
-                <label for="difficultyFilter" class="filter-label">กรองตามระดับความยาก:</label>
+            <button id="addQuestionBtn" class="btn-add">
+                <i class="fas fa-plus"></i>&nbsp; เพิ่มคำถามใหม่
+            </button>
+
+            <div class="filter-row" style="margin-left:auto">
+                <label for="difficultyFilter" class="filter-label">กรองความยาก:</label>
                 <select id="difficultyFilter" class="select-filter" aria-label="กรองตามระดับความยาก">
                     <option value="all">ทุกระดับความยาก</option>
                     <option value="0.150">ง่าย</option>
                     <option value="0.500">ปานกลาง</option>
                     <option value="0.850">ยาก</option>
                 </select>
+
+                <label for="pageSize" class="filter-label">แสดงต่อหน้า:</label>
+                <select id="pageSize" class="select-filter select--compact" aria-label="จำนวนรายการต่อหน้า">
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
             </div>
         </div>
+
         <hr>
+
         <div id="question-list-container">
             <table>
                 <thead>
@@ -161,188 +216,184 @@
                     </tr>
                 </tbody>
             </table>
+
+            <!-- Pagination -->
+            <div class="pager">
+                <button id="prevPage" class="btn" disabled>&laquo; ก่อนหน้า</button>
+                <span id="pageInfo" class="info">หน้า 1/1</span>
+                <button id="nextPage" class="btn" disabled>ถัดไป &raquo;</button>
+            </div>
         </div>
     </main>
 
     <script>
+        // ---- Base path (กันพาธซ้ำ) ----
+        const ROOT = location.pathname.includes('/walkin-exam-system/') ? '/walkin-exam-system' : '';
+        const API_BASE = `${ROOT}/api/`;
+
+        // ---- Elements & State ----
         const tableBody = document.getElementById('question-table-body');
         const teacherToken = localStorage.getItem('teacherToken');
-        let allQuestions = []; // เก็บข้อมูลคำถามทั้งหมด
 
-        function getDifficultyText(difficulty) {
-            const value = parseFloat(difficulty);
-            if (value === 0.150) return 'ง่าย';
-            if (value === 0.500) return 'ปานกลาง';
-            if (value === 0.850) return 'ยาก';
+        const difficultyFilterEl = document.getElementById('difficultyFilter');
+        const pageSizeEl = document.getElementById('pageSize');
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+        const pageInfo = document.getElementById('pageInfo');
+
+        let allQuestions = [];
+        let filteredQuestions = [];
+        let currentPage = 1;
+        let pageSize = 25;
+
+        // ---- Utils ----
+        function getDifficultyText(d) {
+            const v = parseFloat(d);
+            if (v === 0.150) return 'ง่าย';
+            if (v === 0.500) return 'ปานกลาง';
+            if (v === 0.850) return 'ยาก';
             return 'ไม่ระบุ';
         }
-
+        function getDifficultyClass(d) {
+            const v = parseFloat(d);
+            if (v === 0.150) return 'difficulty-easy';
+            if (v === 0.500) return 'difficulty-medium';
+            if (v === 0.850) return 'difficulty-hard';
+            return 'difficulty-unknown';
+        }
+        function getDifficultyHTML(d) {
+            return `<span class="${getDifficultyClass(d)}">${getDifficultyText(d)}</span>`;
+        }
         function formatCorrectRate(total, correct) {
             if (!total) return '0%';
             return ((correct / total) * 100).toFixed(1) + '%';
         }
 
-        // ถ้าไม่มี token ให้ redirect ไปหน้า login ทันที
-        if (!teacherToken) {
-            window.location.href = 'teacher_login.html';
-        }
-
-
-        function getDifficultyClass(value) {
-            // แปลงเป็นตัวเลขก่อน
-            const difficulty = parseFloat(value);
-            if (difficulty === 0.150) return 'difficulty-easy';
-            if (difficulty === 0.500) return 'difficulty-medium';
-            if (difficulty === 0.850) return 'difficulty-hard';
-            return 'difficulty-unknown';
-        }
-
-        // แสดงระดับความยากในรูปแบบ HTML
-        function getDifficultyHTML(difficulty) {
-            const className = getDifficultyClass(difficulty);
-            const text = getDifficultyText(difficulty);
-            return `<span class="${className}">${text}</span>`;
-        }
-
+        // ---- Data load ----
         async function loadQuestions() {
-            if (!teacherToken) {
-                alert('กรุณาเข้าสู่ระบบสำหรับอาจารย์ก่อน');
-                window.location.href = 'teacher_login.html';
-                return;
-            }
-
-            // รีเซ็ตตัวกรองความยาก
-            const difficultyFilter = document.getElementById('difficultyFilter');
-            if (difficultyFilter) {
-                difficultyFilter.value = 'all';
-            }
+            if (!teacherToken) { location.href = 'teacher_login.html'; return; }
 
             tableBody.innerHTML = '<tr><td colspan="8" class="text-center">กำลังโหลดรายการคำถาม...</td></tr>';
             try {
-                const response = await fetch('/walkin-exam-system/api/get_all_questions.php', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${teacherToken}`,
-                        'Content-Type': 'application/json'
-                    }
+                const res = await fetch(API_BASE + 'get_all_questions.php', {
+                    headers: { 'Authorization': `Bearer ${teacherToken}`, 'Accept': 'application/json' },
+                    cache: 'no-store'
                 });
-                if (!response.ok) {
-                    const errorResult = await response.json();
-                    throw new Error(errorResult.message || 'Token ไม่ถูกต้อง');
-                }
-                const result = await response.json();
-                tableBody.innerHTML = '';
+                const raw = await res.text();
+                let result;
+                try { result = JSON.parse(raw); } catch { throw new Error('เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON'); }
 
-                // ตรวจสอบโครงสร้างของ response
-                if (!result.status || result.status === 'error') {
-                    throw new Error(result.message || 'ไม่สามารถโหลดข้อมูลได้');
+                if (!res.ok || result.status !== 'success' || !Array.isArray(result.data)) {
+                    throw new Error(result?.message || `โหลดไม่สำเร็จ (HTTP ${res.status})`);
                 }
 
-                allQuestions = result.data || [];
-                // เรียงลำดับตาม question_id จากน้อยไปมาก
-                allQuestions.sort((a, b) => a.question_id - b.question_id);
-                filterQuestions();
-
-                // ไม่ต้องวน allQuestions.forEach ที่นี่ ให้ filterQuestions() เป็นตัวเดียวที่ render ข้อมูล
-            } catch (error) {
-                const errorBox = document.getElementById('errorBox');
-                errorBox.style.display = 'block';
-                errorBox.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
-                tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ไม่พบข้อมูล</td></tr>';
+                allQuestions = result.data.slice().sort((a, b) => a.question_id - b.question_id);
+                applyFilters(); // เริ่มด้วยการกรอง + เพจจิ้ง
+            } catch (err) {
+                const box = document.getElementById('errorBox');
+                box.style.display = 'block';
+                box.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
+                tableBody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่พบข้อมูล</td></tr>';
             }
         }
 
-        document.getElementById('addQuestionBtn').addEventListener('click', () => {
-            window.location.href = 'teacher_add_question.html';
-        });
+        // ---- Filtering + Pagination ----
+        function applyFilters() {
+            const diff = difficultyFilterEl.value;
+            filteredQuestions = (diff === 'all')
+                ? allQuestions
+                : allQuestions.filter(q => Number(q.item_difficulty).toFixed(3) === diff);
 
-        function editQuestion(id) {
-            // เก็บ id ลง localStorage เพื่อให้ add_question.html รู้ว่าเป็นโหมดแก้ไข
-            localStorage.setItem('editQuestionId', id);
-            window.location.href = `teacher_edit_question.html?edit=${id}`;
+            currentPage = 1; // reset หน้า
+            renderTable();
         }
 
+        function renderTable() {
+            pageSize = parseInt(pageSizeEl.value, 10) || 25;
+            const total = filteredQuestions.length;
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+            currentPage = Math.min(Math.max(1, currentPage), totalPages);
+            const start = (currentPage - 1) * pageSize;
+            const pageItems = filteredQuestions.slice(start, start + pageSize);
+
+            tableBody.innerHTML = '';
+            if (pageItems.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่พบข้อมูล</td></tr>';
+            } else {
+                pageItems.forEach(q => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+          <td>${q.question_id}</td>
+          <td>${q.question_text}</td>
+          <td class="text-center">${q.correct_choice}</td>
+          <td>${getDifficultyHTML(q.item_difficulty)}</td>
+          <td class="text-center">${q.discrimination ? Number(q.discrimination).toFixed(3) : '-'}</td>
+          <td class="text-center">${q.total_attempts || 0}</td>
+          <td class="text-center">${formatCorrectRate(q.total_attempts, q.correct_attempts)}</td>
+          <td class="actions">
+            <button onclick="editQuestion(${q.question_id})" class="btn-edit" title="แก้ไข"><i class="fas fa-edit"></i></button>
+            <button onclick="deleteQuestion(${q.question_id})" class="btn-delete" title="ลบ"><i class="fas fa-trash"></i></button>
+          </td>`;
+                    tableBody.appendChild(tr);
+                });
+            }
+
+            // update pager
+            pageInfo.textContent = `หน้า ${currentPage} / ${totalPages} (ทั้งหมด ${total} ข้อ)`;
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+        }
+
+        // ---- Actions ----
+        document.getElementById('addQuestionBtn').addEventListener('click', () => {
+            location.href = 'teacher_add_question.html';
+        });
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('teacherToken');
+            location.href = 'teacher_login.html';
+        });
+        document.getElementById('backBtn').addEventListener('click', () => {
+            location.href = 'teacher_dashboard.html';
+        });
+
+        difficultyFilterEl.addEventListener('change', applyFilters);
+        pageSizeEl.addEventListener('change', () => { currentPage = 1; renderTable(); });
+        prevBtn.addEventListener('click', () => { currentPage--; renderTable(); });
+        nextBtn.addEventListener('click', () => { currentPage++; renderTable(); });
+
+        // ---- Edit/Delete helpers (global) ----
+        function editQuestion(id) {
+            localStorage.setItem('editQuestionId', id);
+            location.href = `teacher_edit_question.html?edit=${id}`;
+        }
         async function deleteQuestion(id) {
             const ok = await Swal.fire({
-                icon: 'warning',
-                title: 'ยืนยันการลบ?',
-                text: `ต้องการลบคำถาม ID: ${id} หรือไม่`,
-                showCancelButton: true,
-                confirmButtonText: 'ลบเลย',
-                cancelButtonText: 'ยกเลิก'
+                icon: 'warning', title: 'ยืนยันการลบ?', text: `ต้องการลบคำถาม ID: ${id} หรือไม่`,
+                showCancelButton: true, confirmButtonText: 'ลบเลย', cancelButtonText: 'ยกเลิก'
             });
             if (!ok.isConfirmed) return;
-
             try {
-                const response = await fetch('/walkin-exam-system/api/delete_question.php', {
+                const res = await fetch(API_BASE + 'delete_question.php', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + teacherToken
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${teacherToken}` },
                     body: JSON.stringify({ question_id: id })
                 });
-                const result = await response.json();
-                if (response.ok) {
-                    Swal.fire({ icon: 'success', title: 'ลบเรียบร้อย', timer: 1300, showConfirmButton: false });
-                    loadQuestions();
-                } else {
-                    throw new Error(result.message || 'ลบไม่สำเร็จ');
-                }
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data.status !== 'success') throw new Error(data?.message || `HTTP ${res.status}`);
+                await Swal.fire({ icon: 'success', title: 'ลบเรียบร้อย', timer: 1200, showConfirmButton: false });
+                // ลบออกจากแหล่งข้อมูลแล้ว render ใหม่
+                allQuestions = allQuestions.filter(q => q.question_id !== id);
+                applyFilters();
             } catch (err) {
                 Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message || 'โปรดลองใหม่' });
             }
         }
+        // ให้เรียกใช้ได้จากปุ่มในตาราง
+        window.editQuestion = editQuestion;
+        window.deleteQuestion = deleteQuestion;
 
-
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            localStorage.removeItem('teacherToken');
-            window.location.href = 'teacher_login.html';
-        });
-        document.getElementById('backBtn').addEventListener('click', () => {
-            window.location.href = 'teacher_dashboard.html';
-        });
-
-        document.getElementById('difficultyFilter').addEventListener('change', filterQuestions);
-
-        function filterQuestions() {
-            const difficulty = document.getElementById('difficultyFilter').value;
-            tableBody.innerHTML = '';
-
-            let filteredQuestions = allQuestions;
-            if (difficulty !== 'all') {
-                filteredQuestions = allQuestions.filter(q => {
-                    return parseFloat(q.item_difficulty).toFixed(3) === difficulty;
-                });
-            }
-
-            if (filteredQuestions.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่พบข้อสอบในระดับความยากที่เลือก</td></tr>';
-            } else {
-                filteredQuestions.forEach(q => {
-                    const row = tableBody.insertRow();
-                    row.innerHTML = `
-                <td>${q.question_id}</td>
-                <td>${q.question_text}</td>
-                <td class="text-center">${q.correct_choice}</td>
-                <td>${getDifficultyHTML(q.item_difficulty)}</td>
-                <td class="text-center">${q.discrimination ? Number(q.discrimination).toFixed(3) : '-'}</td>
-                <td class="text-center">${q.total_attempts || 0}</td>
-                <td class="text-center">${formatCorrectRate(q.total_attempts, q.correct_attempts)}</td>
-                <td class="actions">
-                    <button onclick="editQuestion(${q.question_id})" class="btn-edit" title="แก้ไข">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button onclick="deleteQuestion(${q.question_id})" class="btn-delete" title="ลบ">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            `;
-                });
-            }
-        }
-
-
+        // ---- Boot ----
         document.addEventListener('DOMContentLoaded', loadQuestions);
     </script>
 </body>

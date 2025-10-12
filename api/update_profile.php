@@ -58,11 +58,12 @@ if (stripos($ct, 'application/json') !== false && $raw !== '') {
 
 // ฟิลด์ที่แก้ไขได้
 $name     = isset($in['name'])     ? trim((string)$in['name'])     : null;
+$surname  = isset($in['surname'])  ? trim((string)$in['surname'])  : null;
 $email    = isset($in['email'])    ? trim((string)$in['email'])    : null;
 $password = isset($in['password']) ? (string)$in['password']       : null;
 
 // ต้องมีอย่างน้อย 1 ฟิลด์
-if ($name === null && $email === null && ($password === null || $password === '')) {
+if (($name === null && $surname === null) && $email === null && ($password === null || $password === '')) {
     jexit(400, ['status' => 'error', 'message' => 'ไม่มีฟิลด์สำหรับอัปเดต']);
 }
 
@@ -70,10 +71,26 @@ if ($name === null && $email === null && ($password === null || $password === ''
 $updates = [];
 $params  = [];
 
-if ($name !== null) {
-    if ($name === '') jexit(400, ['status' => 'error', 'message' => 'ชื่อห้ามว่าง']);
+// ประกอบชื่อเต็มถ้ามีการแก้ไขชื่อหรือนามสกุล
+if ($name !== null || $surname !== null) {
+    // ดึงค่าเดิมมาใช้ถ้าไม่ได้แก้ไขส่วนใดส่วนหนึ่ง
+    $currentName = $me['name'] ?? '';
+    $parts = explode(' ', $currentName, 2);
+    $currentFirst = $parts[0] ?? '';
+    $currentLast = $parts[1] ?? '';
+
+    // ใช้ค่าใหม่หรือค่าเดิม
+    $firstName = $name ?? $currentFirst;
+    $lastName = $surname ?? $currentLast;
+
+    if ($firstName === '') {
+        jexit(400, ['status' => 'error', 'message' => 'ชื่อห้ามว่าง']);
+    }
+
+    // ประกอบชื่อเต็ม
+    $fullName = trim($lastName ? "$firstName $lastName" : $firstName);
     $updates[] = 'name = ?';
-    $params[]  = $name;
+    $params[] = $fullName;
 }
 
 if ($email !== null) {
@@ -135,10 +152,18 @@ try {
     $stmt2->execute([$studentIdFromToken]);
     $updated = $stmt2->fetch(PDO::FETCH_ASSOC);
 
+    // แยกชื่อ-นามสกุลเพื่อส่งกลับ
+    $nameParts = explode(' ', $updated['name'], 2);
+
     jexit(200, [
         'status'  => 'success',
         'message' => 'บันทึกข้อมูลแล้ว',
         'profile' => $updated,
+        'updated_name' => $updated['name'],  // ชื่อเต็มสำหรับอัปเดตชิป
+        'name_parts' => [
+            'first' => $nameParts[0] ?? '',
+            'last' => $nameParts[1] ?? ''
+        ]
     ]);
 } catch (PDOException $e) {
     error_log('[update_profile] DB error: ' . $e->getMessage());

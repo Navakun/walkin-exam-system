@@ -76,7 +76,12 @@
 
     <script>
         // ---------- CONFIG ----------
-        const API_BASE = '/walkin-exam-system/api/';
+        // ถ้าโปรเจกต์ถูกวางในโฟลเดอร์ย่อย เช่น /walkin-exam-system/ ให้ต่อ root นั้นให้เอง
+        const ROOT = location.pathname.includes('/walkin-exam-system/')
+            ? '/walkin-exam-system'
+            : '';
+        const API_BASE = `${ROOT}/api/`;   // ผลลัพธ์จะเป็น "/api/" หรือ "/walkin-exam-system/api/"
+
         const ENDPOINT_VERIFY = 'verify_token.php';
         const ENDPOINT_LIST = 'get_registration_status.php';
         const ENDPOINT_DETAIL = 'get_booking_details.php';
@@ -86,7 +91,17 @@
         const esc = (s) => String(s ?? '')
             .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
             .replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const buildApiUrl = (p) => API_BASE + String(p || '').replace(/^\/+/, '');
+
+        // helper เรียก API พร้อมจัดการ JSON/ข้อความผิดปกติ
+        async function apiGet(path, opt = {}) {
+            const res = await fetch(API_BASE + path, { cache: 'no-store', ...opt });
+            const raw = await res.text();
+            let data;
+            try { data = JSON.parse(raw); }
+            catch { throw new Error(`เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON: ${raw}`); }
+            if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+            return data;
+        }
 
         function getTeacherToken() {
             return localStorage.getItem('teacherToken') || sessionStorage.getItem('teacherToken');
@@ -154,11 +169,12 @@
 
             // ลอง verify token (ถ้า endpoint ไม่มี/404 → ถือว่า ok แล้วไปต่อ)
             try {
-                const vr = await fetch(buildApiUrl(ENDPOINT_VERIFY), {
+                await apiGet(ENDPOINT_VERIFY, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (vr.status === 401 || vr.status === 403) {
+            } catch (e) {
+                if (e.message.includes('401') || e.message.includes('403')) {
                     showError('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
                     setTimeout(() => {
                         localStorage.removeItem('teacherToken');
@@ -167,8 +183,6 @@
                     }, 1500);
                     return;
                 }
-                // 404 → ไม่มี verify endpoint; ข้ามไปโหลดข้อมูล
-            } catch (e) {
                 // เงียบไว้ และไปโหลดข้อมูล (กรณีเซิร์ฟเวอร์ไม่รองรับ verify)
                 console.warn('verify_token failed/absent, continue:', e);
             }
@@ -180,27 +194,13 @@
         async function loadRegistrations() {
             try {
                 const token = getTeacherToken();
-                const resp = await fetch(buildApiUrl(ENDPOINT_LIST), {
+                const payload = await apiGet(ENDPOINT_LIST, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` },
                     cache: 'no-store'
                 });
 
-                const raw = await resp.text();
-                let data;
-                try { data = raw ? JSON.parse(raw) : null; }
-                catch { throw new Error('เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON: ' + raw); }
-
-                if (!resp.ok) {
-                    if (resp.status === 401) {
-                        showError('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
-                        setTimeout(() => (location.href = 'teacher_login.html'), 1500);
-                        return;
-                    }
-                    throw new Error(data?.message || `โหลดข้อมูลไม่สำเร็จ (HTTP ${resp.status})`);
-                }
-
-                const list = data?.registrations ?? data?.data ?? [];
+                const list = payload?.registrations ?? payload?.data ?? [];
                 displayRegistrations(Array.isArray(list) ? list : []);
             } catch (err) {
                 console.error(err);
@@ -290,13 +290,12 @@
         async function viewDetails(bookingId) {
             try {
                 const token = getTeacherToken();
-                const resp = await fetch(buildApiUrl(`${ENDPOINT_DETAIL}?id=${encodeURIComponent(bookingId)}`), {
+                const payload = await apiGet(`${ENDPOINT_DETAIL}?id=${encodeURIComponent(bookingId)}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                const data = await resp.json();
-                if (!resp.ok || data?.status === 'error') throw new Error(data?.message || 'ดึงรายละเอียดไม่สำเร็จ');
+                if (payload?.status === 'error') throw new Error(payload?.message || 'ดึงรายละเอียดไม่สำเร็จ');
 
-                const d = data.details || {};
+                const d = payload.details || {};
                 const attempt = d.attempt_no ?? d.attempt ?? '-';
                 alert(
                     `รหัสนิสิต: ${d.student_id}\n` +

@@ -8,13 +8,10 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
   <link rel="stylesheet" href="assets/css/main.css">
   <link rel="stylesheet" href="assets/css/teacher.css">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-
   <!-- Font Awesome (ลิงก์ถูกต้อง) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
-
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -109,6 +106,120 @@
       border: 1px solid #ffe0b3;
       color: #7c4a03;
     }
+
+    /* กล่องค้นหา */
+    .search-container {
+      margin: 14px 0 10px;
+    }
+
+    .search-container input {
+      width: min(460px, 100%);
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px 14px;
+      outline: none;
+      transition: box-shadow .15s, border-color .15s;
+    }
+
+    .search-container input:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, .15);
+    }
+
+    /* ตาราง */
+    #results-container {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    #results-container table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 920px;
+    }
+
+    #results-container thead th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      z-index: 1;
+      font-weight: 600;
+      color: #334155;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 12px 14px;
+    }
+
+    #results-container tbody td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    #results-container tbody tr:hover {
+      background: #fbfbff;
+    }
+
+    /* สีสถานะเป็นแถบด้านซ้ายของแถว */
+    tr[data-status="completed"] {
+      box-shadow: inset 3px 0 0 #10b981;
+    }
+
+    /* เขียว */
+    tr[data-status="in_progress"] {
+      box-shadow: inset 3px 0 0 #f59e0b;
+    }
+
+    /* เหลือง */
+    tr[data-status="registered"] {
+      box-shadow: inset 3px 0 0 #94a3b8;
+    }
+
+    /* เทา */
+
+    /* ปุ่ม "ดูรายละเอียด" */
+    .btn-details {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #eef2ff;
+      color: #4338ca;
+      border: 1px solid #c7d2fe;
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform .05s ease, background .15s, border-color .15s;
+    }
+
+    .btn-details:hover {
+      background: #e0e7ff;
+      border-color: #a5b4fc;
+    }
+
+    .btn-details:active {
+      transform: translateY(1px);
+    }
+
+    /* ปรับ Modal เล็กน้อย */
+    .modal header h3 {
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .modal .body {
+      max-height: calc(70vh - 56px);
+    }
+
+    /* Error message */
+    .message.error {
+      margin: 10px 0 14px;
+      padding: 10px 12px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #7f1d1d;
+      border-radius: 10px;
+    }
   </style>
 </head>
 
@@ -199,7 +310,7 @@
 
   <script>
     // ---------- Config / State ----------
-    const API_BASE = '/walkin-exam-system/api/';
+    const API_BASE = 'api/';  // Relative path - works both locally and on production
     const ENDPOINT_LIST = API_BASE + 'get_all_results_new.php';
     const ENDPOINT_DETAILS = API_BASE + 'get_session_answers.php';
 
@@ -345,7 +456,8 @@
 
       tbody.innerHTML = rows.map(r => {
         const status = r.end_time ? 'completed' : (r.start_time ? 'in_progress' : 'registered');
-        const scoreText = (r.score == null) ? '-' : (+r.score).toFixed(2);
+        const scoreText = (r.score == null || r.score === '') ? '–' : (+r.score).toFixed(2);
+
         return `
         <tr
           data-session-id="${esc(r.session_id)}"
@@ -356,6 +468,7 @@
           data-start-time="${esc(r.start_time || '')}"
           data-end-time="${esc(r.end_time || '')}"
           data-status="${esc(status)}"
+          aria-label="แถวข้อมูลสถานะ ${esc(status)}"
         >
           <td>${esc(r.student_id)}</td>
           <td>${esc(r.student_name || '')}</td>
@@ -364,8 +477,8 @@
           <td>${esc(r.start_time || '-')}</td>
           <td>${esc(r.end_time || '-')}</td>
           <td>
-            <button type="button" class="btn-details">
-              <i class="fas fa-info-circle"></i> ดูรายละเอียด
+            <button type="button" class="btn-details" title="ดูรายละเอียดของ ${esc(r.student_name || r.student_id)}">
+              <i class="fas fa-circle-info"></i> ดูรายละเอียด
             </button>
           </td>
         </tr>
@@ -397,8 +510,14 @@
       if (_chartInstance) _chartInstance.destroy();
       _chartInstance = new Chart(ctx, {
         type: 'doughnut',
-        data: { labels: ['ถูก', 'ผิด'], datasets: [{ data: [correct || 0, wrong || 0] }] },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        data: {
+          labels: ['ถูก', 'ผิด'],
+          datasets: [{ data: [correct || 0, wrong || 0] }]
+        },
+        options: {
+          plugins: { legend: { position: 'bottom' } },
+          cutout: '60%'
+        }
       });
     }
     function renderWrongList(items) {
