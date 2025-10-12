@@ -32,7 +32,42 @@ html,body{
 .logo-text{display:flex; align-items:center; gap:14px}
 .logo-text img{height:56px; width:auto}
 .course-title h1{font-size:1.1rem; line-height:1.35; margin:0}
-.top-right{display:flex; align-items:center; gap:10px}
+.top-right{
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+}
+
+/* ปุ่มชิปโปรไฟล์ */
+.profile-chip{
+  appearance:none;
+  border:1px solid rgba(255,255,255,.35);
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  display:inline-flex;
+  align-items:center;
+  gap:.5rem;
+  padding:.35rem .8rem;
+  border-radius:999px;
+  line-height:1;
+  font-weight:600;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);
+  -webkit-backdrop-filter:saturate(120%) blur(2px);
+  backdrop-filter:saturate(120%) blur(2px);
+  transition:background .2s ease,border-color .2s ease,transform .15s ease;
+}
+.profile-chip i{ font-size:.9rem; opacity:.9; }
+.profile-chip:hover{
+  background:rgba(255,255,255,.12);
+  border-color:#fff;
+  transform:translateY(-1px);
+}
+.profile-chip:active{ transform:none; }
+.profile-chip:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:2px;
+}
+
 .student-badge{
   background:rgba(255,255,255,.15);
   border:1px solid rgba(255,255,255,.25);
@@ -139,3 +174,22 @@ button.card[disabled] .card-arrow{ opacity:.65 }
   .welcome-banner{padding:18px}
   .welcome-banner h2{font-size:1.25rem}
 }
+
+.profile-chip__name{ max-width:16rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.profile-chip__edit{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:28px; height:28px; border-radius:50%;
+  border:0; background:rgba(255,255,255,.1);
+  box-shadow:0 0 0 1px rgba(255,255,255,.2) inset;
+  cursor:pointer;
+  transition:all .2s ease;
+}
+.profile-chip__edit:hover{ 
+  background:rgba(255,255,255,.2);
+  transform:translateY(-1px);
+}
+@media (max-width:480px){
+  .profile-chip__name{ max-width:9rem; }
+}
+
+

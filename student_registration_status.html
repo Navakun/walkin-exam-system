@@ -72,7 +72,9 @@
 
   <script>
     // ================== CONFIG ==================
-    const API_BASE = '/walkin-exam-system/api/';
+    // Hostinger โปรเจ็กต์อยู่ที่ public_html ⇒ โฟลเดอร์ api อยู่รากโดเมน
+    // ใช้รากโดเมนเสมอ เพื่อกัน path เพี้ยน
+    const API_BASE = '/api/';
     const token = localStorage.getItem('studentToken');
     if (!token) { window.location.href = "student_login.html"; }
 
@@ -104,17 +106,15 @@
       return notPaid && d >= 3 && isFuture(reg.slot_date);
     }
 
-    // ✅ ฟังก์ชันใหม่: render การดำเนินการ "แบบเดียว" ต่อแถว
+    // การดำเนินการ “แบบเดียว” ต่อแถว
     function renderActionsCell(r) {
       const wrap = (html) => `<div class="btn-group" role="group">${html}</div>`;
       const status = (r.payment_status || '').toLowerCase();
 
-      // cancelled/paid/free/waived => ป้ายอย่างเดียว
       if (status === 'cancelled') return `<span class="text-muted">ถูกยกเลิกแล้ว</span>`;
       if (status === 'paid') return `<span class="text-success">ชำระแล้ว</span>`;
       if (status === 'free' || status === 'waived') return `<span class="text-info">สิทธิ์สอบฟรี</span>`;
 
-      // pending/unknown => ปุ่มจ่าย + อัปโหลด (+ ยกเลิกถ้าได้)
       const payBtns = `
         <button class="btn btn-sm btn-primary" onclick="payNow(${r.registration_id})">
           <i class="bi bi-credit-card me-1"></i>ชำระเงิน
@@ -131,21 +131,35 @@
           </button>`;
         return wrap(payBtns + cancelBtn);
       }
-      return wrap(payBtns);  // ไม่เติมข้อความอธิบายเพิ่ม เพื่อเลี่ยง “ดูเหมือนซ้ำ”
+      return wrap(payBtns);
+    }
+
+    // helper: fetch + ป้องกัน HTML error page
+    async function fetchJSON(url, opt = {}) {
+      const res = await fetch(url, opt);
+      const text = await res.text();
+      try {
+        const data = JSON.parse(text);
+        return { res, data };
+      } catch {
+        // แสดงบางส่วนของ HTML (เช่น 404) ให้ดีบักได้
+        throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+      }
     }
 
     // ================== MAIN ==================
     async function loadRegs() {
       try {
-        const res = await fetch(API_BASE + "get_my_registrations.php", {
+        const { data } = await fetchJSON(API_BASE + "get_my_registrations.php", {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store'
         });
-        const data = await res.json();
+
         const tbody = $("#regTable tbody");
         tbody.innerHTML = "";
 
         if (data.status !== "success") throw new Error(data.message || 'โหลดไม่สำเร็จ');
+
         if (!data.registrations?.length) {
           tbody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่พบประวัติการลงทะเบียน</td></tr>';
           $("#currentRegCard").style.display = 'none';
@@ -166,12 +180,12 @@
           }[r.payment_status] || '<span class="badge bg-secondary">ไม่ทราบสถานะ</span>';
 
           const rowClass = {
-            pending: 'table-warning', paid: 'table-success', free: 'table-info', cancelled: 'table-secondary'
+            pending: 'table-warning',
+            paid: 'table-success',
+            free: 'table-info',
+            cancelled: 'table-secondary'
           }[r.payment_status] || '';
-
           tr.className = rowClass;
-
-          const actionsHtml = renderActionsCell(r);
 
           tr.innerHTML = `
             <td>${formatThaiDate(r.slot_date)}</td>
@@ -181,7 +195,7 @@
             <td>${statusBadge}</td>
             <td>${r.ref_no || '-'}</td>
             <td>${r.paid_at ? new Date(r.paid_at).toLocaleString('th-TH') : '-'}</td>
-            <td>${actionsHtml}</td>`;
+            <td>${renderActionsCell(r)}</td>`;
           tbody.appendChild(tr);
         });
 
@@ -229,8 +243,7 @@
             <button class="btn btn-primary" onclick="payNow(${reg.registration_id})">
               <i class="bi bi-credit-card me-1"></i>ชำระเงิน
             </button>
-            <a href="student_payment_upload.html?registration_id=${reg.registration_id}"
-               class="btn btn-outline-primary">
+            <a href="student_payment_upload.html?registration_id=${reg.registration_id}" class="btn btn-outline-primary">
               <i class="bi bi-upload me-1"></i>อัปโหลดสลิป
             </a>
           </div>`;
@@ -270,24 +283,22 @@
         if (!isConfirmed) return;
 
         const url = (bookingId != null && bookingId !== '') ? API_BASE + 'cancel_booking.php' : API_BASE + 'cancel_registration.php';
-        const body = (bookingId != null && bookingId !== '') ? { booking_id: Number(bookingId), reason } : { registration_id: Number(registrationId), reason };
+        const body = (bookingId != null && bookingId !== '') ? { booking_id: Number(bookingId), reason }
+          : { registration_id: Number(registrationId), reason };
 
-        const resp = await fetch(url, {
+        const { res, data } = await fetchJSON(url, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify(body),
           cache: 'no-store'
         });
 
-        const raw = await resp.text();
-        let data; try { data = JSON.parse(raw); } catch { throw new Error(`HTTP ${resp.status}: ${raw.slice(0, 200)}`); }
-
         const msg = (data?.message || data?.msg || '').toString();
-        const ok = (resp.ok && data.status === 'success') || /already\s*cancel/i.test(msg) || /success/i.test(msg);
+        const ok = (res.ok && data.status === 'success') || /already\s*cancel/i.test(msg) || /success/i.test(msg);
         if (!ok) {
           if (/missing.+booking_id/i.test(msg)) throw new Error('ระบบต้องใช้หมายเลขการจอง (booking_id) สำหรับรายการนี้');
           if (/too\s*late|less\s*than\s*3\s*days/i.test(msg)) throw new Error('ต้องยกเลิกล่วงหน้าอย่างน้อย 3 วันก่อนวันสอบ');
-          throw new Error(msg || `ยกเลิกไม่สำเร็จ (HTTP ${resp.status})`);
+          throw new Error(msg || `ยกเลิกไม่สำเร็จ (HTTP ${res.status})`);
         }
 
         await Swal.fire({ icon: 'success', title: /already\s*cancel/i.test(msg) ? 'ยกเลิกไว้ก่อนแล้ว' : 'ยกเลิกสำเร็จ', timer: 1400, showConfirmButton: false });
@@ -306,7 +317,7 @@
       const { value: formValues, isConfirmed } = await Swal.fire({
         title: "ยืนยันการชำระเงิน",
         html: `<input id="refInput" class="swal2-input" placeholder="Ref No. อย่างน้อย 10 หลัก">
-              <input type="file" id="slipInput" class="swal2-file">`,
+               <input type="file" id="slipInput" class="swal2-file">`,
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: "ยืนยัน",
@@ -328,12 +339,11 @@
         fd.append("ref_no", formValues.ref);
         if (formValues.slip) fd.append("slip_file", formValues.slip);
 
-        const res = await fetch(API_BASE + "pay_registration.php", {
+        const { data } = await fetchJSON(API_BASE + "pay_registration.php", {
           method: "POST",
           headers: { "Authorization": `Bearer ${token}` },
           body: fd
         });
-        const data = await res.json();
         if (data.status !== "success") throw new Error(data.message);
 
         await Swal.fire({ icon: "success", title: "ชำระเงินสำเร็จ", text: `เลขที่อ้างอิง: ${data.ref_no}`, timer: 2000 });

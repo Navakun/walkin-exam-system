@@ -12,10 +12,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet">
     <link rel="icon" href="/favicon.ico">
-    <link rel="stylesheet" href="assets/css/student-materials.css">
 
     <!-- Bootstrap (optional) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- คุณมีไฟล์สไตล์หลักอยู่แล้ว -->
+    <link rel="stylesheet" href="assets/css/student-materials.css">
 
     <!-- pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -33,8 +35,7 @@
         <div class="right">
             <button id="backBtn" class="btn btn-outline-light btn-sm d-inline-flex align-items-center gap-1"
                 title="กลับไปแดชบอร์ดนิสิต" aria-label="กลับไปแดชบอร์ดนิสิต">
-                <i class="fa-solid fa-arrow-left-long"></i>
-                <span>กลับหน้าหลัก</span>
+                <i class="fa-solid fa-arrow-left-long"></i><span>กลับหน้าหลัก</span>
             </button>
             <button class="btn btn-danger btn-sm" id="logoutBtn">ออกจากระบบ</button>
         </div>
@@ -55,25 +56,46 @@
             <!-- RIGHT -->
             <section class="panel">
                 <h3><i class="fa-solid fa-file-pdf me-2"></i>ตัวแสดงเอกสาร</h3>
-                <div class="content viewer">
+                <!-- ใส่ id="viewerPane" เพื่ออ้างอิงขนาดกล่อง -->
+                <div id="viewerPane" class="content viewer">
 
-                    <!-- ✅ ใส่ canvas จริง -->
+                    <!-- Canvas แสดง PDF -->
                     <div class="canvas-wrap">
                         <canvas id="pdfCanvas" aria-label="ตัวแสดงไฟล์ PDF"></canvas>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center">
-                        <div class="pill"><i class="fa-regular fa-file-pdf"></i> <span
-                                id="pageInfo">ยังไม่เปิดไฟล์</span></div>
-                        <div class="d-flex gap-1">
+                        <div class="pill">
+                            <i class="fa-regular fa-file-pdf"></i>
+                            <span id="pageInfo">ยังไม่เปิดไฟล์</span>
+                        </div>
+
+                        <div class="d-flex gap-1 align-items-center">
+                            <button type="button" class="btn btn-soft" id="fullpage" title="ขยายเต็มจอ"
+                                aria-label="ขยายเต็มจอ">
+                                <i class="fa-solid fa-expand"></i>
+                            </button>
+
                             <button type="button" class="btn btn-soft" id="prevPage" title="หน้าก่อนหน้า"
-                                aria-label="หน้าก่อนหน้า"><i class="fa-solid fa-chevron-left"></i></button>
+                                aria-label="หน้าก่อนหน้า">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
                             <button type="button" class="btn btn-soft" id="nextPage" title="หน้าถัดไป"
-                                aria-label="หน้าถัดไป"><i class="fa-solid fa-chevron-right"></i></button>
-                            <button type="button" class="btn btn-soft" id="zoomOut" title="ซูมออก"
-                                aria-label="ซูมออก"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
-                            <button type="button" class="btn btn-soft" id="zoomIn" title="ซูมเข้า"
-                                aria-label="ซูมเข้า"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                                aria-label="หน้าถัดไป">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+
+                            <button type="button" class="btn btn-soft" id="zoomOut" title="ซูมออก" aria-label="ซูมออก">
+                                <i class="fa-solid fa-magnifying-glass-minus"></i>
+                            </button>
+
+                            <!-- เปอร์เซ็นต์ซูม -->
+                            <span id="zoomLabel" class="px-2 text-muted"
+                                style="min-width:60px; text-align:center;">100%</span>
+
+                            <button type="button" class="btn btn-soft" id="zoomIn" title="ซูมเข้า" aria-label="ซูมเข้า">
+                                <i class="fa-solid fa-magnifying-glass-plus"></i>
+                            </button>
                         </div>
                     </div>
 
@@ -119,110 +141,101 @@
         </div>
     </div>
 
+    <!-- ===== Overlay PDF viewer (เต็มหน้าจอในเว็บ) ===== -->
+    <div id="pdfOverlay" aria-hidden="true">
+        <div class="overlay-toolbar">
+            <div class="left">
+                <span class="pill"><i class="fa-regular fa-file-pdf"></i> <span id="ovPageInfo">กำลังโหลด…</span></span>
+            </div>
+            <div class="right">
+                <button class="btn btn-soft" id="ovPrev" title="หน้าก่อนหน้า"><i
+                        class="fa-solid fa-chevron-left"></i></button>
+                <button class="btn btn-soft" id="ovNext" title="หน้าถัดไป"><i
+                        class="fa-solid fa-chevron-right"></i></button>
+                <button class="btn btn-soft" id="ovZoomOut" title="ซูมออก"><i
+                        class="fa-solid fa-magnifying-glass-minus"></i></button>
+                <button class="btn btn-soft" id="ovZoomIn" title="ซูมเข้า"><i
+                        class="fa-solid fa-magnifying-glass-plus"></i></button>
+                <button class="btn btn-soft danger" id="ovClose" title="ปิดเต็มจอ"><i
+                        class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+        <div class="overlay-canvas-wrap">
+            <canvas id="ovCanvas"></canvas>
+        </div>
+    </div>
+
     <script>
-        // ===== Base paths (โปรเจกต์อยู่ที่ public_html) =====
-        const BASE_URL = location.origin;               // https://slateblue-wildcat-210524.hostingersite.com
+        /* =========================
+         * Base paths
+         * ========================= */
+        const BASE_URL = location.origin;
         const API_BASE = BASE_URL + '/api';
         const MATERIALS_DIR = BASE_URL + '/uploads/materials';
 
-        // ===== pdf.js =====
+        /* =========================
+         * pdf.js setup
+         * ========================= */
         pdfjsLib.GlobalWorkerOptions.workerSrc =
             'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        // ------- pdf.js state -------
-        let pdfDoc = null, pageNum = 1, scale = 1.25, rendering = false, pending = null;
+        /* =========================
+         * Viewer state (ตัวแสดงหลักด้านขวา)
+         * ========================= */
+        let pdfDoc = null;
+        let pageNum = 1;
+        let zoomFactor = 1;   // 1 = พอดีกล่อง, >1 ขยาย
+        let baseScale = 1;    // คำนวณอิงความกว้างกล่อง
+        let rendering = false;
+        let pending = null;
         let canvas, ctx;
 
-        // ===== helpers =====
+        // เก็บไฟล์ล่าสุดเพื่อเปิด Overlay
+        let _lastPdf = { url: '', title: '' };
+
+        /* ========================= Helpers ========================= */
         const $ = (s, r = document) => r.querySelector(s);
         const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-
         const listEl = $('#materialsList');
         const emptyEl = $('#emptyState');
         const loadingEl = $('#loadingState');
 
-        function on(id, ev, fn) {
-            const el = document.getElementById(id);
-            if (!el) { console.warn('missing element:', id); return; }
-            el.addEventListener(ev, fn);
-        }
+        function on(id, ev, fn) { const el = document.getElementById(id); if (!el) { console.warn('missing', id); return; } el.addEventListener(ev, fn); }
+        function escapeHTML(s) { const m = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }; return String(s ?? '').replace(/[&<>"']/g, c => m[c]); }
 
-        function escapeHTML(s) {
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-            return String(s ?? '').replace(/[&<>"']/g, ch => map[ch]);
-        }
-
-        // สร้าง/อ้างอิง canvas ให้แน่ใจว่ามีใน DOM
         function ensureCanvas() {
             canvas = document.getElementById('pdfCanvas');
-            if (!canvas) {
-                canvas = document.createElement('canvas');
-                canvas.id = 'pdfCanvas';
-                (document.getElementById('viewerPane') || document.body).appendChild(canvas);
-            }
+            if (!canvas) { canvas = document.createElement('canvas'); canvas.id = 'pdfCanvas'; (document.getElementById('viewerPane') || document.body).appendChild(canvas); }
             ctx = canvas.getContext('2d');
         }
 
-        // ประกอบ URL ไฟล์เอกสารให้ถูกกับโฮสต์จริง
-        function materialUrl(filenameOrPath) {
-            if (!filenameOrPath) return '';
-            // absolute URL
-            if (/^https?:\/\//i.test(filenameOrPath)) return filenameOrPath;
-            // พาธในเว็บ (เช่น "uploads/materials/xxx.pdf" หรือ "/uploads/materials/xxx.pdf")
-            if (filenameOrPath.includes('/')) {
-                const cleaned = filenameOrPath.replace(/^\/+/, '');
-                return `${BASE_URL}/${cleaned.split('/').map(encodeURIComponent).join('/')}`;
-            }
-            // ชื่อไฟล์ล้วน
-            return `${MATERIALS_DIR}/${encodeURIComponent(filenameOrPath)}`;
+        function materialUrl(p) {
+            if (!p) return '';
+            if (/^https?:\/\//i.test(p)) return p;                 // absolute
+            if (p.includes('/')) { const cleaned = p.replace(/^\/+/, ''); return `${BASE_URL}/${cleaned.split('/').map(encodeURIComponent).join('/')}`; }
+            return `${MATERIALS_DIR}/${encodeURIComponent(p)}`;   // filename only
         }
 
-        // ===== materials =====
+        /* ========================= Materials ========================= */
         async function fetchMaterials() {
             const token = localStorage.getItem('studentToken');
             if (!token) { location.href = 'student_login.html'; return; }
 
-            const url = `${API_BASE}/student_get_materials.php`;
             let res, text, data;
-
             try {
-                res = await fetch(url, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                res = await fetch(`${API_BASE}/student_get_materials.php`, {
+                    headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` },
                     cache: 'no-store'
                 });
-            } catch (netErr) {
-                console.error('NETWORK_ERROR', netErr);
-                alert('เชื่อมต่อไม่สำเร็จ: ' + (netErr?.message || 'NETWORK_ERROR'));
-                return;
-            }
+            } catch (err) { console.error('NETWORK_ERROR', err); alert('เชื่อมต่อไม่สำเร็จ'); return; }
 
             text = await res.text();
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                console.error('BAD_JSON', { status: res.status, text });
-                alert(`โหลดเอกสารล้มเหลว (HTTP ${res.status})`);
-                return;
-            }
+            try { data = JSON.parse(text); } catch { console.error('BAD_JSON', { status: res.status, text }); alert(`โหลดเอกสารล้มเหลว (HTTP ${res.status})`); return; }
 
-            if (res.status === 401 || res.status === 403) {
-                alert(data?.message || 'หมดเวลาการใช้งาน กรุณาเข้าสู่ระบบใหม่');
-                localStorage.removeItem('studentToken');
-                location.href = 'student_login.html';
-                return;
-            }
+            if (res.status === 401 || res.status === 403) { alert(data?.message || 'หมดเวลาการใช้งาน กรุณาเข้าสู่ระบบใหม่'); localStorage.removeItem('studentToken'); location.href = 'student_login.html'; return; }
+            if (!res.ok || data.status !== 'success') { console.error('API_ERROR', { status: res.status, data }); alert(data?.message || `โหลดเอกสารล้มเหลว (HTTP ${res.status})`); return; }
 
-            if (!res.ok || data.status !== 'success') {
-                console.error('API_ERROR', { status: res.status, data });
-                alert(data?.message || `โหลดเอกสารล้มเหลว (HTTP ${res.status})`);
-                return;
-            }
-
-            const rows = Array.isArray(data.data) ? data.data
-                : (Array.isArray(data.materials) ? data.materials : []);
+            const rows = Array.isArray(data.data) ? data.data : (Array.isArray(data.materials) ? data.materials : []);
             renderMaterials(rows);
         }
 
@@ -230,115 +243,159 @@
             const title = r.title || r.name || r.filename || `เอกสาร #${r.id ?? r.material_id ?? ''}`;
             const filename = r.filename || r.file || r.file_path || '';
             const url = r.file_url || r.download_url || materialUrl(filename);
-
             const mime = String(r.file_type || r.type || '').toLowerCase();
             const ext = (filename.split('.').pop() || '').toLowerCase();
             const isPdf = mime.includes('pdf') || ext === 'pdf' || /\.pdf($|\?)/i.test(url);
-
             const uploaded = r.upload_date || r.uploaded_at || r.created_at || '';
-            return {
-                id: r.id ?? r.material_id ?? null,
-                title, filename, url, uploadedAt: uploaded, mime, ext, isPdf
-            };
+            return { id: r.id ?? r.material_id ?? null, title, filename, url, uploadedAt: uploaded, mime, ext, isPdf };
         }
 
         function renderMaterials(rows) {
             loadingEl && (loadingEl.style.display = 'none');
             listEl.innerHTML = '';
-
             const items = rows.map(normalizeMaterial).filter(m => !!m.url);
             if (!items.length) { emptyEl && (emptyEl.style.display = 'block'); return; }
             emptyEl && (emptyEl.style.display = 'none');
 
             items.forEach(m => {
-                const li = document.createElement('li');
-                li.className = 'mat-item mb-2';
+                const li = document.createElement('li'); li.className = 'mat-item mb-2';
 
-                const meta = document.createElement('div');
-                meta.className = 'meta';
+                const meta = document.createElement('div'); meta.className = 'meta';
+                const title = document.createElement('div'); title.className = 'mat-title'; title.textContent = m.title || '';
+                const sub = document.createElement('div'); sub.className = 'mat-sub';
+                sub.innerHTML = `<i class="fa-regular fa-clock me-1"></i>${escapeHTML(m.uploadedAt || '-')}
+                         &nbsp;•&nbsp;<i class="fa-regular fa-file-lines me-1"></i>${escapeHTML((m.mime || m.ext || '').toUpperCase())}`;
+                meta.appendChild(title); meta.appendChild(sub);
 
-                const title = document.createElement('div');
-                title.className = 'mat-title';
-                title.textContent = m.title || '';
-                meta.appendChild(title);
+                const act = document.createElement('div'); act.className = 'mat-actions';
 
-                const sub = document.createElement('div');
-                sub.className = 'mat-sub';
-                sub.innerHTML = `
-        <i class="fa-regular fa-clock me-1"></i>${escapeHTML(m.uploadedAt || '-')}
-        &nbsp;•&nbsp;<i class="fa-regular fa-file-lines me-1"></i>${escapeHTML((m.mime || m.ext || '').toUpperCase())}
-      `;
-                meta.appendChild(sub);
-
-                const act = document.createElement('div');
-                act.className = 'mat-actions';
-
-                // ปุ่ม "เปิด" เฉพาะ PDF
                 if (m.isPdf) {
                     const openBtn = document.createElement('button');
-                    openBtn.className = 'btn-soft primary';
-                    openBtn.innerHTML = `<i class="fa-solid fa-eye"></i> เปิด`;
+                    openBtn.className = 'btn-soft primary'; openBtn.innerHTML = `<i class="fa-solid fa-eye"></i> เปิด`;
                     openBtn.addEventListener('click', () => openPdf(m.url, m.title));
                     act.appendChild(openBtn);
                 }
 
-                // ปุ่มดาวน์โหลด (ทุกชนิดไฟล์)
                 const dl = document.createElement('a');
-                dl.className = 'btn-soft dl';
-                dl.href = m.url;
-                dl.setAttribute('download', '');
-                dl.innerHTML = `<i class="fa-solid fa-download"></i> ดาวน์โหลด`;
+                dl.className = 'btn-soft dl'; dl.href = m.url; dl.setAttribute('download', ''); dl.innerHTML = `<i class="fa-solid fa-download"></i> ดาวน์โหลด`;
                 act.appendChild(dl);
 
-                li.appendChild(meta);
-                li.appendChild(act);
-                listEl.appendChild(li);
+                li.appendChild(meta); li.appendChild(act); listEl.appendChild(li);
             });
         }
 
-        // ===== PDF viewer =====
-        async function openPdf(url, title = '') {
-            stopAllSpeech();
-            const pageInfo = document.getElementById('pageInfo');
-            if (pageInfo) pageInfo.textContent = 'กำลังโหลด…';
+        /* ========================= PDF Viewer (หลัก) ========================= */
+        function updateZoomLabel() { const el = document.getElementById('zoomLabel'); if (el) el.textContent = `${Math.round(zoomFactor * 100)}%`; }
 
-            ensureCanvas();
-
-            try {
-                // เช็คไฟล์มีจริงก่อน (กัน MissingPDFException)
-                const head = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-                if (!head.ok) throw new Error(`ไม่พบไฟล์: ${url}`);
-
-                pdfDoc = await pdfjsLib.getDocument({ url, withCredentials: true }).promise;
-                pageNum = 1; scale = 1.25;
-                renderPage(pageNum);
-            } catch (e) {
-                if (pageInfo) pageInfo.textContent = 'โหลดไฟล์ไม่สำเร็จ';
-                console.error(e);
-            }
+        async function calcBaseScale(page) {
+            const holder = document.getElementById('viewerPane') || canvas.parentElement || document.body;
+            const containerWidth = holder.clientWidth || holder.offsetWidth || window.innerWidth;
+            const vp1 = page.getViewport({ scale: 1 });
+            baseScale = containerWidth / vp1.width;          // ฟิตความกว้าง
+            baseScale = Math.max(0.4, Math.min(baseScale, 2.0));
         }
 
         function renderPage(num) {
             rendering = true;
-            pdfDoc.getPage(num).then(page => {
-                const viewport = page.getViewport({ scale });
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                page.render({ canvasContext: ctx, viewport }).promise.then(() => {
+            pdfDoc.getPage(num).then(async (page) => {
+                if (!baseScale) await calcBaseScale(page);
+
+                const dpr = Math.max(1, window.devicePixelRatio || 1);
+                const scale = baseScale * zoomFactor;
+                const vp = page.getViewport({ scale });
+
+                canvas.width = Math.floor(vp.width * dpr);
+                canvas.height = Math.floor(vp.height * dpr);
+                canvas.style.width = `${Math.floor(vp.width)}px`;
+                canvas.style.height = `${Math.floor(vp.height)}px`;
+
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                page.render({ canvasContext: ctx, viewport: vp }).promise.then(() => {
                     rendering = false;
-                    const pageInfo = document.getElementById('pageInfo');
-                    if (pageInfo) pageInfo.textContent = `หน้า ${pageNum} / ${pdfDoc.numPages}`;
-                    if (pending !== null) { renderPage(pending); pending = null; }
+                    const info = document.getElementById('pageInfo');
+                    if (info) info.textContent = `หน้า ${pageNum} / ${pdfDoc.numPages}`;
+                    updateZoomLabel();
+                    if (pending !== null) { const n = pending; pending = null; renderPage(n); }
                 });
             });
         }
-        function queueRender(num) { rendering ? (pending = num) : renderPage(num); }
+
+        function queueRender(n) { rendering ? (pending = n) : renderPage(n); }
         function onPrev() { if (!pdfDoc || pageNum <= 1) return; pageNum--; queueRender(pageNum); stopAllSpeech(); }
         function onNext() { if (!pdfDoc || pageNum >= pdfDoc.numPages) return; pageNum++; queueRender(pageNum); stopAllSpeech(); }
-        function onZoomIn() { if (!pdfDoc) return; scale = Math.min(scale + 0.1, 2.5); queueRender(pageNum); }
-        function onZoomOut() { if (!pdfDoc) return; scale = Math.max(scale - 0.1, 0.6); queueRender(pageNum); }
+        function onZoomIn() { if (!pdfDoc) return; zoomFactor = Math.min(zoomFactor + 0.1, 3.0); queueRender(pageNum); }
+        function onZoomOut() { if (!pdfDoc) return; zoomFactor = Math.max(zoomFactor - 0.1, 0.5); queueRender(pageNum); }
 
-        // ===== TTS =====
+        async function openPdf(url, title = '') {
+            stopAllSpeech();
+            const pageInfo = document.getElementById('pageInfo'); if (pageInfo) pageInfo.textContent = 'กำลังโหลด…';
+            ensureCanvas();
+            baseScale = 0; zoomFactor = 1; _lastPdf = { url, title };
+
+            try {
+                // กัน MissingPDFException
+                const head = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+                if (!head.ok) throw new Error(`ไม่พบไฟล์: ${url}`);
+
+                pdfDoc = await pdfjsLib.getDocument({ url, withCredentials: true }).promise;
+                pageNum = 1;
+                renderPage(pageNum);
+            } catch (e) { if (pageInfo) pageInfo.textContent = 'โหลดไฟล์ไม่สำเร็จ'; console.error(e); }
+        }
+
+        let _resizeTimer; window.addEventListener('resize', () => {
+            if (!pdfDoc) return;
+            clearTimeout(_resizeTimer);
+            _resizeTimer = setTimeout(() => { baseScale = 0; renderPage(pageNum); }, 120);
+        });
+
+        /* ========================= Overlay Viewer (เต็มหน้าจอในเว็บ) ========================= */
+        let ovCanvas, ovCtx, ovBaseScale = 1, ovZoom = 1;
+        function ensureOverlay() { ovCanvas = document.getElementById('ovCanvas'); ovCtx = ovCanvas.getContext('2d'); }
+
+        async function calcOverlayBaseScale(page) {
+            const wrap = document.querySelector('#pdfOverlay .overlay-canvas-wrap');
+            const vw = wrap.clientWidth, vh = wrap.clientHeight;
+            const vp1 = page.getViewport({ scale: 1 });
+            const scaleW = vw / vp1.width, scaleH = vh / vp1.height;
+            ovBaseScale = Math.min(scaleW, scaleH);
+            ovBaseScale = Math.max(0.4, Math.min(ovBaseScale, 2.5));
+        }
+
+        function renderOverlay(n) {
+            if (!pdfDoc) return;
+            pdfDoc.getPage(n).then(async (page) => {
+                if (!ovBaseScale) await calcOverlayBaseScale(page);
+                const dpr = Math.max(1, window.devicePixelRatio || 1);
+                const vp = page.getViewport({ scale: ovBaseScale * ovZoom });
+
+                ovCanvas.width = Math.floor(vp.width * dpr);
+                ovCanvas.height = Math.floor(vp.height * dpr);
+                ovCanvas.style.width = `${Math.floor(vp.width)}px`;
+                ovCanvas.style.height = `${Math.floor(vp.height)}px`;
+
+                ovCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                page.render({ canvasContext: ovCtx, viewport: vp }).promise.then(() => {
+                    const info = document.getElementById('ovPageInfo');
+                    if (info) info.textContent = `หน้า ${pageNum} / ${pdfDoc.numPages} · ${Math.round(ovZoom * 100)}%`;
+                });
+            });
+        }
+
+        function openOverlay() {
+            if (!_lastPdf.url || !pdfDoc) { alert('กรุณาเปิดไฟล์จากรายการทางซ้ายก่อน'); return; }
+            ensureOverlay();
+            document.getElementById('pdfOverlay').setAttribute('aria-hidden', 'false');
+            ovBaseScale = 0; ovZoom = 1; renderOverlay(pageNum);
+        }
+        function closeOverlay() { document.getElementById('pdfOverlay').setAttribute('aria-hidden', 'true'); }
+
+        function ovPrev() { if (!pdfDoc || pageNum <= 1) return; pageNum--; renderOverlay(pageNum); }
+        function ovNext() { if (!pdfDoc || pageNum >= pdfDoc.numPages) return; pageNum++; renderOverlay(pageNum); }
+        function ovZoomIn() { if (!pdfDoc) return; ovZoom = Math.min(ovZoom + 0.1, 3.0); renderOverlay(pageNum); }
+        function ovZoomOut() { if (!pdfDoc) return; ovZoom = Math.max(ovZoom - 0.1, 0.5); renderOverlay(pageNum); }
+
+        /* ========================= TTS ========================= */
         const voiceSelect = $('#voiceSelect');
         const rateRange = $('#rateRange');
         const pitchRange = $('#pitchRange');
@@ -350,62 +407,52 @@
             voices = speechSynthesis.getVoices();
             if (voiceSelect) {
                 voiceSelect.innerHTML = '';
-                voices
-                    .sort((a, b) => (a.lang || '').localeCompare(b.lang || '') || (a.name || '').localeCompare(b.name || ''))
-                    .forEach((v, i) => {
-                        const opt = document.createElement('option');
-                        opt.value = String(i);
-                        opt.textContent = `${v.name} – ${v.lang}`;
-                        voiceSelect.appendChild(opt);
-                    });
+                voices.sort((a, b) => (a.lang || '').localeCompare(b.lang || '') || (a.name || '').localeCompare(b.name || ''))
+                    .forEach((v, i) => { const o = document.createElement('option'); o.value = String(i); o.textContent = `${v.name} – ${v.lang}`; voiceSelect.appendChild(o); });
                 const idxTh = voices.findIndex(v => (v.lang || '').toLowerCase().startsWith('th'));
                 voiceSelect.value = idxTh >= 0 ? String(idxTh) : '0';
             }
         }
-        function chunkText(text, size = 220) {
-            const out = [], n = text.length; let i = 0, buf = '';
-            while (i < n) { buf += text[i]; if (buf.length >= size && /[\s\.\,\!\?]/.test(text[i])) { out.push(buf.trim()); buf = ''; } i++; }
-            if (buf.trim()) out.push(buf.trim());
-            return out;
-        }
+        function chunkText(t, size = 220) { const out = []; let buf = ''; for (let i = 0; i < t.length; i++) { buf += t[i]; if (buf.length >= size && /[\s\.\,\!\?]/.test(t[i])) { out.push(buf.trim()); buf = ''; } } if (buf.trim()) out.push(buf.trim()); return out; }
         function speakText(text) {
-            speechSynthesis.cancel();
-            if (!text) return;
+            speechSynthesis.cancel(); if (!text) return;
             const sel = voices[Number(voiceSelect?.value)] || voices[0];
-            chunkText(text).forEach(part => {
-                const u = new SpeechSynthesisUtterance(part);
-                if (sel) u.voice = sel;
-                u.rate = Number(rateRange?.value) || 1.0;
-                u.pitch = Number(pitchRange?.value) || 1.0;
-                speechSynthesis.speak(u);
-            });
+            chunkText(text).forEach(part => { const u = new SpeechSynthesisUtterance(part); if (sel) u.voice = sel; u.rate = Number(rateRange?.value) || 1.0; u.pitch = Number(pitchRange?.value) || 1.0; speechSynthesis.speak(u); });
         }
         function stopAllSpeech() { speechSynthesis.cancel(); }
 
+        /* ========================= Navigation ========================= */
         function smartBack() {
             try { stopAllSpeech?.(); } catch { }
-            const fallback = 'student_dashboard.html';
-            const ref = document.referrer || '';
+            const fallback = 'student_dashboard.html'; const ref = document.referrer || '';
             try {
-                const sameOrigin = ref && new URL(ref, location.href).origin === location.origin;
-                if (history.length > 1 && sameOrigin) {
-                    history.back();
-                    setTimeout(() => { if (!document.hidden) location.href = fallback; }, 400);
-                    return;
-                }
+                const same = ref && new URL(ref, location.href).origin === location.origin;
+                if (history.length > 1 && same) { history.back(); setTimeout(() => { if (!document.hidden) location.href = fallback; }, 400); return; }
             } catch { }
             location.href = fallback;
         }
 
-        // ===== boot =====
+        /* ========================= Boot ========================= */
         document.addEventListener('DOMContentLoaded', () => {
             ensureCanvas();
 
-            // ปุ่มควบคุม viewer
+            // viewer controls
             on('prevPage', 'click', onPrev);
             on('nextPage', 'click', onNext);
             on('zoomIn', 'click', onZoomIn);
             on('zoomOut', 'click', onZoomOut);
+            on('fullpage', 'click', openOverlay);     // เปิด overlay full-page PDF
+
+            // overlay controls
+            on('ovPrev', 'click', ovPrev);
+            on('ovNext', 'click', ovNext);
+            on('ovZoomIn', 'click', ovZoomIn);
+            on('ovZoomOut', 'click', ovZoomOut);
+            on('ovClose', 'click', closeOverlay);
+            window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#pdfOverlay')?.getAttribute('aria-hidden') === 'false') { closeOverlay(); } });
+
+            // overlay re-fit on resize
+            let rt; window.addEventListener('resize', () => { if ($('#pdfOverlay')?.getAttribute('aria-hidden') === 'false' && pdfDoc) { clearTimeout(rt); rt = setTimeout(() => { ovBaseScale = 0; renderOverlay(pageNum); }, 120); } });
 
             // TTS controls
             on('ttsPlay', 'click', async () => {
@@ -420,23 +467,23 @@
             on('ttsResume', 'click', () => { if (speechSynthesis.paused) speechSynthesis.resume(); });
             on('ttsStop', 'click', stopAllSpeech);
 
+            // back + logout
             on('backBtn', 'click', smartBack);
-            window.addEventListener('keydown', (e) => {
-                if ((e.key === 'b' || e.key === 'B') && e.altKey && !e.ctrlKey && !e.metaKey) {
-                    e.preventDefault(); smartBack();
-                }
-            });
+            window.addEventListener('keydown', (e) => { if ((e.key === 'b' || e.key === 'B') && e.altKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); smartBack(); } });
             on('logoutBtn', 'click', () => { localStorage.clear(); location.href = 'student_login.html'; });
 
+            // TTS UI
             if (rateRange && rateVal) rateRange.addEventListener('input', () => rateVal.textContent = `${(+rateRange.value).toFixed(1)}x`);
             if (pitchRange && pitchVal) pitchRange.addEventListener('input', () => pitchVal.textContent = (+pitchRange.value).toFixed(1));
             loadVoices(); speechSynthesis.onvoiceschanged = loadVoices;
 
             // โหลดรายการไฟล์
             fetchMaterials();
+
+            // ตั้งค่าเปอร์เซ็นต์ซูมเริ่มต้น
+            updateZoomLabel();
         });
     </script>
-
 </body>
 
 </html>

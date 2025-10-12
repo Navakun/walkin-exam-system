@@ -85,3 +85,29 @@
   background:var(--pill);color:var(--pill-ink);
   padding:6px 10px;border-radius:999px;font-size:12px;
 }
+
+/* ===== Overlay Viewer ===== */
+    #pdfOverlay{
+      position: fixed; inset: 0; background:#0b0d10f2;
+      display:none; flex-direction: column; z-index: 9999;
+    }
+    #pdfOverlay[aria-hidden="false"]{ display:flex; }
+
+    #pdfOverlay .overlay-toolbar{
+      display:flex; justify-content:space-between; align-items:center;
+      padding:10px 14px; background:#0f141b; color:#fff; gap:8px;
+      border-bottom:1px solid #1d2633;
+    }
+    #pdfOverlay .overlay-toolbar .pill{
+      background:#1d2633; padding:6px 10px; border-radius:999px; font-size:13px;
+    }
+    #pdfOverlay .overlay-toolbar .right .btn{ margin-left:6px; }
+
+    #pdfOverlay .overlay-canvas-wrap{
+      flex:1; display:flex; align-items:center; justify-content:center;
+      overflow:auto; padding:12px;
+    }
+    #ovCanvas{
+      display:block; background:#fff; box-shadow:0 8px 30px rgba(0,0,0,.35);
+      border-radius:8px; max-width:100%; height:auto;
+    }
