@@ -26,30 +26,30 @@
   </header>
 
   <main class="login-box">
-    <h2>ลงทะเบียนผู้ใช้งาน</h2>
+    <h2>สมัครสมาชิก</h2>
     <div id="messageBox" class="message"></div>
     <form id="registerForm">
       <input type="text" name="student_id" placeholder="รหัสนิสิต" required><br>
       <input type="text" name="name" placeholder="ชื่อ-นามสกุล" required><br>
       <input type="email" name="email" placeholder="อีเมล" required><br>
       <input type="password" name="password" placeholder="รหัสผ่าน" required><br>
-      <button type="submit">ลงทะเบียน</button>
+      <button type="submit">สมัครสมาชิก</button>
     </form>
   </main>
 
   <script>
     document.getElementById('logoutBtn').addEventListener('click', () => {
-  window.location.href = 'student_login.html';
+      window.location.href = 'student_login.html';
     });
 
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const messageBox = document.getElementById('messageBox');
       const form = e.target;
-      
+
       try {
-  const response = await fetch('api/student_register.php', {
+        const response = await fetch('api/student_register.php', {
           method: 'POST',
           body: new FormData(form)
         });
@@ -57,7 +57,7 @@
         const result = await response.json();
 
         messageBox.style.display = 'block';
-        
+
         if (response.ok) {
           messageBox.className = 'message success';
           messageBox.textContent = result.message;

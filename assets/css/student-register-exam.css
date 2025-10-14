@@ -1,0 +1,255 @@
+/* assets/css/student-register-exam.css */
+
+/* ========= Design tokens ========= */
+:root{
+  --bg:#f7f9fc;
+  --card:#ffffff;
+  --ink:#0f172a;
+  --muted:#64748b;
+  --line:#e5eaf2;
+  --brand:#2563eb;
+  --brand-2:#0ea5e9;
+  --ok:#10b981;
+  --warn:#f59e0b;
+  --bad:#ef4444;
+  --radius:14px;
+}
+
+/* ========= Base ========= */
+html,body{
+  background:var(--bg);
+  color:var(--ink);
+}
+.container{
+  max-width:1150px;
+}
+
+/* ========= Header ========= */
+.course-header{
+  background:linear-gradient(90deg,#fff, #f3f7ff);
+  border-bottom:1px solid var(--line);
+  border-radius:0 0 var(--radius) var(--radius);
+}
+.course-header img{ filter: drop-shadow(0 2px 6px rgba(2,6,23,.08)); }
+.course-header h2{
+  letter-spacing:.2px;
+  line-height:1.35;
+}
+
+/* ========= Info / Loading ========= */
+#loadingIndicator{
+  border:1px solid #dbe5ff;
+  background:linear-gradient(90deg,rgba(37,99,235,.08),rgba(14,165,233,.08));
+  color:#1e3a8a;
+  border-radius:12px;
+  padding:.8rem 1rem;
+}
+
+/* ========= Table shell ========= */
+.table-responsive{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:0 8px 28px rgba(2,6,23,.06);
+  overflow:hidden;
+}
+
+#slot-table{
+  margin:0;
+  border-collapse:separate;
+  border-spacing:0;
+  font-size:15.5px;
+}
+
+#slot-table thead th{
+  position:sticky; top:0;
+  background:linear-gradient(180deg,#f8fbff,#eef4ff);
+  color:#0b2a6a;
+  border-bottom:1px solid var(--line);
+  padding:.9rem .8rem;
+  font-weight:700;
+  text-transform:none;
+}
+
+#slot-table tbody td{
+  vertical-align:middle;
+  padding:.85rem .8rem;
+  border-color:var(--line);
+}
+
+/* เพิ่มความเด่นของคอลัมน์ “ดำเนินการ” */
+#slot-table tbody td:last-child{
+  white-space:nowrap;
+}
+
+/* Hover row */
+#slot-table tbody tr{
+  transition:background .15s ease, box-shadow .15s ease;
+}
+#slot-table tbody tr:hover{
+  background:#f7fbff;
+}
+
+/* ========= Badges ========= */
+.badge.rounded-pill{
+  padding:.45rem .7rem;
+  font-weight:700;
+  letter-spacing:.2px;
+}
+
+.badge.bg-success{
+  background:rgba(16,185,129,.12)!important;
+  color:#065f46!important;
+  border:1px solid rgba(16,185,129,.35);
+}
+.badge.bg-danger{
+  background:rgba(239,68,68,.12)!important;
+  color:#7f1d1d!important;
+  border:1px solid rgba(239,68,68,.35);
+}
+
+/* “ลงทะเบียนได้ / เต็มแล้ว” */
+.status-pill{
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.4rem .7rem; border-radius:999px; font-weight:600;
+  border:1px solid transparent;
+}
+.status-pill.ok{
+  background:rgba(37,99,235,.08); color:#1e40af;
+  border-color:rgba(37,99,235,.25);
+}
+.status-pill.full{
+  background:rgba(2,6,23,.04); color:#475569;
+  border-color:rgba(2,6,23,.08);
+}
+
+/* ========= Buttons ========= */
+.btn{
+  border-radius:10px;
+  padding:.55rem .9rem;
+  font-weight:600;
+  box-shadow:0 2px 8px rgba(2,6,23,.06);
+  transition:transform .06s ease, box-shadow .2s ease;
+}
+.btn:active{ transform:translateY(1px); }
+
+.btn-success{
+  background:linear-gradient(135deg,var(--brand),var(--brand-2));
+  border:none;
+}
+.btn-success:hover{
+  box-shadow:0 10px 22px rgba(37,99,235,.18);
+}
+
+.btn-secondary{
+  background:#e5e7eb; color:#334155; border:1px solid #d1d5db;
+}
+
+/* ========= Date/Time cells (อ่านง่ายขึ้น) ========= */
+.time-cell{
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+  color:#0f2167;
+  font-weight:600;
+}
+.date-cell{
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+
+/* ========= Mobile tweaks ========= */
+@media (max-width: 768px){
+  #slot-table{ font-size:14.5px; }
+  .table-responsive{ border-radius:12px; }
+  #slot-table thead th{ padding:.7rem .6rem; }
+  #slot-table tbody td{ padding:.7rem .6rem; }
+  /* ซ่อนคอลัมน์ที่ไม่จำเป็นบนจอเล็ก */
+  #slot-table th:nth-child(4),
+  #slot-table td:nth-child(4){ display:none; } /* จำนวนที่นั่งทั้งหมด */
+  #slot-table th:nth-child(5),
+  #slot-table td:nth-child(5){ display:none; } /* จำนวนที่ลงทะเบียนแล้ว */
+}
+
+/* ========= Utilities ========= */
+.text-muted{ color:var(--muted)!important; }
+
+
+/* ===== ตารางช่วงเวลาสอบ ===== */
+.slot-table {
+  table-layout: fixed;         /* ให้คอลัมน์กว้างตาม colgroup */
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(2,6,23,.05);
+}
+
+.slot-table thead th {
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e7eb !important;
+  padding: 12px 10px;
+}
+
+.slot-table tbody td {
+  padding: 12px 10px;
+  border-color: #eef2f7 !important;
+  vertical-align: middle;
+}
+
+.slot-table .text-num { text-align: center; font-variant-numeric: tabular-nums; }
+.slot-table .nowrap { white-space: nowrap; }
+.slot-table .muted { color:#64748b; font-size: .92rem; }
+
+/* ป้ายตัวเลขที่นั่งว่าง */
+.badge-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 34px; height: 28px; border-radius: 999px;
+  font-weight: 600; font-size: .95rem;
+}
+.badge-pill.ok { background: #e8f6ee; color:#0a7f4f; }
+.badge-pill.full { background: #fde8e8; color:#b42318; }
+
+/* ป้ายสถานะให้ขนาดคงที่ (ไม่ดันความสูงแถว) */
+.status-pill {
+  display: inline-flex; align-items:center; justify-content:center;
+  min-width: 120px; height: 30px; border-radius: 999px;
+  padding: 0 12px; font-weight: 600; font-size: .95rem;
+  border: 1px solid transparent;
+}
+.status-pill.ok  { background: #eef2ff; color:#3730a3; border-color:#c7d2fe; }
+.status-pill.full{ background: #fff1f2; color:#be123c; border-color:#fecdd3; }
+
+/* ปุ่มให้เตี้ยลงนิดนึง */
+.btn-register { padding: 6px 14px; border-radius: 10px; }
+.btn-register i { margin-right: 6px; }
+
+/* แถว hover ดูมีปฏิสัมพันธ์ */
+.slot-table tbody tr:hover { background: #fbfdff; }
+
+/* จัดกรอบ loading */
+#loadingIndicator {
+  border-radius: 12px; border: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+/* Responsive: จอแคบค่อยปล่อยอัตโนมัติ */
+@media (max-width: 1024px){
+  .slot-table { table-layout: auto; }
+}
+
+/* ให้เวลาอยู่บรรทัดเดียวและจัดกึ่งกลาง */
+#slot-table td:nth-child(3) {
+  white-space: nowrap;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* เพิ่มความกว้างให้ช่องเวลาเล็กน้อย */
+#slot-table th:nth-child(3),
+#slot-table td:nth-child(3) {
+  min-width: 140px;
+}

@@ -69,8 +69,12 @@
 
   <script>
     // ====== config ======
-    const API_BASE = '/walkin-exam-system/api/';
+    const ROOT = location.pathname.includes('/walkin-exam-system/')
+      ? '/walkin-exam-system'
+      : '';
+    const API_BASE = `${ROOT}/api/`;           // <— ใช้แบบนี้
     const API_SUBMIT = 'submit_answer.php';
+
 
     // --- state ---
     let TOTAL_QUESTIONS = null;

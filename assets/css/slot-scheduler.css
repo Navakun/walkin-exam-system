@@ -3,7 +3,7 @@
    File: assets/css/slot-scheduler.css
    ============================ */
 
-/* ---- Design tokens ให้ตรงกับหน้าที่เหลือ ---- */
+/* ---- Design tokens ---- */
 :root{
   --thai-font: "Prompt","Noto Sans Thai",system-ui,-apple-system,"Segoe UI",
                Roboto,"Helvetica Neue",Arial,sans-serif;
@@ -25,6 +25,7 @@
 html,body{ font-family:var(--thai-font); background:var(--bg); color:var(--text); }
 .teacher-dashboard{ max-width:1200px; margin:0 auto; padding:28px; }
 
+/* กล่องหลัก */
 .time-slots{
   background:var(--card);
   border:1px solid var(--border);
@@ -32,7 +33,6 @@ html,body{ font-family:var(--thai-font); background:var(--bg); color:var(--text)
   border-radius:16px;
   padding:22px 22px 26px;
 }
-
 .time-slots > h2{
   font-size:1.35rem;
   font-weight:700;
@@ -40,7 +40,7 @@ html,body{ font-family:var(--thai-font); background:var(--bg); color:var(--text)
   color:var(--brand);
 }
 
-/* ---- Error box ---- */
+/* Error box */
 #errorBox .alert{ margin-bottom:14px; }
 
 /* ---- Form ---- */
@@ -50,19 +50,16 @@ html,body{ font-family:var(--thai-font); background:var(--bg); color:var(--text)
   gap:14px 16px;
   margin-bottom:22px;
 }
-
 .time-slot-form .form-group{
   display:flex;
   flex-direction:column;
   gap:6px;
 }
-
 .time-slot-form label{
   font-weight:600;
   color:#334155;
   font-size:.94rem;
 }
-
 .time-slot-form input[type="text"],
 .time-slot-form input[type="number"],
 .time-slot-form input[type="date"],
@@ -77,7 +74,6 @@ html,body{ font-family:var(--thai-font); background:var(--bg); color:var(--text)
   background:#fafbff;
   transition:border-color .15s, box-shadow .15s, background .15s;
 }
-
 .time-slot-form input:focus,
 .time-slot-form select:focus{
   outline:none;
@@ -96,12 +92,14 @@ html,body{ font-family:var(--thai-font); background:var(--bg); color:var(--text)
   border-radius:10px;
   padding:10px 16px;
   font-weight:600;
+  color:#fff;
   background:linear-gradient(180deg,var(--brand-2),var(--brand));
   border:0;
   box-shadow:0 8px 16px rgba(79,125,232,.25);
+  transition:transform .12s, filter .12s;
 }
 #submitBtn:hover{ filter:brightness(.98); transform:translateY(-1px); }
-#submitBtn:disabled{ filter:grayscale(.2) opacity(.8); transform:none; }
+#submitBtn:disabled{ filter:grayscale(.2) opacity(.85); transform:none; }
 
 /* ---- Table ---- */
 .slots-table{
@@ -111,8 +109,8 @@ html,body{ font-family:var(--thai-font); background:var(--bg); color:var(--text)
   overflow:hidden;
   background:#fff;
   box-shadow:var(--shadow);
+  table-layout:fixed; /* ลดอาการคอลัมน์ยืด */
 }
-
 .slots-table thead th{
   background:linear-gradient(180deg,#f8fbff,#eef4ff);
   color:#334155;
@@ -120,34 +118,53 @@ html,body{ font-family:var(--thai-font); background:var(--bg); color:var(--text)
   border-bottom:1px solid var(--border);
   position:sticky; top:0; z-index:1;
 }
-
 .slots-table th,
 .slots-table td{
   padding:11px 12px;
   vertical-align:middle;
+  word-break:break-word;
 }
-
-.slots-table tbody tr{ transition:background .12s, transform .05s; }
+.slots-table tbody tr{ transition:background .12s; }
 .slots-table tbody tr:hover{ background:#f9fbff; }
 
-/* แถบสีตามสถานะ (ใช้กับ <tr> หรือ <td> ก็ได้) */
+/* คุมความกว้างคอลัมน์ให้บาลานซ์ */
+.slots-table th.col-date-reg,
+.slots-table td.col-date-reg{ width:18ch; }
+.slots-table th.col-date,
+.slots-table td.col-date{ width:16ch; }
+.slots-table th.col-time,
+.slots-table td.col-time{ width:14ch; }
+.slots-table th.col-cap,
+.slots-table td.col-cap{ width:10ch; }
+.slots-table th.col-booked,
+.slots-table td.col-booked{ width:12ch; }
+.slots-table th.col-status,
+.slots-table td.col-status{ width:12ch; }
+.slots-table th.col-actions,
+.slots-table td.col-actions{ width:14ch; }
+
+/* เวลาอยู่บรรทัดเดียว */
+.nowrap, .slots-table td.time-cell{ white-space:nowrap; }
+
+/* แถบสีตามสถานะ (ใช้กับ <td> หรือ <span>) */
 .status-pill{
   display:inline-flex; align-items:center; gap:6px;
   padding:4px 10px; border-radius:999px; font-weight:600; font-size:.85rem;
+  border:1px solid transparent;
 }
 .status-available .status-pill,
 td.text-success .status-pill{
-  color:#065f46; background:#ecfdf5; border:1px solid #a7f3d0;
+  color:#065f46; background:#ecfdf5; border-color:#a7f3d0;
 }
 .status-full .status-pill,
 td.text-danger .status-pill{
-  color:#7f1d1d; background:#fef2f2; border:1px solid #fecaca;
+  color:#7f1d1d; background:#fef2f2; border-color:#fecaca;
 }
 .status-closed .status-pill{
-  color:#374151; background:#f3f4f6; border:1px solid #e5e7eb;
+  color:#374151; background:#f3f4f6; border-color:#e5e7eb;
 }
 
-/* แถวพื้นหลังตามสถานะ (ถ้าอยากเน้นทั้งแถว) */
+/* เน้นทั้งแถว (ถ้าต้องการ) */
 .slots-table tr.status-available{ background:#f3fcf6; }
 .slots-table tr.status-full{ background:#fff7f7; }
 .slots-table tr.status-closed{ background:#f9fafb; }
@@ -160,16 +177,59 @@ td.text-danger .status-pill{
 }
 .delete-slot-btn i{ margin-right:6px; }
 
-/* ---- SweetAlert2 ปรับฟอนต์ให้เข้าชุด ---- */
+/* ---- SweetAlert2 ให้เข้าชุด ---- */
 .swal2-popup{ font-family:var(--thai-font); }
 
+/* ---- Utilities ---- */
+.text-muted-2{ color:var(--muted); }
+.center { text-align:center; }
+
 /* ---- Responsive ---- */
-@media (max-width: 1024px){
+@media (max-width: 1140px){
+  .time-slot-form{ grid-template-columns: repeat(3, minmax(220px,1fr)); }
+}
+@media (max-width: 900px){
   .time-slot-form{ grid-template-columns: repeat(2, minmax(220px,1fr)); }
+  .slots-table { font-size:.95rem; }
 }
 @media (max-width: 600px){
   .teacher-dashboard{ padding:18px; }
   .time-slots{ padding:18px; }
   .time-slot-form{ grid-template-columns: 1fr; }
   #submitBtn{ width:100%; justify-content:center; }
+  .slots-table { font-size:.92rem; }
+  .slots-table th.col-actions, .slots-table td.col-actions{ width:auto; }
 }
+
+/* === Fix: อย่าให้การ์ดซ้อนการ์ด === */
+
+/* .teacher-dashboard = layout container เท่านั้น */
+.teacher-dashboard{
+  max-width: 1080px;         /* หรือ 1200 ตามที่ต้องการ */
+  margin: 24px auto;
+  padding: 0 16px;           /* ระยะขอบนอกของหน้า */
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+/* .time-slots = การ์ดหลักเพียงชั้นเดียว */
+.time-slots{
+  margin: 0 auto;            /* จัดกลางภายใน .teacher-dashboard */
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+/* ถ้ามีหลายเซกชันการ์ด ให้เว้นระยะห่างระหว่างกัน */
+.teacher-dashboard > .time-slots + .time-slots{
+  margin-top: 20px;
+}
+
+/* ตารางให้กอดขอบการ์ดพอดี */
+.time-slots .slots-table{ margin-top: 14px; }
+
+/* เฮดเดอร์ของหน้าถ้าติดชิดเกินไป */
+header{ padding: 14px 16px; }

@@ -2,25 +2,32 @@
 <html lang="th">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>กำหนดช่วงเวลาสอบ</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/main.css">
-  <link rel="stylesheet" href="assets/css/teacher.css">
-  <link rel="stylesheet" href="assets/css/slot-scheduler.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-  <link rel="icon" href="data:,">
-  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+
+  <!-- CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <link rel="stylesheet" href="assets/css/teacher.css" />
+  <link rel="stylesheet" href="assets/css/slot-scheduler.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+  <link rel="icon" href="data:," />
+
+  <!-- SweetAlert2 -->
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+
 </head>
 
 <body>
+  <!-- HEADER -->
   <header>
     <div class="logo-text">
-      <img src="nulogo.png" alt="Logo" height="80">
+      <img src="nulogo.png" alt="Logo" height="80" />
       <div class="course-title">
-        <h2 class="text-center">กำหนดช่วงเวลาการสอบ</h2>
+        <h2 class="text-center m-0">กำหนดช่วงเวลาการสอบ</h2>
       </div>
     </div>
     <div class="top-right">
@@ -29,65 +36,70 @@
     </div>
   </header>
 
+  <!-- MAIN -->
   <main class="teacher-dashboard">
     <div class="time-slots">
-      <h2 class="text-center">เพิ่มช่วงเวลาสอบ</h2>
+      <h2 class="text-center mb-3">เพิ่มช่วงเวลาสอบ</h2>
       <div id="errorBox"></div>
 
       <form id="timeSlotForm" class="time-slot-form">
         <div class="form-group">
           <label for="regOpenAt">เปิดลงทะเบียน:</label>
-          <input type="datetime-local" id="regOpenAt" name="reg_open_at" required>
+          <input type="datetime-local" id="regOpenAt" name="reg_open_at" class="form-control" required />
         </div>
         <div class="form-group">
           <label for="regCloseAt">ปิดลงทะเบียน:</label>
-          <input type="datetime-local" id="regCloseAt" name="reg_close_at" required>
+          <input type="datetime-local" id="regCloseAt" name="reg_close_at" class="form-control" required />
         </div>
         <div class="form-group">
           <label for="examDate">วันที่สอบ:</label>
-          <input type="date" id="examDate" name="slot_date" required>
+          <input type="date" id="examDate" name="slot_date" class="form-control" required />
         </div>
+
         <div class="form-group">
           <label for="startTime">เวลาเริ่มสอบ:</label>
-          <input type="time" id="startTime" name="start_time" required>
+          <input type="time" id="startTime" name="start_time" class="form-control" required />
         </div>
         <div class="form-group">
           <label for="endTime">เวลาสิ้นสุดการสอบ:</label>
-          <input type="time" id="endTime" name="end_time" required>
-        </div>
-        <div class="form-group">
-          <label for="capacity">จำนวนที่รับได้:</label>
-          <input type="number" id="capacity" name="max_seats" min="1" required>
-        </div>
-        <div class="form-group">
-          <label for="examsetTitle">ชื่อชุดข้อสอบ:</label>
-          <input type="text" id="examsetTitle" name="examset_title" required>
-        </div>
-        <div class="form-group">
-          <label for="easyCount">จำนวนข้อสอบง่าย:</label>
-          <input type="number" id="easyCount" name="easy_count" min="0" required>
-        </div>
-        <div class="form-group">
-          <label for="mediumCount">จำนวนข้อสอบปานกลาง:</label>
-          <input type="number" id="mediumCount" name="medium_count" min="0" required>
-        </div>
-        <div class="form-group">
-          <label for="hardCount">จำนวนข้อสอบยาก:</label>
-          <input type="number" id="hardCount" name="hard_count" min="0" required>
+          <input type="time" id="endTime" name="end_time" class="form-control" required />
         </div>
         <div class="form-group">
           <label for="duration">ระยะเวลาสอบ (นาที):</label>
-          <input type="number" id="duration" name="duration_minutes" min="1" value="60" required>
+          <input type="number" id="duration" name="duration_minutes" class="form-control" min="1" value="60" required />
         </div>
 
-        <button type="submit" id="submitBtn" class="btn btn-success">
-          <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-          เพิ่มช่วงเวลาสอบ
-        </button>
+        <div class="form-group">
+          <label for="capacity">จำนวนที่รับได้:</label>
+          <input type="number" id="capacity" name="max_seats" class="form-control" min="1" required />
+        </div>
+        <div class="form-group">
+          <label for="examsetTitle">ชื่อชุดข้อสอบ:</label>
+          <input type="text" id="examsetTitle" name="examset_title" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label for="easyCount">จำนวนข้อสอบง่าย:</label>
+          <input type="number" id="easyCount" name="easy_count" class="form-control" min="0" required />
+        </div>
+
+        <div class="form-group">
+          <label for="mediumCount">จำนวนข้อสอบปานกลาง:</label>
+          <input type="number" id="mediumCount" name="medium_count" class="form-control" min="0" required />
+        </div>
+        <div class="form-group">
+          <label for="hardCount">จำนวนข้อสอบยาก:</label>
+          <input type="number" id="hardCount" name="hard_count" class="form-control" min="0" required />
+        </div>
+        <div class="form-group align-self-end">
+          <button type="submit" id="submitBtn" class="btn btn-success">
+            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+            เพิ่มช่วงเวลาสอบ
+          </button>
+        </div>
       </form>
 
-      <h2>ช่วงเวลาสอบที่เปิดรับ</h2>
-      <table class="slots-table table table-bordered table-striped">
+      <h2 class="mt-3">ช่วงเวลาสอบที่เปิดรับ</h2>
+      <table class="slots-table table table-bordered table-striped align-middle text-center">
         <thead class="table-light">
           <tr>
             <th>วันที่เปิดลงทะเบียน</th>
@@ -104,187 +116,444 @@
         <tbody id="timeSlotsList"></tbody>
       </table>
       <div id="loadingSpinner" style="display:none;text-align:center;margin-top:10px;">
-        <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
       </div>
     </div>
   </main>
 
   <script>
-    function formatDateTime(dt) {
-      if (!dt) return '-';
-      const d = new Date(dt);
-      if (isNaN(d)) return '-';
-      return d.toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" });
-    }
+    (() => {
+      // ---------- helpers ----------
+      const $ = (s, r = document) => r.querySelector(s);
 
-    function formatThaiDateFull(value) {
-      if (!value) return '-';
-      const dt = new Date(value);
-      if (isNaN(dt)) return '-';
-      const months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-        "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-      return `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear() + 543}`;
-    }
+      // แปลง datetime-local -> 'YYYY-MM-DD HH:MM:SS'
+      const toMySQLDateTime = (v) => {
+        if (!v) return '';
+        // '2025-10-15T12:29' -> '2025-10-15 12:29:00'
+        let s = v.replace('T', ' ').trim();
+        // ถ้ามี :ss ซ้ำ (เช่น 12:29:00:00) ตัดให้เหลือก้อนเดียว
+        s = s.replace(/(\d{2}:\d{2}:\d{2}):\d{2}$/, '$1');
+        const m = s.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/);
+        if (!m) return s; // ปล่อยกลับไปตามเดิมถ้า format แปลก
+        const yyyy_mm_dd = m[1], hh = m[2], mm = m[3], ss = m[4] ?? '00';
+        return `${yyyy_mm_dd} ${hh}:${mm}:${ss}`;
+      };
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const token = localStorage.getItem('teacherToken') || '';
-      if (!token) return window.location.href = 'teacher_login.html';
+      // แปลง time -> 'HH:MM:SS'
+      const toMySQLTime = (v) => v ? (v.length === 5 ? v + ':00' : v) : '';
 
-      const timeSlotsList = document.getElementById('timeSlotsList');
+      // สร้าง end_at จากวันสอบ + start(HH:MM) + duration (นาที) (รองรับข้ามวัน)
+      const buildEndAt = (dateYMD, startHHMM, durationMin) => {
+        const d = new Date(`${dateYMD}T${startHHMM}:00`);
+        if (isNaN(d)) return '';
+        d.setMinutes(d.getMinutes() + Number(durationMin || 0));
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      };
+
+      const toMin = (hhmm) => {
+        if (!hhmm || !hhmm.includes(':')) return NaN;
+        const [H, M] = hhmm.split(':').map(Number);
+        return H * 60 + M;
+      };
+
+      const fmtDateTimeTH = (dt) => {
+        if (!dt) return '-';
+        const d = new Date(dt);
+        return isNaN(d) ? '-' : d.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+      };
+      const fmtDateFullTH = (ymd) => {
+        if (!ymd) return '-';
+        const d = new Date(ymd + 'T00:00:00');
+        if (isNaN(d)) return '-';
+        const m = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear() + 543}`;
+      };
+      const datePart = (dt) => String(dt || '').split(' ')[0] || null;
+      const timePart = (dt) => {
+        const p = String(dt || '').split(' ');
+        return p[1] ? p[1].slice(0, 5) : null;
+      };
+
+      // ---------- state ----------
+      let token = null;
+      let timeSlotsList = null;
+      let bound = false;
+
+      document.addEventListener('DOMContentLoaded', () => {
+        token = localStorage.getItem('teacherToken') || '';
+        if (!token) { location.href = 'teacher_login.html'; return; }
+
+        timeSlotsList = $('#timeSlotsList');
+
+        // nav
+        $('#backBtn')?.addEventListener('click', () => location.href = 'teacher_dashboard.html');
+        $('#logoutBtn')?.addEventListener('click', () => {
+          localStorage.removeItem('teacherToken'); location.href = 'teacher_login.html';
+        });
+
+        if (!bound) {
+          bindAutoEndTime();
+          bindSubmit();
+          bound = true;
+        }
+
+        loadTimeSlots();
+      });
+
+      function bindAutoEndTime() {
+        const start = $('#startTime');
+        const dur = $('#duration');
+        const end = $('#endTime');
+        if (!start || !dur || !end) return;
+
+        const recalc = () => {
+          const s = start.value;                 // HH:MM
+          const mins = Number(dur.value || 0);
+          if (!s || !mins || isNaN(mins)) return;
+          const t0 = toMin(s);
+          if (isNaN(t0)) return;
+          const t1 = (t0 + mins) % (24 * 60);      // อนุญาตข้ามวัน
+          const hh = String(Math.floor(t1 / 60)).padStart(2, '0');
+          const mm = String(t1 % 60).padStart(2, '0');
+          end.value = `${hh}:${mm}`;
+        };
+
+        start.addEventListener('change', recalc);
+        dur.addEventListener('change', recalc);
+        recalc();
+      }
 
       async function loadTimeSlots() {
-        document.getElementById('loadingSpinner').style.display = 'block';
+        $('#loadingSpinner').style.display = 'block';
         try {
           const res = await fetch('api/get_all_slots.php', { headers: { Authorization: `Bearer ${token}` } });
           const data = await res.json();
           if (!res.ok || data.status !== 'success') throw new Error(data.message || 'โหลดไม่สำเร็จ');
-          displayTimeSlots(data.slots || []);
+          renderSlots(Array.isArray(data.slots) ? data.slots : []);
         } catch (e) {
-          Swal.fire({ icon: 'error', title: 'โหลดไม่สำเร็จ', text: e.message });
+          console.error(e);
+          await Swal.fire({ icon: 'error', title: 'โหลดไม่สำเร็จ', text: e.message });
+          timeSlotsList.innerHTML = '<tr><td colspan="9" class="text-center">เกิดข้อผิดพลาด</td></tr>';
+        } finally {
+          $('#loadingSpinner').style.display = 'none';
         }
-        document.getElementById('loadingSpinner').style.display = 'none';
       }
 
-      function displayTimeSlots(slots) {
+      function renderSlots(slots) {
         timeSlotsList.innerHTML = '';
         if (!slots.length) {
           timeSlotsList.innerHTML = '<tr><td colspan="9" class="text-center">ยังไม่มีช่วงเวลาสอบ</td></tr>';
           return;
         }
-        slots.forEach(s => {
-          const booked = parseInt(s.booked_count) || 0;
-          const cap = parseInt(s.max_seats || s.capacity) || 0;
-          const isFull = booked >= cap;
+
+        for (const s of slots) {
+          const startAt = s.start_at || (s.exam_date && s.start_time ? `${s.exam_date} ${s.start_time}` : null);
+          const endAt = s.end_at || (s.exam_date && s.end_time ? `${s.exam_date} ${s.end_time}` : null);
+          const openAt = s.reg_open_at || null;
+          const closeAt = s.reg_close_at || null;
+
+          const examDateDisp = fmtDateFullTH(s.exam_date || datePart(startAt));
+          const startTimeDisp = timePart(startAt) || (s.start_time || '-');
+          const endTimeDisp = timePart(endAt) || (s.end_time || '-');
+
+          const cap = Number(s.max_seats ?? s.capacity ?? 0);
+          const booked = Number(s.booked_count ?? s.booked ?? 0);
+          const isFull = cap > 0 && booked >= cap;
+
           const tr = document.createElement('tr');
           tr.className = isFull ? 'status-full' : 'status-available';
           tr.innerHTML = `
-            <td>${s.reg_open_at ? formatDateTime(s.reg_open_at) : 'ไม่ระบุ'}</td>
-            <td>${s.reg_close_at ? formatDateTime(s.reg_close_at) : 'ไม่ระบุ'}</td>
-            <td>${formatThaiDateFull(s.exam_date)}</td>
-            <td>${s.start_time || 'ไม่ระบุ'}</td>
-            <td>${s.end_time || 'ไม่ระบุ'}</td>
-            <td>${cap || 'ไม่ระบุ'}</td>
-            <td>${booked || '0'}</td>
-            <td class="${isFull ? 'text-danger' : 'text-success'}">${isFull ? 'เต็มแล้ว' : 'ว่าง'}</td>
-            <td>${booked == 0 ? `<button class="btn btn-danger btn-sm delete-slot-btn" data-slot-id="${s.id}" onclick="deleteSlot(${s.id})">ลบ</button>` : `<span class="text-muted">ไม่สามารถลบได้</span>`}</td>
-          `;
+        <td>${fmtDateTimeTH(openAt)}</td>
+        <td>${fmtDateTimeTH(closeAt)}</td>
+        <td>${examDateDisp}</td>
+        <td>${startTimeDisp}</td>
+        <td>${endTimeDisp}</td>
+        <td>${cap || '-'}</td>
+        <td>${booked || 0}</td>
+        <td class="${isFull ? 'text-danger' : 'text-success'}">
+          <span class="status-pill ${isFull ? 'full' : 'ok'}">${isFull ? 'เต็มแล้ว' : 'ว่าง'}</span>
+        </td>
+        <td>
+          ${booked === 0
+              ? `<button class="btn btn-danger btn-sm" data-slot-id="${s.id}">
+                 <i class="fas fa-trash-alt me-1"></i>ลบ
+               </button>`
+              : `<span class="text-muted">มีผู้ลงทะเบียนแล้ว</span>`
+            }
+        </td>
+      `;
+          tr.querySelector('button[data-slot-id]')?.addEventListener('click', () => deleteSlot(s.id));
           timeSlotsList.appendChild(tr);
-        });
+        }
       }
 
-      loadTimeSlots();
+      async function deleteSlot(slotId) {
+        const tk = localStorage.getItem('teacherToken') || '';
+        if (!tk) return Swal.fire({ icon: 'error', title: 'Token หายไป', text: 'กรุณาเข้าสู่ระบบใหม่' });
 
-      document.getElementById('backBtn').onclick = () => window.location.href = 'teacher_dashboard.html';
-      document.getElementById('logoutBtn').onclick = () => {
-        localStorage.removeItem('teacherToken');
-        window.location.href = 'teacher_login.html';
-      };
-    });
+        const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]+$/, '');
+        const apiUrl = baseUrl + '/api/delete_slot.php';
 
-    async function deleteSlot(slotId) {
-      const token = localStorage.getItem('teacherToken') || '';
-      if (!token) {
-        Swal.fire({ icon: 'error', title: 'Token หายไป', text: 'กรุณาเข้าสู่ระบบใหม่' });
-        return;
-      }
-
-      // ✅ Auto-detect API path
-      const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]+$/, "");
-      const apiUrl = baseUrl + "/api/delete_slot.php";
-
-      console.log("🌐 Base URL:", baseUrl);
-      console.log("🛰️ Fetching API:", apiUrl, "slot_id=", slotId);
-
-      const confirm = await Swal.fire({
-        title: 'คุณแน่ใจหรือไม่?',
-        text: 'คุณต้องการลบช่วงเวลาสอบนี้หรือไม่',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'ลบ',
-        cancelButtonText: 'ยกเลิก'
-      });
-
-      if (!confirm.isConfirmed) return;
-
-      try {
-        const res = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ slot_id: slotId })
+        const ask = await Swal.fire({
+          title: 'คุณแน่ใจหรือไม่?',
+          text: 'คุณต้องการลบช่วงเวลาสอบนี้หรือไม่',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'ลบ',
+          cancelButtonText: 'ยกเลิก'
         });
+        if (!ask.isConfirmed) return;
 
-        const text = await res.text();
-        console.log("� Raw response:", text);
-
-        let data;
         try {
-          data = JSON.parse(text);
-        } catch {
-          throw new Error("ผลลัพธ์ไม่ใช่ JSON: " + text);
-        }
+          const res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${tk}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slot_id: slotId })
+          });
+          const data = await res.json();
+          if (!res.ok || data.status !== 'success') throw new Error(data?.message || 'ลบไม่สำเร็จ');
 
-        if (res.ok && data.status === 'success') {
-          Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', timer: 1200, showConfirmButton: false });
-
-          // ✅ ลบ row ออกจาก DOM โดยตรง (ไม่ต้อง reload หน้า)
-          const row = document.querySelector(`button[data-slot-id="${slotId}"]`)?.closest("tr");
-          if (row) row.remove();
-
-          // ✅ ถ้าไม่มี slot เหลือ → แสดงข้อความ "ยังไม่มีช่วงเวลาสอบ"
-          const rows = document.querySelectorAll("#timeSlotsList tr");
-          if (!rows.length) {
-            document.getElementById("timeSlotsList").innerHTML =
-              '<tr><td colspan="9" class="text-center">ยังไม่มีช่วงเวลาสอบ</td></tr>';
+          await Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', timer: 1200, showConfirmButton: false });
+          document.querySelector(`button[data-slot-id="${slotId}"]`)?.closest('tr')?.remove();
+          if (!$('#timeSlotsList tr')) {
+            timeSlotsList.innerHTML = '<tr><td colspan="9" class="text-center">ยังไม่มีช่วงเวลาสอบ</td></tr>';
           }
-        } else {
-          throw new Error(data?.message || "ลบไม่สำเร็จ");
+        } catch (err) {
+          Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: err.message });
         }
-      } catch (err) {
-        console.error("❌ Error deleting slot:", err);
-        Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: err.message });
       }
-    }
+
+      function bindSubmit() {
+        const formEl = document.getElementById('timeSlotForm');
+        if (!(formEl instanceof HTMLFormElement)) {
+          console.error('timeSlotForm not found'); return;
+        }
+
+        formEl.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const token = localStorage.getItem('teacherToken') || '';
+          if (!token) { location.href = 'teacher_login.html'; return; }
+
+          const submitBtn = document.getElementById('submitBtn');
+          const spinner = submitBtn?.querySelector('.spinner-border');
+
+          const reg_open_raw = $('#regOpenAt')?.value || '';
+          const reg_close_raw = $('#regCloseAt')?.value || '';
+          const slot_date = $('#examDate')?.value || '';
+          const start_time_in = $('#startTime')?.value || '';
+          const end_time_in = $('#endTime')?.value || '';
+          const duration_min = Number($('#duration')?.value || 0);
+
+          // ตรวจ start/end time (ข้ามวันได้ แต่ต้องไม่เท่ากัน) + duration > 0
+          const sMin = toMin(start_time_in);
+          const eMin = toMin(end_time_in);
+          let okTime = !(isNaN(sMin) || isNaN(eMin));
+          if (okTime) {
+            const diff = ((eMin - sMin + 24 * 60) % (24 * 60));
+            if (diff === 0) okTime = false;
+          }
+          if (!okTime || duration_min <= 0) {
+            await Swal.fire({
+              icon: 'error', title: 'ข้อมูลไม่ถูกต้อง',
+              html: `<ul style="text-align:left;margin:0">
+                  <li>เวลาสิ้นสุดการสอบต้องหลังเวลาเริ่มสอบ</li>
+                  <li>ระยะเวลาสอบต้องมากกว่า 0 นาที</li>
+                </ul>`
+            });
+            return;
+          }
+
+          // ตรวจเปิด/ปิดลงทะเบียน (ถ้ากรอก)
+          if (reg_open_raw && reg_close_raw) {
+            const ro = new Date(reg_open_raw), rc = new Date(reg_close_raw);
+            if (!isNaN(ro) && !isNaN(rc) && rc <= ro) {
+              await Swal.fire({ icon: 'error', title: 'ข้อมูลไม่ถูกต้อง', text: 'เวลาปิดลงทะเบียนต้องช้ากว่าเวลาเปิดลงทะเบียน' });
+              return;
+            }
+          }
+
+          // ยืนยัน
+          const prettyDate = (() => {
+            const d = new Date(slot_date + 'T00:00:00');
+            const m = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            return isNaN(d) ? slot_date : `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear() + 543}`;
+          })();
+          const confirm = await Swal.fire({
+            icon: 'question',
+            title: 'ยืนยันเพิ่มช่วงเวลาสอบ?',
+            html: `วันที่ <b>${prettyDate}</b> เวลา <b>${start_time_in}</b> - <b>${end_time_in}</b><br>ระยะเวลา <b>${duration_min}</b> นาที`,
+            showCancelButton: true, confirmButtonText: 'เพิ่มช่วงเวลา', cancelButtonText: 'ยกเลิก'
+          });
+          if (!confirm.isConfirmed) return;
+
+          // สร้าง payload (force format ให้ MySQL-กำกับ)
+          const payload = {};
+          // ค่าจาก form เดิม (เผื่อ backend ใช้)
+          new FormData(formEl).forEach((v, k) => payload[k] = v);
+
+          payload.reg_open_at = toMySQLDateTime(reg_open_raw);
+          payload.reg_close_at = toMySQLDateTime(reg_close_raw);
+
+          payload.exam_date = slot_date;                 // บาง backend ใช้ชื่อนี้
+          payload.slot_date = slot_date;                 // เผื่อรองรับทั้งเก่า/ใหม่
+          payload.start_time = toMySQLTime(start_time_in);
+          payload.end_time = toMySQLTime(end_time_in);
+          payload.duration_minutes = duration_min;
+
+          // ส่ง start_at/end_at ไปด้วย (ส่วนใหญ่ backend จะโอเค และช่วยเลี่ยง 500)
+          payload.start_at = `${slot_date} ${payload.start_time}`;
+          payload.end_at = buildEndAt(slot_date, start_time_in, duration_min);
+
+          try {
+            spinner?.classList.remove('d-none');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const res = await fetch('api/add_slot.php', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            const raw = await res.text();
+            let data; try { data = JSON.parse(raw); } catch { data = null; }
+
+            if (!res.ok || !data || data.status !== 'success') {
+              console.error('Add slot failed. Raw response:', raw);
+              throw new Error(data?.debug || data?.message || raw || `HTTP ${res.status}`);
+            }
+
+            await Swal.fire({ icon: 'success', title: 'เพิ่มสำเร็จ', timer: 1200, showConfirmButton: false });
+            formEl.reset();
+            $('#duration')?.dispatchEvent(new Event('change')); // คำนวณ end time ใหม่ถ้ามีแก้ค่า
+            loadTimeSlots(); // refresh list
+          } catch (err) {
+            console.error(err);
+            $('#errorBox').innerHTML = `<div class="alert alert-danger">${String(err.message || err)}</div>`;
+          } finally {
+            spinner?.classList.add('d-none');
+            if (submitBtn) submitBtn.disabled = false;
+          }
+        });
+      }
+
+      // == ยืนยันก่อนเพิ่มช่วงเวลาสอบ ==
+      (function () {
+        const $ = (s, r = document) => r.querySelector(s);
+        const toMySQLTime = v => v ? (v.length === 5 ? v + ':00' : v) : '';
+
+        const form = document.getElementById('timeSlotForm');
+        if (!form) return;
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const token = localStorage.getItem('teacherToken') || '';
+          if (!token) { location.href = 'teacher_login.html'; return; }
+
+          const submitBtn = document.getElementById('submitBtn');
+          const spinner = submitBtn?.querySelector('.spinner-border');
+
+          // ดึงค่า
+          const reg_open_at = $('#regOpenAt')?.value || '';
+          const reg_close_at = $('#regCloseAt')?.value || '';
+          const exam_date = $('#examDate')?.value || '';
+          const start_time = $('#startTime')?.value || '';
+          const end_time = $('#endTime')?.value || '';
+          const duration = Number($('#duration')?.value || 0);
+          const payload = Object.fromEntries(new FormData(form).entries());
+
+          // ตรวจเบื้องต้น
+          const toMin = s => s && s.includes(':') ? (s.split(':').map(Number)[0] * 60 + s.split(':').map(Number)[1]) : NaN;
+          const sMin = toMin(start_time), eMin = toMin(end_time);
+          if (isNaN(sMin) || isNaN(eMin) || duration <= 0 || ((eMin - sMin + 1440) % 1440) === 0) {
+            await Swal.fire({
+              icon: 'error',
+              title: 'ข้อมูลไม่ถูกต้อง',
+              html: `<ul style="text-align:left;margin:0">
+            <li>เวลาสิ้นสุดต้องหลังเวลาเริ่ม (อนุญาตข้ามวันได้)</li>
+            <li>ระยะเวลาสอบต้องมากกว่า 0 นาที</li>
+          </ul>`
+            });
+            return;
+          }
+          if (reg_open_at && reg_close_at) {
+            const ro = new Date(reg_open_at), rc = new Date(reg_close_at);
+            if (!isNaN(ro) && !isNaN(rc) && rc <= ro) {
+              await Swal.fire({ icon: 'error', title: 'ข้อมูลไม่ถูกต้อง', text: 'เวลาปิดลงทะเบียนต้องช้ากว่าเวลาเปิดลงทะเบียน' });
+              return;
+            }
+          }
+
+          // สรุปก่อนยืนยัน
+          const prettyDate = (() => {
+            const d = new Date(exam_date + 'T00:00:00');
+            const m = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            return isNaN(d) ? exam_date : `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear() + 543}`;
+          })();
+
+          const ok = await Swal.fire({
+            icon: 'question',
+            title: 'ยืนยันเพิ่มช่วงเวลาสอบ?',
+            html: `วันที่ <b>${prettyDate}</b> เวลา <b>${start_time}</b> - <b>${end_time}</b><br>
+               ระยะเวลา <b>${duration}</b> นาที<br>
+               ชื่อชุดข้อสอบ <b>${payload.examset_title || '-'}</b><br>
+               จำนวนที่รับ <b>${payload.max_seats || '-'}</b> คน`,
+            showCancelButton: true,
+            confirmButtonText: 'เพิ่มช่วงเวลา',
+            cancelButtonText: 'ยกเลิก'
+          });
+          if (!ok.isConfirmed) return;
+
+          // เตรียม payload ให้ API
+          payload.reg_open_at = reg_open_at?.replace('T', ' ');
+          payload.reg_close_at = reg_close_at?.replace('T', ' ');
+          payload.exam_date = exam_date;
+          payload.start_time = toMySQLTime(start_time);
+          payload.end_time = toMySQLTime(end_time);
+          payload.duration_minutes = duration;
+
+          try {
+            spinner?.classList.remove('d-none');
+            submitBtn.disabled = true;
+
+            const res = await fetch('api/add_slot.php', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            const raw = await res.text();
+            let data = null; try { data = JSON.parse(raw); } catch { }
+
+            if (!res.ok || !data || data.status !== 'success') {
+              console.error('Add slot failed:', raw);
+              throw new Error(data?.debug || data?.message || `HTTP ${res.status}`);
+            }
+
+            await Swal.fire({ icon: 'success', title: 'เพิ่มสำเร็จ', timer: 1200, showConfirmButton: false });
+            form.reset();
+            document.getElementById('duration')?.dispatchEvent(new Event('change'));
+            window.__reloadTeacherSlots?.();
+          } catch (err) {
+            document.getElementById('errorBox').innerHTML =
+              `<div class="alert alert-danger">${String(err.message || err)}</div>`;
+          } finally {
+            spinner?.classList.add('d-none');
+            submitBtn.disabled = false;
+          }
+        });
+      })();
+
+      // expose
+      window.__reloadTeacherSlots = loadTimeSlots;
+    })();
   </script>
+
 
 </body>
 
 </html>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-  document.getElementById('timeSlotForm').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const submitBtn = document.getElementById('submitBtn');
-    const spinner = submitBtn.querySelector('.spinner-border');
-    spinner.classList.remove('d-none');
-    submitBtn.disabled = true;
-
-    const token = localStorage.getItem('teacherToken') || '';
-    if (!token) return window.location.href = 'teacher_login.html';
-
-    const formData = new FormData(this);
-    const payload = {};
-    formData.forEach((value, key) => { payload[key] = value; });
-
-    try {
-      const res = await fetch('api/add_slot.php', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok && data.status === 'success') {
-        Swal.fire({ icon: 'success', title: 'เพิ่มสำเร็จ', timer: 1200, showConfirmButton: false });
-        this.reset();
-        location.reload();
-      } else throw new Error(data.message || 'เพิ่มไม่สำเร็จ');
-    } catch (e) {
-      document.getElementById('errorBox').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
-    } finally {
-      spinner.classList.add('d-none');
-      submitBtn.disabled = false;
-    }
-  });
-</script>

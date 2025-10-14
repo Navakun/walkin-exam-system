@@ -8,6 +8,7 @@
   <link rel="icon" type="image/png" href="nulogo.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="assets/css/modal.css">
+  <link rel="stylesheet" href="assets/css/student-register-exam.css">
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
@@ -109,6 +110,18 @@
       return timeStr ? timeStr.slice(0, 5) : "-";
     }
 
+    // ================== Helper functions for datetime ==================
+    function datePart(dt) {
+      if (!dt) return null;
+      const parts = String(dt).split(" ");
+      return parts.length > 0 ? parts[0] : null;
+    }
+    function timePart(dt) {
+      if (!dt) return null;
+      const parts = String(dt).split(" ");
+      return parts.length > 1 ? parts[1].slice(0, 5) : null;
+    }
+
     async function loadExamSlots() {
       const loadingIndicator = document.getElementById("loadingIndicator");
       loadingIndicator.style.display = "block";
@@ -121,18 +134,21 @@
           }
         });
 
-        // 401 → หมดอายุ token
+        // เช็ค HTTP status ถูกตัวแปร (res)
         if (res.status === 401) {
           handleTokenExpired();
           return;
         }
 
-        // ✅ อ่าน body แค่ครั้งเดียว
-        const result = await res.json();
+        // อ่าน body เป็นข้อความก่อน เผื่อ error จะได้แปลง message ได้
+        const raw = await res.text();
+        let result = null;
+        try { result = raw ? JSON.parse(raw) : null; } catch { /* not json */ }
 
-        // ถ้า HTTP ไม่โอเค หรือ API ส่ง status != success → โยน error
-        if (!res.ok || result.status !== "success") {
-          const msg = (result && result.message) ? result.message : `HTTP ${res.status}`;
+        if (!res.ok || !result || result.status !== "success") {
+          let msg = `HTTP ${res.status}`;
+          if (result?.message) msg = result.message;
+          else if (raw) msg = raw;
           throw new Error(msg);
         }
 
@@ -140,45 +156,59 @@
         list.innerHTML = "";
 
         const slots = Array.isArray(result.slots) ? result.slots : [];
-
         if (slots.length === 0) {
           list.innerHTML = `<tr><td colspan="8" class="text-center text-muted">ยังไม่มีช่วงเวลาที่เปิดให้ลงทะเบียน</td></tr>`;
           return;
         }
 
+        const latestSlotId = localStorage.getItem('latestSlotId');
+
         slots.forEach((slot) => {
-          // ใช้ฟิลด์จาก API: slot_id, booked, seats_left
+          // รองรับทั้ง schema ใหม่/เก่า
+          const startAt = slot.start_at || (slot.exam_date && slot.start_time ? `${slot.exam_date} ${slot.start_time}` : null);
+          const endAt = slot.end_at || (slot.exam_date && slot.end_time ? `${slot.exam_date} ${slot.end_time}` : null);
+
+          const examDateDisplay = formatThaiDate(slot.exam_date || datePart(startAt));
+          const startTimeDisplay = timePart(startAt) || formatTime(slot.start_time);
+          const endTimeDisplay = timePart(endAt) || formatTime(slot.end_time);
+
+          const regOpenDisplay = formatThaiDate(datePart(slot.reg_open_at) || slot.reg_open_at || '');
+          const regCloseDisplay = formatThaiDate(datePart(slot.reg_close_at) || slot.reg_close_at || '');
+
           const available = Number(slot.seats_left || 0);
           const registeredCount = Number(slot.booked || 0);
+          const isMine = String(slot.slot_id) === String(latestSlotId);
+
+          const actionBtn = isMine
+            ? `<button class="btn btn-secondary" disabled>
+             <i class="fas fa-check-circle me-2"></i>ลงทะเบียนแล้ว
+           </button>`
+            : `<button class="btn ${available > 0 ? "btn-success" : "btn-secondary"}"
+             ${available > 0
+              ? `onclick="registerSlot(${slot.slot_id}, '${(slot.exam_date || datePart(startAt))}', '${startTimeDisplay}', '${endTimeDisplay}', event)"`
+              : "disabled"}>
+             ${available > 0
+              ? '<i class="fas fa-check-circle me-2"></i>ลงทะเบียน'
+              : '<i class="fas fa-ban me-2"></i>เต็มแล้ว'}
+           </button>`;
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
-        <td>${formatThaiDateTime(slot.reg_open_at)} -<br>${formatThaiDateTime(slot.reg_close_at)}</td>
-        <td>${formatThaiDate(slot.exam_date)}</td>
-        <td>${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}</td>
-        <td>${slot.max_seats}</td>
-        <td>${registeredCount}</td>
-        <td>
-          <span class="badge ${available <= 0 ? "bg-danger" : "bg-success"} rounded-pill">
-            ${available}
-          </span>
-        </td>
-        <td>
-          ${available > 0
-              ? '<span class="badge bg-success rounded-pill">ลงทะเบียนได้</span>'
-              : '<span class="badge bg-danger rounded-pill">เต็มแล้ว</span>'}
-        </td>
-        <td>
-          <button class="btn ${available > 0 ? "btn-success" : "btn-secondary"}"
-                  ${available > 0
-              ? `onclick="registerSlot(${slot.slot_id}, '${slot.exam_date}', '${slot.start_time}', '${slot.end_time}', event)"`
-              : "disabled"}>
-            ${available > 0
-              ? '<i class="fas fa-check-circle me-2"></i>ลงทะเบียน'
-              : '<i class="fas fa-ban me-2"></i>เต็มแล้ว'}
-          </button>
-        </td>
-      `;
+            <td>${regOpenDisplay} ถึง<br>${regCloseDisplay}</td>
+            <td>${examDateDisplay}</td>
+            <td>${startTimeDisplay} - ${endTimeDisplay}</td>
+            <td>${slot.max_seats}</td>
+            <td>${registeredCount}</td>
+            <td>
+              <span class="badge ${available <= 0 ? "bg-danger" : "bg-success"} rounded-pill">${available}</span>
+            </td>
+            <td>
+              ${available > 0
+              ? '<span class="status-pill ok">ลงทะเบียนได้</span>'
+              : '<span class="status-pill full">เต็มแล้ว</span>'}
+            </td>
+            <td>${actionBtn}</td>
+          `;
           list.appendChild(tr);
         });
       } catch (err) {
