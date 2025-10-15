@@ -7,7 +7,6 @@ date_default_timezone_set('Asia/Bangkok');
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
-/* -------- ทำให้ fatal/error ตอบเป็น JSON -------- */
 set_error_handler(function ($sev, $msg, $file, $line) {
   throw new ErrorException($msg, 0, $sev, $file, $line);
 });
@@ -19,58 +18,71 @@ register_shutdown_function(function () {
   }
 });
 
-/* -------- includes -------- */
-require_once __DIR__ . '/../config/db.php';          // ให้ได้ $pdo (PDO instance)
-/* ถ้าต้องการบังคับให้นศ.มี token ให้เปิดใช้บล็อคด้านล่าง */
-$requireJwt = false; // <-- เปลี่ยนเป็น true ถ้าจะตรวจ JWT
+require_once __DIR__ . '/../config/db.php';   // ต้องนิยาม $pdo = new PDO(...)
+
+/* ถ้าต้องการเปิดสาธารณะ ให้นศ.เรียกได้ ไม่ต้องตรวจ JWT */
+$requireJwt = false;
 if ($requireJwt) {
   require_once __DIR__ . '/../api/helpers/jwt_helper.php';
-  $headers = function_exists('getallheaders') ? getallheaders() : [];
-  if (!isset($headers['Authorization']) || !preg_match('/Bearer\s+(\S+)/i', $headers['Authorization'], $m)) {
+  $h = function_exists('getallheaders') ? getallheaders() : [];
+  if (!isset($h['Authorization']) || !preg_match('/Bearer\s+(\S+)/i', $h['Authorization'], $m)) {
     http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => 'No token', 'code' => 'NO_TOKEN']);
+    echo json_encode(['status' => 'error', 'message' => 'NO_TOKEN']);
     exit;
   }
-  $token = $m[1];
-  $decoded = decodeToken($token);
-  if (!$decoded) {
+  if (!decodeToken($m[1] ?? '')) {
     http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => 'Bad token', 'code' => 'BAD_TOKEN']);
+    echo json_encode(['status' => 'error', 'message' => 'BAD_TOKEN']);
     exit;
   }
 }
 
 try {
-  /* ให้ MySQL ใช้ +07:00 */
   $pdo->exec("SET time_zone = '+07:00'");
 
-  /* สถานะที่ “กินเก้าอี้จริง” ปรับได้ตามนโยบาย */
-  $ACTIVE = ['free', 'pending', 'paid', 'waived'];  // ถ้าจะนับ booked ให้เติม 'booked'
+  // สถานะที่ “กินเก้าอี้จริง” ปรับได้ตามนโยบาย
+  $ACTIVE = ['free', 'pending', 'paid', 'waived']; // ถ้าจะนับ booked เพิ่ม 'booked'
   $ph = implode(',', array_fill(0, count($ACTIVE), '?'));
 
-  /* ใช้ซับคิวรีนับคนจองกันการนับซ้ำจาก LEFT JOIN */
+  /*
+    สร้าง start_at / end_at คำนวณจากคอลัมน์ที่มีอยู่:
+      start_at = CAST(CONCAT(exam_date,' ',start_time) AS DATETIME)
+      end_at   = ถ้า end_time <= start_time แปลว่าข้ามเที่ยงคืน => +1 วัน
+  */
   $sql = "
     SELECT
-      es.id            AS slot_id,
-      es.exam_date, es.start_time, es.end_time,
-      es.start_at, es.end_at,
-      es.max_seats,
-      es.reg_open_at, es.reg_close_at,
+      t.slot_id,
+      t.exam_date, t.start_time, t.end_time,
+      t.start_at, t.end_at,
+      t.max_seats, t.reg_open_at, t.reg_close_at,
       COALESCE(b.booked_count,0) AS booked,
-      GREATEST(es.max_seats - COALESCE(b.booked_count,0), 0) AS seats_left
-    FROM exam_slots es
+      GREATEST(t.max_seats - COALESCE(b.booked_count,0), 0) AS seats_left
+    FROM (
+      SELECT
+        es.id AS slot_id,
+        es.exam_date, es.start_time, es.end_time,
+        CAST(CONCAT(es.exam_date,' ',es.start_time) AS DATETIME) AS start_at,
+        CASE
+          WHEN es.end_time <= es.start_time
+            THEN DATE_ADD(CAST(CONCAT(es.exam_date,' ',es.end_time) AS DATETIME), INTERVAL 1 DAY)
+          ELSE CAST(CONCAT(es.exam_date,' ',es.end_time) AS DATETIME)
+        END AS end_at,
+        es.max_seats,
+        es.reg_open_at, es.reg_close_at
+      FROM exam_slots es
+    ) t
     LEFT JOIN (
       SELECT slot_id, COUNT(*) AS booked_count
       FROM exam_slot_registrations
       WHERE payment_status IN ($ph)
       GROUP BY slot_id
-    ) b ON b.slot_id = es.id
+    ) b ON b.slot_id = t.slot_id
     WHERE
-      es.end_at > NOW()                                -- สล็อตยังไม่หมด
-      AND (es.reg_open_at IS NULL OR NOW() >= es.reg_open_at)
-      AND (es.reg_close_at IS NULL OR NOW() <= es.reg_close_at)
+      t.end_at > NOW()
+      AND (t.reg_open_at IS NULL OR NOW() >= t.reg_open_at)
+      AND (t.reg_close_at IS NULL OR NOW() <= t.reg_close_at)
     HAVING seats_left > 0
-    ORDER BY es.start_at ASC
+    ORDER BY t.start_at ASC
   ";
 
   $stmt = $pdo->prepare($sql);

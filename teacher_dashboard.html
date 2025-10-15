@@ -151,7 +151,8 @@
             if (name) document.getElementById('teacherName').textContent = name;
 
             // ปุ่ม
-            document.getElementById('editProfileBtn').addEventListener('click', () => go('teacher_profile.html'));
+            document.getElementById('editProfileBtn')?.addEventListener('click', openEditProfile);
+
             document.getElementById('logoutBtn').addEventListener('click', () => {
                 localStorage.removeItem('teacherToken'); localStorage.removeItem('instructor_name'); go('teacher_login.html');
             });
