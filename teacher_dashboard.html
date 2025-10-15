@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
     <title>แดชบอร์ดอาจารย์</title>
 
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet">
@@ -15,7 +16,7 @@
 
 <body>
     <div class="shell">
-        <!-- Sidebar (มีโลโก้+ปุ่มออกจากระบบอยู่ในนี้) -->
+        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="side-brand">
                 <img src="nulogo.png" alt="NU">
@@ -29,7 +30,10 @@
                 <i class="fa-solid fa-user-circle"></i>
                 <span id="teacherName">อาจารย์ผู้สอน</span>
             </button>
-            <button class="logout" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
+
+            <button class="logout" id="logoutBtn">
+                <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+            </button>
 
             <nav class="nav">
                 <div class="group">เมนูหลัก</div>
@@ -49,9 +53,6 @@
                 <a href="teaching_materials.html"><i class="fa-solid fa-file-arrow-up"></i> อัปโหลดสื่อการสอน</a>
                 <a href="teacher_open_materials.html"><i class="fa-solid fa-book-open-reader"></i> ดูสื่อการสอน</a>
             </nav>
-
-            <div class="side-footer">
-            </div>
         </aside>
 
         <!-- Main -->
@@ -102,12 +103,61 @@
                     <canvas id="timelineChart" height="260"></canvas>
                 </section>
             </div>
+
+            <!-- Edit Profile Modal -->
+            <div id="editProfileModal" class="modal-backdrop" hidden>
+                <div class="modal-card">
+                    <h3 class="modal-title">แก้ไขโปรไฟล์</h3>
+
+                    <label>ชื่อ</label>
+                    <input id="inpName" type="text" class="modal-input" placeholder="ชื่ออาจารย์">
+
+                    <label>อีเมล</label>
+                    <input id="inpEmail" type="email" class="modal-input" placeholder="email@example.com">
+
+                    <hr class="modal-sep">
+
+                    <label>รหัสผ่านปัจจุบัน (ถ้าจะเปลี่ยนรหัส)</label>
+                    <input id="inpCur" type="password" class="modal-input" placeholder="Current password">
+
+                    <label>รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)</label>
+                    <input id="inpNew" type="password" class="modal-input" placeholder="New password">
+
+                    <div id="profileMsg" class="modal-msg"></div>
+
+                    <div class="modal-actions">
+                        <button id="btnSaveProfile" class="btn-primary">บันทึก</button>
+                        <button id="btnCancelProfile" class="btn-ghost">ยกเลิก</button>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
     <script>
+        // ---------- helpers ----------
         const ROOT = location.pathname.includes('/walkin-exam-system/') ? '/walkin-exam-system' : '';
-        const go = (href) => location.href = href;
+        const API = `${ROOT}/api`;
+
+        const setText = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = (val ?? val === 0) ? String(val) : '—';
+        };
+
+        function showModal(id, open) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            open ? el.removeAttribute('hidden') : el.setAttribute('hidden', '');
+        }
+
+        async function readJSONorThrow(res) {
+            const raw = await res.text();
+            try { return JSON.parse(raw); }
+            catch {
+                console.error('RAW:\n', raw);
+                throw new Error(raw.replace(/<[^>]*>/g, '').trim() || `HTTP ${res.status}`);
+            }
+        }
 
         function parseJwt(t) {
             try {
@@ -117,74 +167,152 @@
             } catch { return null; }
         }
 
-        // Charts helpers
+        function clearAuthStores() {
+            try {
+                localStorage.removeItem('teacherToken');
+                localStorage.removeItem('instructor_name');
+                sessionStorage.clear();
+                document.cookie.split(';').forEach(c => {
+                    const name = c.split('=')[0].trim();
+                    if (/token|auth|session/i.test(name)) {
+                        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+                    }
+                });
+            } catch { }
+        }
+        function goLogin() { location.replace('teacher_login.html'); setTimeout(() => location.href = 'teacher_login.html', 150); }
+
+        // ---------- charts ----------
         let _diffChart, _passChart, _timeChart; const kill = c => { if (c) c.destroy(); };
         function drawDifficulty({ easy = 0, mid = 0, hard = 0 } = {}) {
             kill(_diffChart);
             _diffChart = new Chart(document.getElementById('difficultyChart'), {
-                type: 'bar', data: { labels: ['ง่าย', 'ปานกลาง', 'ยาก'], datasets: [{ label: 'จำนวนข้อ', data: [easy, mid, hard] }] },
+                type: 'bar',
+                data: { labels: ['ง่าย', 'ปานกลาง', 'ยาก'], datasets: [{ label: 'จำนวนข้อ', data: [easy, mid, hard] }] },
                 options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
             });
         }
         function drawPassRate({ pass = 0, fail = 0 } = {}) {
             kill(_passChart);
             _passChart = new Chart(document.getElementById('passChart'), {
-                type: 'doughnut', data: { labels: ['ผ่าน', 'ไม่ผ่าน'], datasets: [{ data: [pass, fail] }] },
+                type: 'doughnut',
+                data: { labels: ['ผ่าน', 'ไม่ผ่าน'], datasets: [{ data: [pass, fail] }] },
                 options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
             });
         }
         function drawTimeline({ labels = [], values = [] } = {}) {
             kill(_timeChart);
             _timeChart = new Chart(document.getElementById('timelineChart'), {
-                type: 'line', data: { labels, datasets: [{ label: 'จำนวนผู้เข้าสอบ', data: values, tension: .25, fill: false }] },
+                type: 'line',
+                data: { labels, datasets: [{ label: 'จำนวนผู้เข้าสอบ', data: values, tension: .25, fill: false }] },
                 options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
             });
         }
-        const setText = (id, val) => { const el = document.getElementById(id); if (!el) return; el.textContent = (val ?? val === 0) ? String(val) : '—'; };
 
+        // ---------- boot ----------
         document.addEventListener('DOMContentLoaded', async () => {
-            const token = localStorage.getItem('teacherToken'); if (!token) { location.href = 'teacher_login.html'; return; }
+            const token = localStorage.getItem('teacherToken');
+            if (!token) { goLogin(); return; }
 
-            // ชื่ออาจารย์
+            // แสดงชื่อบนชิป
             const storedName = localStorage.getItem('instructor_name');
-            let name = storedName || parseJwt(token)?.name || parseJwt(token)?.teacher_name || '';
+            const fromJWT = parseJwt(token);
+            const name = storedName || fromJWT?.name || fromJWT?.teacher_name || '';
             if (name) document.getElementById('teacherName').textContent = name;
 
-            // ปุ่ม
-            document.getElementById('editProfileBtn')?.addEventListener('click', openEditProfile);
-
-            document.getElementById('logoutBtn').addEventListener('click', () => {
-                localStorage.removeItem('teacherToken'); localStorage.removeItem('instructor_name'); go('teacher_login.html');
+            // ปุ่ม Logout
+            document.getElementById('logoutBtn')?.addEventListener('click', () => {
+                clearAuthStores(); goLogin();
             });
 
-            // โหลด metrics (ถ้ามี)
-            let metrics = null;
+            // ปุ่มเปิด/ปิด/บันทึกโปรไฟล์
+            document.getElementById('editProfileBtn')?.addEventListener('click', openEditProfile);
+            document.getElementById('btnCancelProfile')?.addEventListener('click', () => showModal('editProfileModal', false));
+            document.getElementById('btnSaveProfile')?.addEventListener('click', saveProfile);
+
+            // โหลด metrics
             try {
-                const resp = await fetch(`${ROOT}/api/teacher_dashboard_metrics.php`, {
+                const resp = await fetch(`${API}/teacher_dashboard_metrics.php`, {
                     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store'
                 });
-                const raw = await resp.text(); try { metrics = JSON.parse(raw); } catch { metrics = null; }
+                const raw = await resp.text(); let metrics = null; try { metrics = JSON.parse(raw); } catch { }
+                const qTotal = metrics?.questions?.total ?? null;
+                const diff = metrics?.questions?.difficulty ?? {};
+                const studentCnt = metrics?.students?.registered ?? null;
+                const completed = metrics?.exams?.completed ?? null;
+                const avgScore = (metrics?.scores?.avg != null) ? Number(metrics.scores.avg).toFixed(2) : null;
+                const passRate = metrics?.scores?.passRate;
+
+                setText('kpiQuestions', qTotal);
+                setText('kpiStudents', studentCnt);
+                setText('kpiCompleted', completed);
+                setText('kpiAvgScore', avgScore != null ? `${avgScore}` : null);
+
+                drawDifficulty({ easy: diff?.easy ?? 0, mid: diff?.mid ?? 0, hard: diff?.hard ?? 0 });
+                const pass = (passRate != null) ? Math.round(passRate * 100) : 0;
+                const fail = (passRate != null) ? 100 - pass : 0;
+                drawPassRate({ pass, fail });
+
+                const byDay = Array.isArray(metrics?.exams?.byDay) ? metrics.exams.byDay : [];
+                drawTimeline({ labels: byDay.map(d => d.date?.slice(5)), values: byDay.map(d => d.count || 0) });
             } catch { }
 
-            const qTotal = metrics?.questions?.total ?? null;
-            const diff = metrics?.questions?.difficulty ?? {};
-            const studentCnt = metrics?.students?.registered ?? null;
-            const completed = metrics?.exams?.completed ?? null;
-            const avgScore = (metrics?.scores?.avg != null) ? Number(metrics.scores.avg).toFixed(2) : null;
-            const passRate = metrics?.scores?.passRate;
-
-            setText('kpiQuestions', qTotal);
-            setText('kpiStudents', studentCnt);
-            setText('kpiCompleted', completed);
-            setText('kpiAvgScore', avgScore != null ? `${avgScore}` : null);
-
-            drawDifficulty({ easy: diff?.easy ?? 0, mid: diff?.mid ?? 0, hard: diff?.hard ?? 0 });
-            const pass = (passRate != null) ? Math.round(passRate * 100) : 0, fail = (passRate != null) ? 100 - pass : 0;
-            drawPassRate({ pass, fail });
-
-            const byDay = Array.isArray(metrics?.exams?.byDay) ? metrics.exams.byDay : [];
-            drawTimeline({ labels: byDay.map(d => d.date?.slice(5)), values: byDay.map(d => d.count || 0) });
+            // กันย้อนกลับจาก BFCache แล้ว auth หลุด
+            const guardAuth = () => { if (!localStorage.getItem('teacherToken')) goLogin(); };
+            window.addEventListener('pageshow', e => { if (e.persisted) guardAuth(); });
+            document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') guardAuth(); });
         });
+
+        // ---------- profile modal handlers ----------
+        async function openEditProfile() {
+            const token = localStorage.getItem('teacherToken'); if (!token) { goLogin(); return; }
+            try {
+                const r = await fetch(`${API}/teacher_get_profile.php`, { headers: { Authorization: `Bearer ${token}` } });
+                const d = await readJSONorThrow(r);
+                if (!r.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${r.status}`);
+
+                const $ = id => document.getElementById(id);
+                $('inpName') && ($('inpName').value = d.profile?.name || '');
+                $('inpEmail') && ($('inpEmail').value = d.profile?.email || '');
+                $('inpCur') && ($('inpCur').value = '');
+                $('inpNew') && ($('inpNew').value = '');
+                $('profileMsg') && ($('profileMsg').textContent = '');
+
+                showModal('editProfileModal', true);
+            } catch (e) {
+                alert(e.message || 'โหลดโปรไฟล์ไม่สำเร็จ');
+            }
+        }
+
+        async function saveProfile() {
+            const token = localStorage.getItem('teacherToken'); if (!token) { goLogin(); return; }
+            const name = document.getElementById('inpName')?.value.trim() || '';
+            const email = document.getElementById('inpEmail')?.value.trim() || '';
+            const cur = document.getElementById('inpCur')?.value || '';
+            const nw = document.getElementById('inpNew')?.value || '';
+            const msgEl = document.getElementById('profileMsg');
+
+            if (msgEl) msgEl.textContent = '';
+            if (!name || !email) { if (msgEl) msgEl.textContent = 'กรอกชื่อและอีเมล'; return; }
+            if (nw && nw.length < 8) { if (msgEl) msgEl.textContent = 'รหัสผ่านใหม่อย่างน้อย 8 ตัว'; return; }
+
+            try {
+                const r = await fetch(`${API}/teacher_update_profile.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ name, email, current_password: cur, new_password: nw })
+                });
+                const d = await readJSONorThrow(r);
+                if (!r.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${r.status}`);
+
+                if (msgEl) msgEl.textContent = 'บันทึกสำเร็จ ✓';
+                const nameEl = document.getElementById('teacherName'); if (nameEl) nameEl.textContent = name;
+                localStorage.setItem('instructor_name', name);
+                setTimeout(() => showModal('editProfileModal', false), 800);
+            } catch (e) {
+                if (msgEl) msgEl.textContent = e.message || 'บันทึกไม่สำเร็จ';
+            }
+        }
     </script>
 </body>
 
