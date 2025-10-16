@@ -1,0 +1,95 @@
+.viewer-container {
+            width: 100%;
+            height: calc(100vh - 180px);
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #pdfViewer {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .material-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .material-info h4 {
+            margin: 0;
+            color: #2c3e50;
+        }
+
+        .material-info .details {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .material-info .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            color: #666;
+        }
+
+        .stats-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .download-btn {
+            margin-left: auto;
+        }
+
+        /* สไตล์สำหรับการ์ดแสดงรายการสื่อการสอน */
+        .material-card {
+            height: 100%;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .material-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .material-card .card-body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .material-card .card-title {
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .material-card .card-text {
+            color: #666;
+            font-size: 0.9rem;
+            flex-grow: 1;
+        }
+
+        .material-card .card-stats {
+            font-size: 0.8rem;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #eee;
+        }
+
+        #viewerSection {
+            display: none;
+        }
+
+        .hidden {
+            display: none !important;
+        }
