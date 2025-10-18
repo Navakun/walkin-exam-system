@@ -13,328 +13,12 @@
     <link rel="icon" href="data:," />
 
     <!-- Icons & SweetAlert -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet">
 
-    <style>
-        :root {
-            --brand: #2563eb;
-            --brand-2: #0ea5e9;
-            --bg: #f7f9fc;
-            --card: #fff;
-            --text: #1f2937;
-            --muted: #6b7280;
-            --radius: 16px;
-        }
-
-        * {
-            box-sizing: border-box
-        }
-
-        body {
-            margin: 0;
-            font-family: "Prompt", system-ui, Segoe UI, Arial;
-            background: var(--bg);
-            color: var(--text);
-        }
-
-        /* ----- Shell (เหมือนหน้าแดชบอร์ด) ----- */
-        .shell {
-            display: grid;
-            grid-template-columns: 260px 1fr;
-            min-height: 100vh;
-        }
-
-        @media(max-width:1024px) {
-            .shell {
-                grid-template-columns: 1fr;
-            }
-
-            .sidebar {
-                position: sticky;
-                top: 0;
-                z-index: 25;
-            }
-        }
-
-        /* ----- Sidebar ----- */
-        .sidebar {
-            background: #0b1220;
-            color: #e5edff;
-            padding: 18px;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="360" height="800"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%230ea5e9"/><stop offset="1" stop-color="%232563eb"/></linearGradient></defs><circle cx="40" cy="80" r="120" fill="url(%23g)" opacity=".08"/></svg>');
-            background-repeat: no-repeat;
-            background-position: right -60px top -60px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            min-height: 100%;
-        }
-
-        .side-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 6px 8px 2px;
-        }
-
-        .side-brand img {
-            height: 42px;
-            width: auto;
-        }
-
-        .side-title {
-            font-size: 14px;
-            margin: 0;
-            color: #e5edff;
-            line-height: 1.2;
-        }
-
-        .side-sub {
-            font-size: 12px;
-            opacity: .75;
-            margin-top: 2px;
-        }
-
-        .me-chip {
-            background: rgba(255, 255, 255, .08);
-            border: 1px solid rgba(255, 255, 255, .14);
-            padding: 10px 12px;
-            border-radius: 999px;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-            cursor: pointer;
-            color: #e5edff;
-        }
-
-        .me-chip i {
-            color: #8ab4ff;
-        }
-
-        .nav {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-top: 6px;
-        }
-
-        .nav .group {
-            margin: 14px 0 6px;
-            font-weight: 600;
-            color: #bcd2ff;
-            font-size: 12px;
-            letter-spacing: .3px;
-        }
-
-        .nav a {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            border-radius: 10px;
-            color: #e5edff;
-            text-decoration: none;
-            border: 1px solid transparent;
-        }
-
-        .nav a:hover {
-            background: rgba(255, 255, 255, .06);
-            border-color: rgba(255, 255, 255, .14);
-        }
-
-        .nav a.active {
-            background: linear-gradient(90deg, rgba(14, 165, 233, .18), rgba(37, 99, 235, .18));
-            border-color: rgba(37, 99, 235, .35);
-        }
-
-        .side-footer {
-            margin-top: auto;
-            display: flex;
-            gap: 8px;
-        }
-
-        .logout {
-            background: #ef4444;
-            color: #fff;
-            border: 0;
-            border-radius: 10px;
-            padding: 10px 14px;
-            cursor: pointer;
-            width: 100%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            box-shadow: 0 6px 16px rgba(239, 68, 68, .25);
-        }
-
-        /* ----- Main ----- */
-        .main {
-            padding: 24px 28px;
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .action-bar {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 8px 0 10px;
-        }
-
-        .btn-add {
-            background: #10b981;
-            color: #fff;
-            border: 0;
-            border-radius: 10px;
-            padding: 10px 14px;
-            cursor: pointer;
-            box-shadow: 0 6px 16px rgba(16, 185, 129, .2);
-            font-weight: 600;
-        }
-
-        /* (เดิมของหน้าคลังข้อสอบ) */
-        .text-center {
-            text-align: center
-        }
-
-        .difficulty-easy {
-            color: #28a745;
-            font-weight: bold
-        }
-
-        .difficulty-medium {
-            color: #ffc107;
-            font-weight: bold
-        }
-
-        .difficulty-hard {
-            color: #dc3545;
-            font-weight: bold
-        }
-
-        .difficulty-unknown {
-            color: #6c757d;
-            font-style: italic
-        }
-
-        table th {
-            background: #f8f9fa;
-            padding: 12px
-        }
-
-        table td {
-            padding: 12px;
-            vertical-align: middle
-        }
-
-        .actions {
-            white-space: nowrap;
-            text-align: center
-        }
-
-        .btn-edit,
-        .btn-delete {
-            padding: 5px 10px;
-            margin: 0 2px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer
-        }
-
-        .btn-edit {
-            background: #ffc107;
-            color: #000
-        }
-
-        .btn-edit:hover {
-            background: #e0a800
-        }
-
-        .btn-delete {
-            background: #dc3545;
-            color: #fff
-        }
-
-        .btn-delete:hover {
-            background: #c82333
-        }
-
-        .select-filter {
-            padding: 10px 15px;
-            border-radius: 5px;
-            border: 1px solid #e0e0e0;
-            font-size: 14px;
-            min-width: 220px;
-            background: #fff;
-            transition: .2s;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, .05);
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            padding-right: 35px;
-        }
-
-        .select-filter:hover {
-            border-color: #bdbdbd;
-            box-shadow: 0 3px 6px rgba(0, 0, 0, .1)
-        }
-
-        .select-filter:focus {
-            outline: none;
-            border-color: #2196F3;
-            box-shadow: 0 3px 8px rgba(33, 150, 243, .2)
-        }
-
-        .filter-row {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-left: auto
-        }
-
-        .filter-label {
-            font-weight: 600;
-            color: #334155
-        }
-
-        .select--compact {
-            min-width: 120px
-        }
-
-        .pager {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            justify-content: flex-end;
-            margin-top: 14px
-        }
-
-        .pager .btn {
-            border: 1px solid #e5e7eb;
-            background: #fff;
-            padding: 6px 10px;
-            border-radius: 8px;
-            cursor: pointer
-        }
-
-        .pager .btn:disabled {
-            opacity: .5;
-            cursor: not-allowed
-        }
-
-        .pager .info {
-            color: #64748b;
-            font-size: 14px;
-            margin: 0 4px
-        }
-    </style>
 </head>
 
 <body>
@@ -351,33 +35,34 @@
             </div>
 
             <button class="me-chip" id="editProfileBtn" title="แก้ไขโปรไฟล์">
-                <i class="fa fa-user-circle"></i>
+                <i class="fa-solid fa-circle-user"></i>
                 <span id="teacherName">อาจารย์ผู้สอน</span>
             </button>
+
             <button class="logout" id="logoutBtn">
-                <i class="fa fa-right-from-bracket"></i> ออกจากระบบ
+                <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
             </button>
 
             <nav class="nav">
                 <div class="group">เมนูหลัก</div>
-                <a href="teacher_dashboard.html"><i class="fa fa-house"></i> หน้าหลัก</a>
+                <a href="teacher_dashboard.html"><i class="fa-solid fa-house"></i> หน้าหลัก</a>
 
                 <div class="group">การจัดการข้อสอบ</div>
-                <a href="#" class="active"><i class="fa fa-file-invoice"></i> คลังข้อสอบ</a>
+                <a href="#" class="active"><i class="fa-solid fa-file-invoice"></i> คลังข้อสอบ</a>
 
                 <div class="group">การจัดการสอบ</div>
-                <a href="teacher_exam_out.html"><i class="fa fa-calendar-alt"></i> ช่วงเวลาการสอบ</a>
-                <a href="exam_users.html"><i class="fa fa-users"></i> รายชื่อผู้เข้าสอบ</a>
-                <a href="exam_registration_status.html"><i class="fa fa-clipboard-check"></i> ตรวจสอบสถานะนิสิต</a>
-                <a href="exam_statistics.html"><i class="fa fa-chart-bar"></i> สถิติการสอบ</a>
+                <a href="teacher_exam_out.html"><i class="fa-solid fa-calendar-days"></i> ช่วงเวลาการสอบ</a>
+                <a href="exam_users.html"><i class="fa-solid fa-users"></i> รายชื่อผู้เข้าสอบ</a>
+                <a href="exam_registration_status.html"><i class="fa-solid fa-clipboard-check"></i>
+                    ตรวจสอบสถานะนิสิต</a>
+                <a href="exam_statistics.html"><i class="fa-solid fa-chart-bar"></i> สถิติการสอบ</a>
 
                 <div class="group">เนื้อหารายวิชา</div>
-                <a href="teaching_materials.html"><i class="fa fa-file-arrow-up"></i> อัปโหลดสื่อการสอน</a>
-                <a href="teacher_open_materials.html"><i class="fa fa-book-open-reader"></i> ดูสื่อการสอน</a>
+                <a href="teaching_materials.html"><i class="fa-solid fa-file-arrow-up"></i> อัปโหลดสื่อการสอน</a>
+                <a href="teacher_open_materials.html"><i class="fa-solid fa-book-open-reader"></i> ดูสื่อการสอน</a>
             </nav>
 
-            <div class="side-footer">
-            </div>
+            <div class="side-footer"></div>
         </aside>
 
         <!-- Main content -->
@@ -387,7 +72,7 @@
 
             <div class="action-bar">
                 <button id="addQuestionBtn" class="btn-add">
-                    <i class="fas fa-plus"></i>&nbsp; เพิ่มคำถามใหม่
+                    <i class="fa-solid fa-plus"></i>&nbsp; เพิ่มคำถามใหม่
                 </button>
 
                 <div class="filter-row">
