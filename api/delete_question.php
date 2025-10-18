@@ -1,62 +1,68 @@
 <?php
-require_once '../vendor/autoload.php';
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
 
-header("Content-Type: application/json");
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Methods: POST"); // ใช้ POST สำหรับการลบ
+declare(strict_types=1);
 
-include '../config/db.php';
-
-// --- 1. ตรวจสอบ Token ของอาจารย์ ---
-$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-if (empty($jwt_key)) {
-    throw new Exception('JWT key not configured');
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
 }
 
-if (!$authHeader) {
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/helpers/jwt_helper.php';
+
+// ---- Auth (ต้องเป็นอาจารย์) ----
+$hdrs = function_exists('getallheaders') ? array_change_key_case(getallheaders(), CASE_LOWER) : [];
+if (!preg_match('/bearer\s+(\S+)/i', $hdrs['authorization'] ?? '', $m)) {
     http_response_code(401);
-    echo json_encode(["status" => "error", "message" => "ไม่ได้ส่ง Token"]);
-    exit();
+    echo json_encode(['status' => 'error', 'message' => 'No token']);
+    exit;
+}
+$claims = decodeToken($m[1]);
+if (!$claims || !in_array(strtolower($claims['role'] ?? ''), ['teacher', 'instructor'], true)) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Forbidden']);
+    exit;
 }
 
-list($jwt) = sscanf($authHeader, 'Bearer %s');
-
-try {
-    $decoded = JWT::decode($jwt, new Key($jwt_key, 'HS256'));
-} catch (Exception $e) {
-    http_response_code(401);
-    echo json_encode(["status" => "error", "message" => "Token ไม่ถูกต้อง: " . $e->getMessage()]);
-    exit();
-}
-// --- สิ้นสุดการตรวจสอบ Token ---
-
-// --- 2. รับข้อมูล question_id ที่จะลบ ---
-$data = json_decode(file_get_contents("php://input"));
-
-if (!isset($data->question_id)) {
+// ---- Input ----
+$raw = file_get_contents('php://input');
+$body = json_decode($raw, true);
+$question_id = isset($body['question_id']) ? (int)$body['question_id'] : 0;
+if ($question_id <= 0) {
     http_response_code(400);
-    echo json_encode(['status' => 'error', 'message' => 'กรุณาระบุ question_id']);
-    exit();
+    echo json_encode(['status' => 'error', 'message' => 'question_id is required']);
+    exit;
 }
 
-$questionId = $data->question_id;
-
-// --- 3. ทำการลบข้อมูล (PDO) ---
 try {
-    $sql = "DELETE FROM Question WHERE question_id = ?";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$questionId]);
-    if ($stmt->rowCount() > 0) {
-        echo json_encode(['status' => 'success', 'message' => 'ลบคำถามสำเร็จ']);
-    } else {
+    // เปิดทรานแซกชัน
+    $pdo->beginTransaction();
+
+    // 1) ลบตัวเลือกก่อน (หาก FK ยังไม่ได้ตั้ง ON DELETE CASCADE)
+    // ถ้าตาราง choice มี FK ON DELETE CASCADE แล้ว บรรทัดนี้ไม่จำเป็น แต่ไม่เสียหาย
+    $stmtC = $pdo->prepare('DELETE FROM choice WHERE question_id = :qid');
+    $stmtC->execute([':qid' => $question_id]);
+
+    // 2) ลบคำถาม (ชื่อตาราง = question ตัวเล็ก)
+    $stmtQ = $pdo->prepare('DELETE FROM question WHERE question_id = :qid');
+    $stmtQ->execute([':qid' => $question_id]);
+
+    // ตรวจว่ามีการลบจริงหรือไม่
+    if ($stmtQ->rowCount() === 0) {
+        $pdo->rollBack();
         http_response_code(404);
-        echo json_encode(['status' => 'error', 'message' => 'ไม่พบคำถามที่ต้องการลบ']);
+        echo json_encode(['status' => 'error', 'message' => 'Question not found']);
+        exit;
     }
-} catch (Exception $e) {
+
+    $pdo->commit();
+    echo json_encode(['status' => 'success', 'message' => 'ลบคำถามเรียบร้อย', 'question_id' => $question_id], JSON_UNESCAPED_UNICODE);
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
     http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    echo json_encode(['status' => 'error', 'message' => 'SERVER_ERROR', 'debug' => $e->getMessage()]);
 }
-?>
