@@ -1,114 +1,194 @@
+/* ===== Layout ===== */
 .table-container {
-    margin-top: 20px;
-    overflow-x: auto;
+  margin-top: 20px;
+  overflow-x: auto;
+  position: relative; /* เผื่อใช้กับ loading mask */
 }
 
+/* ===== Table ===== */
 table {
-    width: 100%;
-    border-collapse: collapse;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,.06);
+}
+
+thead th {
+  position: sticky;         /* ติดหัวตารางเวลาเลื่อน */
+  top: 0;
+  z-index: 1;
+  background: #f7f9fc;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 tr {
-    border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #eee;
 }
 
-tr:hover {
-    background: #e9e3e3;
+tbody tr:hover {
+  background: #f5f7fb;      /* hover อ่อนๆ อ่านง่ายขึ้น */
 }
 
 th, td {
-    padding: 12px 15px;
-    text-align: left;
+  padding: 12px 15px;
+  text-align: left;
+  vertical-align: middle;
 }
 
 th {
-    background: #f2f2f2;
+  font-weight: 600;
+  color: #374151;
 }
 
+/* แถวเว้นสีอ่านง่าย (ถ้าอยากให้ชัดขึ้นค่อยเปิด) */
+/*
+tbody tr:nth-child(odd) {
+  background: #fafbff;
+}
+*/
+
+/* ===== Search area ===== */
 .search-section {
-margin: 20px 0;
-padding: 15px;
-background: #f8f9fa;
-border-radius: 8px;
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #eef2f7;
 }
 
 .search-filters {
-display: flex;
-gap: 10px;
-align-items: center;
-flex-wrap: wrap;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.search-filters input {
-min-width: 200px;
-max-width: 400px;
+/* ปรับขนาด input ให้สมดุล */
+.search-filters input[type="text"] {
+  flex: 2 1 260px;   /* ตัวค้นหาชื่อ/รหัสใหญ่กว่าเล็กน้อย */
+  max-width: 420px;
 }
 
+.search-filters input[type="date"] {
+  flex: 1 1 140px;   /* ลดความกว้างลง */
+  min-width: 130px;
+  max-width: 180px;
+}
+
+/* ปรับปุ่มให้ขนาดใกล้กัน */
+.search-filters button {
+  height: 38px;
+  white-space: nowrap;
+}
+
+
+/* ===== Status badges ===== */
 .status-badge {
-    padding: 5px 10px;
-    border-radius: 15px;
-    font-size: 0.9em;
-    display: inline-block;
-    text-align: center;
-    min-width: 100px;
+  display: inline-block;
+  min-width: 110px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: .9rem;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid transparent;
 }
 
-.registered { background: #e3f2fd; color: #1976d2; }
-.completed { background: #e8f5e9; color: #2e7d32; }
-.cancelled { background: #ffebee; color: #c62828; }
-.absent { background: #fff3e0; color: #ef6c00; }
-.finished { background: #e8f5e9; color: #2e7d32; }
-.table-container {
-        margin-top: 20px;
-        overflow-x: auto;
+.status-badge.registered {
+  background: #e3f2fd;
+  color: #0b5aa2;
+  border-color: #cfe8ff;
 }
 
-/* Common button styles */
-.home-btn, .logout-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 16px;
-    min-width: 120px;
-    height: 40px;
-    border-radius: 5px;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 0.95em;
-    transition: all 0.2s ease;
-    border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin: 0 5px;
-    color: #fff;
+.status-badge.completed,
+.status-badge.finished {     /* finished = alias */
+  background: #e8f5e9;
+  color: #166534;
+  border-color: #cdeed4;
 }
 
-.home-btn:hover, .logout-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+.status-badge.cancelled,
+.status-badge.canceled {     /* รองรับทั้งสองสะกด */
+  background: #ffebee;
+  color: #7f1d1d;
+  border-color: #ffd5da;
 }
 
-.home-btn:active, .logout-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.status-badge.absent {
+  background: #fff3e0;
+  color: #92400e;
+  border-color: #ffe0b2;
 }
 
-.home-btn {
-    background: #007bff;
-}
-
-.home-btn:hover {
-    background: #0056b3;
-}
-
+/* ===== Header buttons (home / logout) ===== */
+.home-btn,
 .logout-btn {
-    background: #dc3545;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  min-width: 120px;
+  height: 40px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: .95rem;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,.1);
+  margin: 0 6px;
+  color: #fff;
+  cursor: pointer;
 }
 
-.logout-btn:hover {
-    background: #c82333;
+.home-btn { background: #2563eb; }
+.home-btn:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 6px 14px rgba(37,99,235,.25); }
+.home-btn:active { transform: translateY(0); }
+
+.logout-btn { background: #dc3545; }
+.logout-btn:hover { background: #c82333; transform: translateY(-1px); box-shadow: 0 6px 14px rgba(220,53,69,.25); }
+.logout-btn:active { transform: translateY(0); }
+
+/* ===== Loading mask (ใช้กับ #loadingMask ที่หน้า HTML) ===== */
+#loadingMask {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,.6);
+  display: none;             /* JS จะสลับเป็น block ตอนโหลด */
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
 }
 
-.logout-btn:active {
-    background: #bd2130;
+/* ===== Responsive tweaks ===== */
+@media (max-width: 768px) {
+  th, td {
+    padding: 10px 12px;
+  }
+  .status-badge {
+    min-width: 90px;
+    padding: 5px 10px;
+    font-size: .85rem;
+  }
+  .search-filters {
+    gap: 8px;
+  }
+  .search-filters input[type="text"] {
+    min-width: 180px;
+    max-width: 100%;
+    flex: 1;
+  }
+  .search-filters input[type="date"] {
+    min-width: 140px;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .search-filters > * {
+    width: 100%;
+  }
 }
