@@ -10,8 +10,9 @@
   <link rel="stylesheet" href="/assets/css/modal.css">
   <link rel="stylesheet" href="/assets/css/student-register-exam.css">
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <!-- ใช้ CSS ของ Font Awesome (แทนไฟล์ JS เดิม) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
 </head>
 
 <body>
@@ -31,8 +32,7 @@
   <div class="container mt-4">
     <h3>เลือกช่วงเวลาสอบ</h3>
 
-    <!-- Loading Indicator -->
-    <div id="loadingIndicator" class="alert alert-info d-flex align-items-center" style="display: none;">
+    <div id="loadingIndicator" class="alert alert-info d-flex align-items-center" style="display:none;">
       <div class="spinner-border spinner-border-sm me-2" role="status"></div>
       <div>กำลังโหลดข้อมูลรอบสอบ...</div>
     </div>
@@ -66,105 +66,101 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Global variables
+    // -------------------- Auth / Globals --------------------
     const token = localStorage.getItem('studentToken');
-    let isSubmitting = false; // ป้องกันการ submit ซ้ำ
+    let isSubmitting = false;
+    if (!token) location.href = 'student_login.html';
 
-    if (!token) {
-      window.location.href = 'student_login.html';
-    }
+    const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 2200, timerProgressBar: true });
 
-    // Utility functions
     function handleTokenExpired() {
       localStorage.removeItem('studentToken');
-      Swal.fire({
-        icon: "warning",
-        title: "หมดเวลาการใช้งาน",
-        text: "กรุณาเข้าสู่ระบบอีกครั้ง",
-      }).then(() => window.location.href = 'student_login.html');
+      Swal.fire({ icon: 'warning', title: 'หมดเวลาการใช้งาน', text: 'กรุณาเข้าสู่ระบบอีกครั้ง' })
+        .then(() => location.href = 'student_login.html');
     }
 
+    // -------------------- Friendly error helpers --------------------
+    function decodeUnicodeIfNeeded(s) {
+      if (typeof s !== 'string') return '';
+      if (s.includes('\\u')) {
+        try { return JSON.parse('"' + s.replace(/"/g, '\\"') + '"'); } catch { }
+      }
+      return s;
+    }
+    function friendlyMessage(status, code, fallback = 'เกิดข้อผิดพลาด') {
+      const byCode = {
+        NO_TOKEN: 'กรุณาเข้าสู่ระบบก่อนทำรายการ',
+        BAD_TOKEN: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่',
+        SLOT_FULL: 'รอบสอบนี้เต็มแล้ว กรุณาเลือกรอบอื่น',
+        OUT_OF_WINDOW: 'อยู่นอกช่วงเวลาที่เปิดลงทะเบียน',
+        ALREADY_REGISTERED: 'คุณได้ลงทะเบียนรอบนี้แล้ว',
+        NEED_PAYMENT: 'ต้องชำระเงินก่อนจึงจะลงทะเบียนได้',
+        SERVER_ERROR: 'ระบบขัดข้อง กรุณาลองใหม่อีกครั้ง',
+      };
+      if (code && byCode[code]) return byCode[code];
+
+      const byStatus = {
+        400: 'ข้อมูลที่ส่งมาไม่ถูกต้อง',
+        401: 'สิทธิ์ไม่ถูกต้องหรือหมดเวลา กรุณาเข้าสู่ระบบใหม่',
+        403: 'ไม่มีสิทธิ์เข้าถึงรายการนี้',
+        404: 'ไม่พบข้อมูลที่ต้องการ',
+        409: 'ข้อมูลซ้ำซ้อน ไม่สามารถทำรายการได้',
+        422: 'ข้อมูลไม่ครบถ้วน หรือรูปแบบไม่ถูกต้อง',
+        500: 'ระบบขัดข้อง กรุณาลองใหม่อีกครั้ง',
+      };
+      return byStatus[status] || decodeUnicodeIfNeeded(fallback) || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
+    }
+    async function readJSONorThrow(res) {
+      const raw = await res.text();
+      let data = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch { }
+      // บาง backend ใส่ JSON เป็นข้อความใน message → แกะเพิ่ม
+      if (data && typeof data.message === 'string') {
+        try { const inner = JSON.parse(data.message); if (inner?.message) data.message = inner.message; } catch { }
+      }
+      if (res.status === 401) { handleTokenExpired(); throw new Error('401'); }
+      if (!res.ok || !data || data.status === 'error') {
+        const msg = friendlyMessage(res.status, data?.error_code, data?.message || raw);
+        const err = new Error(msg); err.status = res.status; err.payload = data ?? raw; throw err;
+      }
+      return data;
+    }
+
+    // -------------------- Format helpers --------------------
     function formatThaiDate(dateStr) {
-      if (!dateStr) return "-";
-      const parts = dateStr.split("-");
-      if (parts.length < 3) return "-";
-      const year = parseInt(parts[0], 10) + 543;
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      if (isNaN(year) || isNaN(month) || isNaN(day)) return "-";
-
-      const months = [
-        "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-        "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
-      ];
-      return `${day} ${months[month]} ${year}`;
+      if (!dateStr) return '-';
+      const p = dateStr.split('-'); if (p.length < 3) return '-';
+      const y = parseInt(p[0], 10) + 543, m = parseInt(p[1], 10) - 1, d = parseInt(p[2], 10);
+      if (isNaN(y) || isNaN(m) || isNaN(d)) return '-';
+      const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+      return `${d} ${months[m]} ${y}`;
     }
+    function formatTime(t) { return t ? String(t).slice(0, 5) : '-'; }
+    function datePart(dt) { if (!dt) return null; const s = String(dt).split(' '); return s[0] || null; }
+    function timePart(dt) { if (!dt) return null; const s = String(dt).split(' '); return (s[1] || '').slice(0, 5); }
 
-    function formatThaiDateTime(dateTimeStr) {
-      if (!dateTimeStr) return "-";
-      const [datePart, timePart] = dateTimeStr.split(" ");
-      return `${formatThaiDate(datePart)} เวลา ${timePart.slice(0, 5)}`;
-    }
-
-    function formatTime(timeStr) {
-      return timeStr ? timeStr.slice(0, 5) : "-";
-    }
-
-    // ================== Helper functions for datetime ==================
-    function datePart(dt) {
-      if (!dt) return null;
-      const parts = String(dt).split(" ");
-      return parts.length > 0 ? parts[0] : null;
-    }
-    function timePart(dt) {
-      if (!dt) return null;
-      const parts = String(dt).split(" ");
-      return parts.length > 1 ? parts[1].slice(0, 5) : null;
-    }
-
+    // -------------------- Load slots --------------------
     async function loadExamSlots() {
-      const loadingIndicator = document.getElementById("loadingIndicator");
-      loadingIndicator.style.display = "block";
-
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      loadingIndicator.style.display = 'block';
       try {
-        const res = await fetch("api/get_available_slots.php", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json"
-          }
+        const res = await fetch('api/get_available_slots.php', {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          cache: 'no-store'
         });
+        const result = await readJSONorThrow(res);
 
-        // เช็ค HTTP status ถูกตัวแปร (res)
-        if (res.status === 401) {
-          handleTokenExpired();
-          return;
-        }
-
-        // อ่าน body เป็นข้อความก่อน เผื่อ error จะได้แปลง message ได้
-        const raw = await res.text();
-        let result = null;
-        try { result = raw ? JSON.parse(raw) : null; } catch { /* not json */ }
-
-        if (!res.ok || !result || result.status !== "success") {
-          let msg = `HTTP ${res.status}`;
-          if (result?.message) msg = result.message;
-          else if (raw) msg = raw;
-          throw new Error(msg);
-        }
-
-        const list = document.getElementById("slotList");
-        list.innerHTML = "";
+        const list = document.getElementById('slotList');
+        list.innerHTML = '';
 
         const slots = Array.isArray(result.slots) ? result.slots : [];
-        if (slots.length === 0) {
+        if (!slots.length) {
           list.innerHTML = `<tr><td colspan="8" class="text-center text-muted">ยังไม่มีช่วงเวลาที่เปิดให้ลงทะเบียน</td></tr>`;
           return;
         }
 
         const latestSlotId = localStorage.getItem('latestSlotId');
-
-        slots.forEach((slot) => {
-          // รองรับทั้ง schema ใหม่/เก่า
+        slots.forEach(slot => {
           const startAt = slot.start_at || (slot.exam_date && slot.start_time ? `${slot.exam_date} ${slot.start_time}` : null);
           const endAt = slot.end_at || (slot.exam_date && slot.end_time ? `${slot.exam_date} ${slot.end_time}` : null);
 
@@ -180,161 +176,101 @@
           const isMine = String(slot.slot_id) === String(latestSlotId);
 
           const actionBtn = isMine
-            ? `<button class="btn btn-secondary" disabled>
-             <i class="fas fa-check-circle me-2"></i>ลงทะเบียนแล้ว
-           </button>`
-            : `<button class="btn ${available > 0 ? "btn-success" : "btn-secondary"}"
-             ${available > 0
-              ? `onclick="registerSlot(${slot.slot_id}, '${(slot.exam_date || datePart(startAt))}', '${startTimeDisplay}', '${endTimeDisplay}', event)"`
-              : "disabled"}>
-             ${available > 0
-              ? '<i class="fas fa-check-circle me-2"></i>ลงทะเบียน'
-              : '<i class="fas fa-ban me-2"></i>เต็มแล้ว'}
-           </button>`;
+            ? `<button class="btn btn-secondary" disabled><i class="fas fa-check-circle me-2"></i>ลงทะเบียนแล้ว</button>`
+            : `<button class="btn ${available > 0 ? 'btn-success' : 'btn-secondary'}"
+                 ${available > 0 ? `onclick="registerSlot(${slot.slot_id}, '${(slot.exam_date || datePart(startAt))}', '${startTimeDisplay}', '${endTimeDisplay}', event)"` : 'disabled'}>
+                 ${available > 0 ? '<i class="fas fa-check-circle me-2"></i>ลงทะเบียน' : '<i class="fas fa-ban me-2"></i>เต็มแล้ว'}
+               </button>`;
 
-          const tr = document.createElement("tr");
+          const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${regOpenDisplay} ถึง<br>${regCloseDisplay}</td>
             <td>${examDateDisplay}</td>
             <td>${startTimeDisplay} - ${endTimeDisplay}</td>
             <td>${slot.max_seats}</td>
             <td>${registeredCount}</td>
-            <td>
-              <span class="badge ${available <= 0 ? "bg-danger" : "bg-success"} rounded-pill">${available}</span>
-            </td>
-            <td>
-              ${available > 0
-              ? '<span class="status-pill ok">ลงทะเบียนได้</span>'
-              : '<span class="status-pill full">เต็มแล้ว</span>'}
-            </td>
-            <td>${actionBtn}</td>
-          `;
+            <td><span class="badge ${available <= 0 ? 'bg-danger' : 'bg-success'} rounded-pill">${available}</span></td>
+            <td>${available > 0 ? '<span class="status-pill ok">ลงทะเบียนได้</span>' : '<span class="status-pill full">เต็มแล้ว</span>'}</td>
+            <td>${actionBtn}</td>`;
           list.appendChild(tr);
         });
       } catch (err) {
-        console.error("loadExamSlots error:", err);
-        document.getElementById("slotList").innerHTML =
+        console.error('loadExamSlots error:', err);
+        Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: err.message || 'กรุณาลองใหม่อีกครั้ง' });
+        document.getElementById('slotList').innerHTML =
           '<tr><td colspan="8" class="text-danger text-center">เกิดข้อผิดพลาดในการเชื่อมต่อ</td></tr>';
       } finally {
-        loadingIndicator.style.display = "none";
+        loadingIndicator.style.display = 'none';
       }
     }
 
+    // -------------------- Register slot --------------------
     async function registerSlot(slotId, slotDate, startTime, endTime, event) {
-      // ป้องกันการ submit ซ้ำ
       if (isSubmitting) return;
       isSubmitting = true;
 
-      // ปรับปรุง UI ปุ่ม
       const btn = event.currentTarget;
       const originalHTML = btn.innerHTML;
       btn.disabled = true;
       btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>กำลังลงทะเบียน...`;
 
       const slotDateText = `วันที่ ${formatThaiDate(slotDate)} เวลา ${formatTime(startTime)} - ${formatTime(endTime)} น.`;
-
-      const result = await Swal.fire({
-        title: "ยืนยันการลงทะเบียน",
-        html: `<strong>${slotDateText}</strong>`,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "ยืนยัน",
-        cancelButtonText: "ยกเลิก",
+      const confirm = await Swal.fire({
+        icon: 'question', title: 'ยืนยันการลงทะเบียน', html: `<strong>${slotDateText}</strong>`,
+        showCancelButton: true, confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก'
       });
-
-      if (!result.isConfirmed) {
-        // คืนค่า UI ปุ่มเมื่อยกเลิก
-        btn.disabled = false;
-        btn.innerHTML = originalHTML;
-        isSubmitting = false;
-        return;
+      if (!confirm.isConfirmed) {
+        btn.disabled = false; btn.innerHTML = originalHTML; isSubmitting = false; return;
       }
 
       try {
-        const response = await fetch("api/book_slot.php", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ slot_id: slotId })
+        Swal.fire({ title: 'กำลังส่งคำขอ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        const res = await fetch('api/book_slot.php', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slot_id: slotId }),
+          cache: 'no-store'
         });
 
-        // เช็ค HTTP status
-        if (response.status === 401) {
-          handleTokenExpired();
-          return;
-        }
+        const data = await readJSONorThrow(res);
+        Swal.close();
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json();
-        if (data.debug) {
-          console.warn("Debug info:", data.debug);
-        }
-
-        if (data.status === "success") {
-          // เก็บข้อมูลใน localStorage สำหรับใช้ในหน้าอื่น
+        if (data.status === 'success') {
           localStorage.setItem('latestSlotId', slotId);
-          if (data.registration_id) {
-            localStorage.setItem('latestRegistrationId', data.registration_id);
-          }
-          if (data.payment_status === "free") {
+          if (data.registration_id) localStorage.setItem('latestRegistrationId', data.registration_id);
+
+          if (data.payment_status === 'free') {
+            await Swal.fire({ icon: 'success', title: 'ลงทะเบียนสำเร็จ', text: data.message || 'ระบบบันทึกการลงทะเบียนแล้ว' });
+          } else if (data.payment_status === 'pending') {
             await Swal.fire({
-              icon: "success",
-              title: "ลงทะเบียนสำเร็จ",
-              text: data.message
+              icon: 'info', title: 'รอการชำระเงิน',
+              html: `คุณเกินสิทธิ์สอบฟรีแล้ว<br>กรุณาชำระเงิน <strong>${data.fee_amount} บาท</strong><hr>
+                     <small class="text-muted">ไปที่ <a href="student_registration_status.html">หน้าสถานะการลงทะเบียน</a> เพื่ออัปโหลดสลิปและยืนยันการชำระเงิน</small>`
             });
-          } else if (data.payment_status === "pending") {
-            await Swal.fire({
-              icon: "info",
-              title: "รอการชำระเงิน",
-              html: `
-                    คุณเกินสิทธิ์สอบฟรีแล้ว<br>
-                    กรุณาชำระเงิน <strong>${data.fee_amount} บาท</strong><br>
-                    <hr>
-                    <small class="text-muted">
-                      ไปที่ <a href="student_registration_status.html">หน้าสถานะการลงทะเบียน</a> 
-                      เพื่ออัปโหลดสลิปและยืนยันการชำระเงิน
-                    </small>
-                  `,
-              confirmButtonText: "ตกลง"
-            });
+          } else {
+            Toast.fire({ icon: 'success', title: 'ลงทะเบียนสำเร็จ' });
           }
           await loadExamSlots();
         } else {
-          Swal.fire({
-            icon: "error",
-            title: "เกิดข้อผิดพลาด",
-            text: data.message || "ไม่สามารถลงทะเบียนได้"
-          });
+          Swal.fire({ icon: 'error', title: 'ลงทะเบียนไม่สำเร็จ', text: friendlyMessage(400, data.error_code, data.message) });
         }
 
       } catch (err) {
-        console.error("registerSlot error:", err);
-        Swal.fire({
-          icon: "error",
-          title: "เชื่อมต่อไม่สำเร็จ",
-          text: err.message || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์"
-        });
+        Swal.close();
+        console.error('registerSlot error:', err);
+        Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่สำเร็จ', text: err.message || 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์' });
       } finally {
-        // คืนค่า UI ปุ่มเสมอ
-        btn.disabled = false;
-        btn.innerHTML = originalHTML;
-        isSubmitting = false;
+        btn.disabled = false; btn.innerHTML = originalHTML; isSubmitting = false;
       }
     }
+    window.registerSlot = registerSlot;
 
+    // -------------------- Boot --------------------
     document.addEventListener('DOMContentLoaded', () => {
       loadExamSlots();
-      document.getElementById('backBtn').onclick = () => window.location.href = 'student_dashboard.html';
-      document.getElementById('logoutBtn').onclick = () => {
-        localStorage.removeItem('studentToken');
-        window.location.href = 'student_login.html';
-      };
+      document.getElementById('backBtn').onclick = () => location.href = 'student_dashboard.html';
+      document.getElementById('logoutBtn').onclick = () => { localStorage.removeItem('studentToken'); location.href = 'student_login.html'; };
     });
   </script>
 </body>
