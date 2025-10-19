@@ -162,7 +162,7 @@ try {
                 SUM(CASE WHEN score IS NOT NULL AND score < {$passMark} THEN 1 ELSE 0 END) AS fail_count
             FROM exam_sessions
             {$whereFinished}
-        }")->fetch(PDO::FETCH_ASSOC);
+        ")->fetch(PDO::FETCH_ASSOC);
 
         $scores['pass'] = (int)($pfRow['pass_count'] ?? 0);
         $scores['fail'] = (int)($pfRow['fail_count'] ?? 0);
