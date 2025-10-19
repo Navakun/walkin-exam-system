@@ -6,30 +6,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>รายชื่อผู้เข้าสอบ</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/teacher.css">
+  <!-- <link rel="stylesheet" href="assets/css/modal.css"> -->
 
-  <!-- ไอคอน (v6 ให้ตรงกับหน้าหลัก) -->
+  <!-- Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" />
 
-  <!-- สไตล์ของเพจนี้ -->
+  <!-- Page CSS -->
   <link rel="stylesheet" href="assets/css/exam-user.css" />
 
-  <!-- เสริม layout ให้เหมือนแดชบอร์ด (กันกรณีไม่มี main.css/teacher.css) -->
+  <!-- Minimal layout to match dashboard -->
   <style>
+    /* กันกรณีไฟล์เก่าบางส่วนไม่มี layout เดียวกับแดชบอร์ด */
     .shell {
       display: grid;
       grid-template-columns: 260px 1fr;
-      min-height: 100vh
+      min-height: 100vh;
     }
 
     @media(max-width:1024px) {
       .shell {
-        grid-template-columns: 1fr
+        grid-template-columns: 1fr;
       }
 
       .sidebar {
         position: sticky;
         top: 0;
-        z-index: 25
+        z-index: 25;
       }
     }
 
@@ -39,28 +43,28 @@
       padding: 18px;
       display: flex;
       flex-direction: column;
-      gap: 12px
+      gap: 12px;
     }
 
     .side-brand {
       display: flex;
       align-items: center;
-      gap: 10px
+      gap: 10px;
     }
 
     .side-brand img {
       height: 42px;
-      width: auto
+      width: auto;
     }
 
     .side-title {
       margin: 0;
-      font-size: 14px
+      font-size: 14px;
     }
 
     .side-sub {
       font-size: 12px;
-      opacity: .75
+      opacity: .75;
     }
 
     .me-chip {
@@ -72,14 +76,14 @@
       align-items: center;
       gap: 10px;
       color: #e5edff;
-      width: 100%
+      width: 100%;
     }
 
     .nav {
       display: flex;
       flex-direction: column;
       gap: 6px;
-      margin-top: 6px
+      margin-top: 6px;
     }
 
     .nav .group {
@@ -87,7 +91,7 @@
       font-weight: 600;
       color: #bcd2ff;
       font-size: 12px;
-      letter-spacing: .3px
+      letter-spacing: .3px;
     }
 
     .nav a {
@@ -98,21 +102,21 @@
       border-radius: 10px;
       color: #e5edff;
       text-decoration: none;
-      border: 1px solid transparent
+      border: 1px solid transparent;
     }
 
     .nav a:hover {
       background: rgba(255, 255, 255, .06);
-      border-color: rgba(255, 255, 255, .14)
+      border-color: rgba(255, 255, 255, .14);
     }
 
     .nav a.active {
       background: linear-gradient(90deg, rgba(14, 165, 233, .18), rgba(37, 99, 235, .18));
-      border-color: rgba(37, 99, 235, .35)
+      border-color: rgba(37, 99, 235, .35);
     }
 
     .side-footer {
-      margin-top: auto
+      margin-top: auto;
     }
 
     .logout {
@@ -126,14 +130,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px
+      gap: 8px;
     }
 
     .main {
       padding: 24px 28px;
-      max-width: 1200px;
       width: 100%;
-      margin: 0 auto
+      max-width: 1200px;
+      margin: 0 auto;
     }
 
     .page-head {
@@ -141,21 +145,77 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 10px
+      margin-bottom: 10px;
+    }
+
+    /* ===== Fix modal size & scroll ===== */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .45);
+      z-index: 60;
+      backdrop-filter: blur(2px)
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 70;
+      width: min(960px, 96vw);
+      max-height: 90vh;
+      /* ไม่ให้สูงเกินจอ */
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      /* ตัดส่วนเกิน */
+    }
+
+    .modal header {
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 1
+    }
+
+    .modal .body {
+      overflow: auto;
+      /* เนื้อหาเลื่อนในตัวโมดัล */
+    }
+
+    /* ===== Chart area ===== */
+    .chart-wrap {
+      height: 280px;
+      /* ความสูงชัดเจน */
+      max-height: 40vh;
+      /* บนจอเล็กๆ จะย่อให้ไม่กินพื้นที่ */
+    }
+
+    #resultChart {
+      width: 100% !important;
+      height: 100% !important;
+      /* ให้กราฟเติมเต็ม chart-wrap */
+      display: block;
+    }
+
+    /* กัน CSS อื่นที่เผื่อไปตั้งค่า canvas แปลกๆ */
+    canvas {
+      max-width: 100%
     }
   </style>
-
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 
 <body>
   <div class="shell">
-    <!-- Sidebar (เหมือนหน้าแดชบอร์ด) -->
+    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="side-brand">
-        <img src="nulogo.png" alt="NU" />
+        <img src="nulogo.png" alt="NU">
         <div>
           <p class="side-title">ระบบจัดสอบ Walk-in</p>
           <div class="side-sub">(สำหรับอาจารย์)</div>
@@ -163,36 +223,38 @@
       </div>
 
       <button class="me-chip" id="editProfileBtn" title="แก้ไขโปรไฟล์">
-        <i class="fa-solid fa-circle-user"></i>
+        <i class="fa-solid fa-user-circle"></i>
         <span id="teacherName">อาจารย์ผู้สอน</span>
       </button>
-      <button class="logout" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
+
+      <button class="logout" id="logoutBtn">
+        <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+      </button>
 
       <nav class="nav">
         <div class="group">เมนูหลัก</div>
-        <a href="teacher_dashboard.html"><i class="fa-solid fa-house"></i> หน้าหลัก</a>
+        <a href="#" class="active"><i class="fa-solid fa-house"></i> หน้าหลัก</a>
 
         <div class="group">การจัดการข้อสอบ</div>
         <a href="teacher_question_bank.html"><i class="fa-solid fa-file-invoice"></i> คลังข้อสอบ</a>
 
         <div class="group">การจัดการสอบ</div>
-        <a href="teacher_exam_out.html"><i class="fa-solid fa-calendar-days"></i> ช่วงเวลาการสอบ</a>
-        <a href="#" class="active"><i class="fa-solid fa-users"></i> รายชื่อผู้เข้าสอบ</a>
-        <a href="exam_registration_status.html"><i class="fa-solid fa-clipboard-check"></i> ตรวจสอบสถานะนิสิต</a>
+        <a href="teacher_exam_out.html"><i class="fa-solid fa-calendar-alt"></i> ช่วงเวลาการสอบ</a>
+        <a href="exam_users.html"><i class="fa-solid fa-users"></i> รายชื่อผู้เข้าสอบ</a>
+        <a href="exam_registration_status.html"><i class="fa-solid fa-clipboard-check"></i>
+          ตรวจสอบสถานะนิสิต</a>
         <a href="exam_statistics.html"><i class="fa-solid fa-chart-bar"></i> สถิติการสอบ</a>
 
         <div class="group">เนื้อหารายวิชา</div>
         <a href="teaching_materials.html"><i class="fa-solid fa-file-arrow-up"></i> อัปโหลดสื่อการสอน</a>
         <a href="teacher_open_materials.html"><i class="fa-solid fa-book-open-reader"></i> ดูสื่อการสอน</a>
       </nav>
-
     </aside>
 
     <!-- Main -->
     <main class="main">
       <div class="page-head">
         <h1 class="m-0">รายชื่อผู้เข้าสอบและผลคะแนน</h1>
-        <!-- <a href="teacher_dashboard.html" class="btn btn-primary"><i class="fa-solid fa-arrow-left"></i> กลับหน้าหลัก</a> -->
       </div>
 
       <div id="errorBox" class="message error" style="display:none;"></div>
@@ -202,7 +264,7 @@
       </div>
 
       <div id="results-container">
-        <table>
+        <table role="table" aria-label="ตารางรายชื่อผู้เข้าสอบ">
           <thead>
             <tr>
               <th>รหัสนักศึกษา</th>
@@ -210,7 +272,7 @@
               <th>ชุดข้อสอบ</th>
               <th>คะแนน</th>
               <th>เวลาเริ่มสอบ</th>
-              <th>เวลา-ส่งข้อสอบ</th>
+              <th>เวลาส่งข้อสอบ</th>
               <th></th>
             </tr>
           </thead>
@@ -223,7 +285,7 @@
       </div>
 
       <!-- Modal รายละเอียด -->
-      <div id="detailBackdrop" class="modal-backdrop"></div>
+      <div id="detailBackdrop" class="modal-backdrop" aria-hidden="true"></div>
       <div id="detailModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
         <header>
           <h3 id="detailTitle">รายละเอียดการสอบ</h3>
@@ -251,7 +313,9 @@
             </div>
           </div>
 
-          <canvas id="resultChart" height="160"></canvas>
+          <div class="chart-wrap">
+            <canvas id="resultChart" height="160" aria-label="กราฟสรุปผลถูก/ผิด"></canvas>
+          </div>
 
           <div class="wrong-list">
             <h4 style="margin:14px 0 6px">ข้อที่ตอบผิด</h4>
@@ -263,81 +327,60 @@
   </div>
 
   <script>
-    // ---------- Config / State ----------
-    const API_BASE = 'api/';  // Relative path - works both locally and on production
+    // ---------- Config ----------
+    const API_BASE = 'api/';
     const ENDPOINT_LIST = API_BASE + 'get_all_results_new.php';
     const ENDPOINT_DETAILS = API_BASE + 'get_session_answers.php';
 
+    // ---------- State ----------
     let SESSIONS = [];
     let _chartInstance = null;
 
-    // ---------- Helpers ----------
+    // ---------- Utils ----------
     const $ = (id) => document.getElementById(id);
-    function esc(s) {
-      return String(s ?? '')
-        .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-        .replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-    function toBool(v) {
-      if (typeof v === 'boolean') return v;
-      if (typeof v === 'number') return v !== 0;
-      if (typeof v === 'string') return v === '1' || v.toLowerCase() === 'true' || v === '✓';
-      return false;
-    }
-    function getTeacherToken() {
-      // รองรับทั้ง local/session และทั้งชื่อ teacherToken / instructorToken
-      return (
-        localStorage.getItem('teacherToken') ||
-        localStorage.getItem('instructorToken') ||
-        sessionStorage.getItem('teacherToken') ||
-        sessionStorage.getItem('instructorToken') ||
-        null
-      );
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      const name = localStorage.getItem('instructor_name');
-      if (name) document.getElementById('teacherName').textContent = name;
-
-      document.getElementById('logoutBtn')?.addEventListener('click', () => {
-        if (confirm('ต้องการออกจากระบบหรือไม่')) {
-          localStorage.removeItem('teacherToken');
-          localStorage.removeItem('instructor_name');
-          location.href = 'teacher_login.html';
-        }
-      });
-    });
-
-    // (ตัวช่วย debug) ดู role ใน payload ได้ทันทีที่โหลดหน้า
-    function _peekRole(token) {
-      try {
-        const p = JSON.parse(atob(token.split('.')[1]));
-        console.log('[JWT role]', p.role || p.user_role || p.typ || p.scope, p);
-      } catch { }
-    }
+    const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const toBool = (v) => (v === 1 || v === '1' || v === true || (typeof v === 'string' && v.toLowerCase() === 'true') || v === '✓');
+    const fmtDT = (s) => !s ? '-' : new Date((s + '').replace(' ', 'T')).toLocaleString('th-TH', { hour12: false });
+    const getTeacherToken = () =>
+      localStorage.getItem('teacherToken') ||
+      localStorage.getItem('instructorToken') ||
+      sessionStorage.getItem('teacherToken') ||
+      sessionStorage.getItem('instructorToken') || null;
 
     // ---------- Boot ----------
     document.addEventListener('DOMContentLoaded', () => {
-      init();
+      // name
+      const name = localStorage.getItem('instructor_name');
+      if (name) $('teacherName').textContent = name;
 
-      $('backBtn').addEventListener('click', () => location.href = 'teacher_dashboard.html');
-      $('logoutBtn').addEventListener('click', () => {
-        localStorage.removeItem('teacherToken');
-        sessionStorage.removeItem('teacherToken');
-        location.href = 'teacher_login.html';
+      // events
+      $('logoutBtn')?.addEventListener('click', () => {
+        if (confirm('ต้องการออกจากระบบหรือไม่')) {
+          localStorage.removeItem('teacherToken');
+          localStorage.removeItem('instructorToken');
+          localStorage.removeItem('instructor_name');
+          sessionStorage.removeItem('teacherToken');
+          sessionStorage.removeItem('instructorToken');
+          location.href = 'teacher_login.html';
+        }
       });
-      $('searchInput').addEventListener('input', (e) => filterTable(e.target.value));
 
-      // ปุ่มดูรายละเอียด (event delegation)
-      $('results-container').addEventListener('click', (e) => {
+      $('searchInput')?.addEventListener('input', (e) => filterTable(e.target.value));
+
+      $('results-container')?.addEventListener('click', (e) => {
         const btn = e.target.closest('.btn-details');
         if (!btn) return;
         const tr = btn.closest('tr');
-        viewDetails(tr?.dataset.sessionId, tr?.dataset.studentId);
+        const sessionId = tr?.dataset.sessionId;
+        const studentId = tr?.dataset.studentId;
+        if (!sessionId) return alert('ไม่พบรหัส session ของรายการนี้');
+        viewDetails(sessionId, studentId);
       });
+
+      init();
     });
 
-    // ---------- Init (ตัวเดียวพอ) ----------
+    // ---------- Init ----------
     async function init() {
       const token = getTeacherToken();
       const tbody = $('results-table-body');
@@ -354,29 +397,18 @@
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
         });
-
         const raw = await resp.text();
-        console.log('RAW:', raw);
-
-        if (resp.status === 401) {
-          errorBox.textContent = 'โทเคนหมดอายุ กรุณาเข้าสู่ระบบใหม่';
-          errorBox.style.display = 'block';
-          return;
-        }
-        if (resp.status === 403) {
-          errorBox.textContent = 'สิทธิ์ไม่เพียงพอ (ใช้โทเค็นนิสิต?)';
-          errorBox.style.display = 'block';
-          return;
-        }
-
         let data;
         try { data = JSON.parse(raw); }
         catch {
           errorBox.textContent = 'เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON';
           errorBox.style.display = 'block';
-          tbody.innerHTML = `<tr><td colspan="7">${raw}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7">${esc(raw)}</td></tr>`;
           return;
         }
+
+        if (resp.status === 401) { errorBox.textContent = 'โทเคนหมดอายุ กรุณาเข้าสู่ระบบใหม่'; errorBox.style.display = 'block'; return; }
+        if (resp.status === 403) { errorBox.textContent = 'สิทธิ์ไม่เพียงพอ (ใช้โทเค็นนิสิต?)'; errorBox.style.display = 'block'; return; }
 
         if (!resp.ok || data.status !== 'success' || !Array.isArray(data.data)) {
           errorBox.textContent = data?.message || `HTTP ${resp.status}`;
@@ -387,26 +419,20 @@
         SESSIONS = data.data;
         renderTable(SESSIONS);
       } catch (err) {
-        console.error(err);
-        errorBox.textContent = err.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้';
-        errorBox.style.display = 'block';
+        $('errorBox').textContent = err.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้';
+        $('errorBox').style.display = 'block';
       }
     }
 
     // ---------- Table ----------
     function filterTable(searchText) {
-      const tbody = $('results-table-body');
-      if (!tbody) return;
-
-      const rows = tbody.getElementsByTagName('tr');
+      const rows = $('results-table-body')?.getElementsByTagName('tr') || [];
       for (const row of rows) {
         const cells = row.getElementsByTagName('td');
         if (!cells.length) continue;
         let found = false;
         for (const cell of cells) {
-          if (cell.textContent.toLowerCase().includes(searchText.toLowerCase())) {
-            found = true; break;
-          }
+          if (cell.textContent.toLowerCase().includes(searchText.toLowerCase())) { found = true; break; }
         }
         row.style.display = found ? '' : 'none';
       }
@@ -414,9 +440,7 @@
 
     function renderTable(rows) {
       const tbody = $('results-table-body');
-      if (!tbody) return;
-
-      if (!rows.length) {
+      if (!rows?.length) {
         tbody.innerHTML = '<tr><td colspan="7">ไม่พบข้อมูล</td></tr>';
         return;
       }
@@ -424,32 +448,29 @@
       tbody.innerHTML = rows.map(r => {
         const status = r.end_time ? 'completed' : (r.start_time ? 'in_progress' : 'registered');
         const scoreText = (r.score == null || r.score === '') ? '–' : (+r.score).toFixed(2);
+        const sid = r.session_id ?? r.examsession_id ?? r.sessionId ?? r.id ?? '';
 
         return `
-        <tr
-          data-session-id="${esc(r.session_id)}"
-          data-student-id="${esc(r.student_id)}"
-          data-student-name="${esc(r.student_name || '')}"
-          data-exam-title="${esc(r.exam_title || '')}"
-          data-score="${esc(scoreText)}"
-          data-start-time="${esc(r.start_time || '')}"
-          data-end-time="${esc(r.end_time || '')}"
-          data-status="${esc(status)}"
-          aria-label="แถวข้อมูลสถานะ ${esc(status)}"
-        >
-          <td>${esc(r.student_id)}</td>
-          <td>${esc(r.student_name || '')}</td>
-          <td>${esc(r.exam_title || '')}</td>
-          <td>${scoreText}</td>
-          <td>${esc(r.start_time || '-')}</td>
-          <td>${esc(r.end_time || '-')}</td>
-          <td>
-            <button type="button" class="btn-details" title="ดูรายละเอียดของ ${esc(r.student_name || r.student_id)}">
-              <i class="fas fa-circle-info"></i> ดูรายละเอียด
-            </button>
-          </td>
-        </tr>
-      `;
+          <tr
+            data-session-id="${esc(sid)}"
+            data-student-id="${esc(r.student_id)}"
+            data-student-name="${esc(r.student_name || '')}"
+            data-exam-title="${esc(r.exam_title || '')}"
+            data-start-time="${esc(r.start_time || '')}"
+            data-end-time="${esc(r.end_time || '')}"
+            data-status="${esc(status)}"
+            aria-label="แถวข้อมูลสถานะ ${esc(status)}"
+          >
+            <td>${esc(r.student_id)}</td>
+            <td>${esc(r.student_name || '')}</td>
+            <td>${esc(r.exam_title || '')}</td>
+            <td>${scoreText}</td>
+            <td>${esc(r.start_time || '-')}</td>
+            <td>${esc(r.end_time || '-')}</td>
+            <td><button type="button" class="btn-details" title="ดูรายละเอียดของ ${esc(r.student_name || r.student_id)}">
+              <i class="fas fa-circle-info"></i> ดูรายละเอียด</button></td>
+          </tr>
+        `;
       }).join('');
     }
 
@@ -460,17 +481,16 @@
 
     function fillDetailMeta(det) {
       $('detailMeta').innerHTML = `
-      <div><b>รหัสนิสิต:</b> ${esc(det.student_id)} &nbsp;&nbsp; <b>ชื่อ-สกุล:</b> ${esc(det.student_name)}</div>
-      <div><b>ชุดข้อสอบ:</b> ${esc(det.exam_title)}</div>
-      <div><b>เวลาเริ่ม:</b> ${esc(det.start_time)} &nbsp;&nbsp; <b>เวลาสิ้นสุด:</b> ${esc(det.end_time)}</div>
-      <div><b>สถานะ:</b> ${esc(det.status)}</div>
-    `;
+        <div><b>รหัสนิสิต:</b> ${esc(det.student_id)} &nbsp;&nbsp; <b>ชื่อ-สกุล:</b> ${esc(det.student_name)}</div>
+        <div><b>ชุดข้อสอบ:</b> ${esc(det.exam_title)}</div>
+        <div><b>เวลาเริ่ม:</b> ${esc(fmtDT(det.start_time))} &nbsp;&nbsp; <b>เวลาสิ้นสุด:</b> ${esc(fmtDT(det.end_time))}</div>
+        <div><b>สถานะ:</b> ${esc(det.status)}</div>`;
     }
     function fillKPIs({ total, correct, wrong, score }) {
-      $('kpi_total').textContent = total ?? '-';
-      $('kpi_correct').textContent = correct ?? '-';
-      $('kpi_wrong').textContent = wrong ?? '-';
-      $('kpi_score').textContent = score ?? '-';
+      $('kpi_total').textContent = Number.isFinite(total) ? total : '-';
+      $('kpi_correct').textContent = Number.isFinite(correct) ? correct : '-';
+      $('kpi_wrong').textContent = Number.isFinite(wrong) ? wrong : '-';
+      $('kpi_score').textContent = Number.isFinite(score) ? score : '-';
     }
     function drawChart(correct, wrong) {
       const ctx = $('resultChart');
@@ -482,6 +502,8 @@
           datasets: [{ data: [correct || 0, wrong || 0] }]
         },
         options: {
+          responsive: true,
+          maintainAspectRatio: false,   // ✨ ให้ยืดตามกล่อง .chart-wrap
           plugins: { legend: { position: 'bottom' } },
           cutout: '60%'
         }
@@ -500,23 +522,24 @@
         const correctText = (it.correct_choice_text ?? '').trim();
         const studentDisplay = choiceLabel ? `${esc(choiceLabel)}${choiceText ? ' — ' + esc(choiceText) : ''}` : 'ไม่ได้เลือก';
         const correctDisplay = correctLbl ? `${esc(correctLbl)}${correctText ? ' — ' + esc(correctText) : ''}` : '-';
+
         return `
-        <div class="wrong-item">
-          <div class="badge">ข้อที่ ${i + 1} (QID: ${esc(it.question_id)})</div>
-          <div style="margin-top:6px"><b>คำถาม:</b> ${esc(it.question_text || '')}</div>
-          <div><b>คำตอบของนิสิต:</b> ${studentDisplay}</div>
-          <div><b>คำตอบที่ถูก:</b> ${correctDisplay}</div>
-        </div>`;
+          <div class="wrong-item">
+            <div class="badge">ข้อที่ ${i + 1} (QID: ${esc(it.question_id ?? '')})</div>
+            <div style="margin-top:6px"><b>คำถาม:</b> ${esc(it.question_text || '')}</div>
+            <div><b>คำตอบของนิสิต:</b> ${studentDisplay}</div>
+            <div><b>คำตอบที่ถูก:</b> ${correctDisplay}</div>
+          </div>`;
       }).join('');
     }
 
     // ---------- Details ----------
     async function viewDetails(sessionId, studentId) {
       const token = getTeacherToken();
-      if (!token) { alert('ไม่ได้ล็อกอิน'); return; }
+      if (!token) return alert('ไม่ได้ล็อกอิน');
 
-      const row = document.querySelector(`tr[data-session-id="${sessionId}"]`);
-      if (!row) { alert('ไม่พบแถวข้อมูล'); return; }
+      const row = document.querySelector(`tr[data-session-id="${CSS.escape(sessionId)}"]`);
+      if (!row) return alert('ไม่พบแถวข้อมูล');
 
       const base = {
         student_id: row.dataset.studentId || studentId || '',
@@ -529,30 +552,21 @@
 
       openDetailModal();
       fillDetailMeta(base);
-      fillKPIs({ total: '-', correct: '-', wrong: '-', score: '-' });
+      fillKPIs({ total: NaN, correct: NaN, wrong: NaN, score: NaN });
       drawChart(0, 0);
-      renderWrongList([]);
+      $('wrongContainer').textContent = 'กำลังโหลด...';
 
       try {
-        // กัน cache + log raw response
         const url = `${ENDPOINT_DETAILS}?session_id=${encodeURIComponent(sessionId)}&t=${Date.now()}`;
-        console.log('[details] GET', url);
         const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
         const raw = await resp.text();
-        console.log('[details][raw]', raw);
 
         let payload;
         try { payload = JSON.parse(raw); }
-        catch (e) {
-          console.warn('[details] JSON parse error', e);
-          $('wrongContainer').innerHTML = `<div class="mismatch-note">❌ ตอบกลับไม่ใช่ JSON</div>`;
-          return;
-        }
+        catch { $('wrongContainer').innerHTML = `<div class="mismatch-note">❌ ตอบกลับไม่ใช่ JSON</div>`; return; }
 
         if (!resp.ok || payload?.status === 'error') {
-          console.warn('[details] bad response', resp.status, payload);
-          $('wrongContainer').innerHTML =
-            `<div class="mismatch-note">❌ โหลดรายละเอียดไม่สำเร็จ: ${esc(payload?.message || ('HTTP ' + resp.status))}</div>`;
+          $('wrongContainer').innerHTML = `<div class="mismatch-note">❌ โหลดรายละเอียดไม่สำเร็จ: ${esc(payload?.message || ('HTTP ' + resp.status))}</div>`;
           return;
         }
 
@@ -562,37 +576,28 @@
 
         let correct = Number(payload.correct_count);
         if (!Number.isFinite(correct)) {
-          correct = items.filter(x =>
-            x.is_correct === 1 || x.is_correct === '1' ||
-            (typeof x.is_correct === 'string' && x.is_correct.toLowerCase() === 'true')
-          ).length;
+          correct = items.filter(x => toBool(x.is_correct)).length;
         }
         const wrong = Math.max(0, total - correct);
 
         let score = Number(payload.score);
         if (!Number.isFinite(score) && total) score = +((correct / total) * 100).toFixed(2);
 
-        fillKPIs({ total, correct, wrong, score: Number.isFinite(score) ? score : '-' });
+        fillKPIs({ total, correct, wrong, score });
         drawChart(correct, wrong);
         renderWrongList(items);
 
-        // sync คอลัมน์คะแนนในตาราง
+        // อัปเดตคอลัมน์คะแนนในแถว
         if (Number.isFinite(score)) {
           row.dataset.score = String(score);
           const scoreCell = row.children?.[3];
           if (scoreCell) scoreCell.textContent = score.toFixed(2);
         }
-
-        console.log('[details][parsed]', { total, correct, wrong, score, itemsCount: items.length });
       } catch (e) {
-        console.warn('[details] fetch error', e);
-        $('wrongContainer').innerHTML =
-          `<div class="mismatch-note">❌ เกิดข้อผิดพลาดขณะเชื่อมต่อเซิร์ฟเวอร์</div>`;
+        $('wrongContainer').innerHTML = `<div class="mismatch-note">❌ เกิดข้อผิดพลาดขณะเชื่อมต่อเซิร์ฟเวอร์</div>`;
       }
     }
-
   </script>
-
 </body>
 
 </html>
