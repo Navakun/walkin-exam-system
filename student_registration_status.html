@@ -8,9 +8,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <!-- ไลบรารีสร้าง QR -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <!-- ไอคอน -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="icon" href="./favicon.ico">
   <style>
@@ -20,19 +17,6 @@
 
     .table td .btn-group {
       flex-wrap: wrap
-    }
-
-    .qr-hint {
-      font-size: .92rem;
-      color: #64748b
-    }
-
-    .swal2-html-container .mini {
-      font-size: .9rem
-    }
-
-    .swal2-actions {
-      gap: .5rem
     }
   </style>
 </head>
@@ -45,7 +29,7 @@
         onclick="window.location.href='student_dashboard.html'">กลับหน้าหลัก</button>
     </div>
 
-    <!-- Card แสดงสถานะปัจจุบัน -->
+    <!-- การ์ดสถานะปัจจุบัน -->
     <div id="currentRegCard" class="card mb-4" style="display:none;">
       <div id="currentRegHeader" class="card-header text-white">
         <strong>สถานะการลงทะเบียนปัจจุบัน</strong>
@@ -63,7 +47,9 @@
 
     <!-- ตารางประวัติ -->
     <div class="card">
-      <div class="card-header bg-secondary text-white"><strong>ประวัติการลงทะเบียนและการชำระเงิน</strong></div>
+      <div class="card-header bg-secondary text-white">
+        <strong>ประวัติการลงทะเบียนและการชำระเงิน</strong>
+      </div>
       <div class="card-body table-responsive">
         <table class="table table-bordered align-middle" id="regTable">
           <thead class="table-light">
@@ -85,56 +71,112 @@
   </div>
 
   <script>
-    /* ================== CONFIG ================== */
-    const API_BASE = '/api/'; // โฟลเดอร์ api อยู่รากโดเมน (Hostinger)
+    // ===== CONFIG =====
+    const API_BASE = '/api/';                 // Hostinger อยู่รากโดเมน
     const token = localStorage.getItem('studentToken');
-    if (!token) { window.location.href = "student_login.html"; }
+    if (!token) location.href = 'student_login.html';
 
-    /* ================== HELPERS ================== */
+    // ===== Helpers =====
     const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-    const $ = (s) => document.querySelector(s);
-    const fmtTH = (d) => d.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'medium' });
+    const $ = (sel) => document.querySelector(sel);
 
-    function formatThaiDate(s) { if (!s) return '-'; const d = new Date(s); return isNaN(d) ? '-' : `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`; }
-    function formatTime(t) { return t?.slice(0, 5) || ''; }
-    function isFutureDate(s) { const a = new Date(s); a.setHours(0, 0, 0, 0); const b = new Date(); b.setHours(0, 0, 0, 0); return a > b; }
-    function daysUntil(s) { const a = new Date(s); a.setHours(0, 0, 0, 0); const b = new Date(); b.setHours(0, 0, 0, 0); return Math.floor((a - b) / (1000 * 60 * 60 * 24)); }
-    function canCancel(reg) { if (['cancelled'].includes(reg.payment_status)) return false; const notPaid = ['pending', 'free'].includes(reg.payment_status); return notPaid && isFutureDate(reg.slot_date) && daysUntil(reg.slot_date) >= 3; }
+    function formatThaiDate(isoDate) {
+      if (!isoDate) return '-';
+      const d = new Date(isoDate); if (isNaN(d)) return '-';
+      return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
+    }
+    const formatTime = (t) => t?.slice(0, 5) || '';
+    function isFuture(dateStr) { const t = new Date(); t.setHours(0, 0, 0, 0); const d = new Date(dateStr); d.setHours(0, 0, 0, 0); return d > t; }
+    function daysUntil(dateStr) { const t = new Date(); t.setHours(0, 0, 0, 0); const d = new Date(dateStr); d.setHours(0, 0, 0, 0); return Math.floor((d - t) / (1000 * 60 * 60 * 24)); }
+
+    function canCancel(reg) {
+      if (reg.payment_status === 'cancelled' || reg.booking_status === 'cancelled') return false;
+      const notPaid = (reg.payment_status === 'pending' || reg.payment_status === 'free');
+      const d = daysUntil(reg.slot_date);
+      return notPaid && d >= 3 && isFuture(reg.slot_date);
+    }
+
+    function renderActionsCell(r) {
+      const wrap = (h) => `<div class="btn-group" role="group">${h}</div>`;
+      const status = (r.payment_status || '').toLowerCase();
+      if (status === 'cancelled') return `<span class="text-muted">ถูกยกเลิกแล้ว</span>`;
+      if (status === 'paid') return `<span class="text-success">ชำระแล้ว</span>`;
+      if (status === 'free' || status === 'waived') return `<span class="text-info">สิทธิ์สอบฟรี</span>`;
+
+      const payBtns = `
+      <button class="btn btn-sm btn-primary" onclick="startPay(${r.registration_id})">
+        <i class="bi bi-credit-card me-1"></i>ชำระเงิน
+      </button>
+      <a href="student_payment_upload.html?registration_id=${r.registration_id}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-upload me-1"></i>อัปโหลดสลิป
+      </a>`;
+      if (canCancel(r) && r.booking_id) {
+        const cancelBtn = `
+        <button class="btn btn-sm btn-outline-danger" onclick="cancelRegister(${r.registration_id}, ${r.booking_id})">
+          <i class="bi bi-x-circle me-1"></i>ยกเลิก
+        </button>`;
+        return wrap(payBtns + cancelBtn);
+      }
+      return wrap(payBtns);
+    }
 
     async function fetchJSON(url, opt = {}) {
       const res = await fetch(url, opt);
       const text = await res.text();
-      try { return { res, data: JSON.parse(text) }; } catch { throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`); }
+      try { return { res, data: JSON.parse(text) }; }
+      catch { throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`); }
     }
 
-    /* ================== RENDER ================== */
-    function actionCell(r) {
-      const wrap = (h) => `<div class="btn-group" role="group">${h}</div>`;
-      const st = (r.payment_status || '').toLowerCase();
-      if (st === 'cancelled') return `<span class="text-muted">ถูกยกเลิกแล้ว</span>`;
-      if (st === 'paid') return `<span class="text-success">ชำระแล้ว</span>`;
-      if (st === 'free' || st === 'waived') return `<span class="text-info">สิทธิ์สอบฟรี</span>`;
+    // ===== MAIN =====
+    async function loadRegs() {
+      try {
+        const { data } = await fetchJSON(API_BASE + 'get_my_registrations.php', {
+          headers: { Authorization: `Bearer ${token}` }, cache: 'no-store'
+        });
+        const tbody = $("#regTable tbody"); tbody.innerHTML = '';
+        if (data.status !== 'success' || !data.registrations?.length) {
+          tbody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่พบประวัติการลงทะเบียน</td></tr>';
+          $("#currentRegCard").style.display = 'none';
+          return;
+        }
 
-      const payBtns = `
-    <button class="btn btn-sm btn-primary" onclick="startPay(${r.registration_id})">
-      <i class="bi bi-qr-code me-1"></i>ชำระเงิน
-    </button>
-    <a class="btn btn-sm btn-outline-primary" href="student_payment_upload.html?registration_id=${r.registration_id}">
-      <i class="bi bi-upload me-1"></i>อัปโหลดสลิป
-    </a>`;
-      const cancelBtn = canCancel(r) && r.booking_id ? `
-    <button class="btn btn-sm btn-outline-danger" onclick="cancelRegister(${r.registration_id}, ${r.booking_id})">
-      <i class="bi bi-x-circle me-1"></i>ยกเลิก
-    </button>` : '';
-      return wrap(payBtns + cancelBtn);
+        // แสดงรายการล่าสุดบนการ์ด
+        showCurrentReg(data.registrations[0]);
+
+        data.registrations.forEach(r => {
+          const tr = document.createElement('tr');
+          const badge = {
+            pending: '<span class="badge bg-warning text-dark">รอชำระเงิน</span>',
+            paid: '<span class="badge bg-success">ชำระแล้ว</span>',
+            free: '<span class="badge bg-info">สิทธิ์ฟรี</span>',
+            cancelled: '<span class="badge bg-secondary">ยกเลิกแล้ว</span>'
+          }[r.payment_status] || '<span class="badge bg-secondary">ไม่ทราบสถานะ</span>';
+
+          tr.className = ({
+            pending: 'table-warning', paid: 'table-success', free: 'table-info', cancelled: 'table-secondary'
+          }[r.payment_status] || '');
+
+          tr.innerHTML = `
+          <td>${formatThaiDate(r.slot_date)}</td>
+          <td>${formatTime(r.start_time)} - ${formatTime(r.end_time)}</td>
+          <td>${r.attempt_no}</td>
+          <td>${r.fee_amount > 0 ? r.fee_amount + ' บาท' : 'ฟรี'}</td>
+          <td>${badge}</td>
+          <td>${r.ref_no || '-'}</td>
+          <td>${r.paid_at ? new Date(r.paid_at).toLocaleString('th-TH') : '-'}</td>
+          <td>${renderActionsCell(r)}</td>`;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: err.message || 'กรุณาลองใหม่อีกครั้ง' });
+      }
     }
 
-    function paintCurrent(reg) {
-      const card = $("#currentRegCard"), hdr = $("#currentRegHeader"), ul = $("#currentRegDetail"),
-        payWrap = $("#payBtn"), cancelBtn = $("#cancelBtnCard");
-
+    function showCurrentReg(reg) {
+      const card = $("#currentRegCard"), detail = $("#currentRegDetail"), pay = $("#payBtn"), header = $("#currentRegHeader"), cancel = $("#cancelBtnCard");
       card.style.display = 'block';
-      hdr.className = ({
+      header.className = ({
         pending: "card-header bg-warning text-dark",
         paid: "card-header bg-success text-white",
         free: "card-header bg-info text-white",
@@ -148,88 +190,47 @@
         cancelled: '<span class="badge bg-secondary">ยกเลิกแล้ว</span>'
       }[reg.payment_status] || '<span class="badge bg-secondary">ไม่ทราบสถานะ</span>';
 
-      ul.innerHTML = `
-    <li><strong>วันที่สอบ:</strong> ${formatThaiDate(reg.slot_date)}</li>
-    <li><strong>เวลา:</strong> ${formatTime(reg.start_time)} - ${formatTime(reg.end_time)}</li>
-    <li><strong>ครั้งที่:</strong> ${reg.attempt_no}</li>
-    <li><strong>ค่าธรรมเนียม:</strong> ${reg.fee_amount > 0 ? reg.fee_amount + ' บาท' : 'ฟรี'}</li>
-    <li><strong>สถานะ:</strong> ${badge}</li>
-    <li><strong>เลขที่อ้างอิง:</strong> ${reg.ref_no || '-'}</li>
-    <li><strong>วันเวลาชำระเงิน:</strong> ${reg.paid_at ? fmtTH(new Date(reg.paid_at)) : '-'}</li>`;
+      detail.innerHTML = `
+      <li><strong>วันที่สอบ:</strong> ${formatThaiDate(reg.slot_date)}</li>
+      <li><strong>เวลา:</strong> ${formatTime(reg.start_time)} - ${formatTime(reg.end_time)}</li>
+      <li><strong>ครั้งที่:</strong> ${reg.attempt_no}</li>
+      <li><strong>ค่าธรรมเนียม:</strong> ${reg.fee_amount > 0 ? reg.fee_amount + ' บาท' : 'ฟรี'}</li>
+      <li><strong>สถานะ:</strong> ${badge}</li>
+      <li><strong>เลขที่อ้างอิง:</strong> ${reg.ref_no || '-'}</li>
+      <li><strong>วันเวลาชำระเงิน:</strong> ${reg.paid_at ? new Date(reg.paid_at).toLocaleString('th-TH') : '-'}</li>`;
 
       if (reg.payment_status === 'pending') {
-        payWrap.style.display = 'block';
-        payWrap.innerHTML = `
-      <div class="btn-group">
-        <button class="btn btn-primary" onclick="startPay(${reg.registration_id})">
-          <i class="bi bi-qr-code me-1"></i>ชำระเงิน
-        </button>
-        <a class="btn btn-outline-primary" href="student_payment_upload.html?registration_id=${reg.registration_id}">
-          <i class="bi bi-upload me-1"></i>อัปโหลดสลิป
-        </a>
-      </div>`;
+        pay.style.display = 'block';
+        pay.innerHTML = `
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="startPay(${reg.registration_id})">
+            <i class="bi bi-credit-card me-1"></i>ชำระเงิน
+          </button>
+          <a class="btn btn-outline-primary" href="student_payment_upload.html?registration_id=${reg.registration_id}">
+            <i class="bi bi-upload me-1"></i>อัปโหลดสลิป
+          </a>
+        </div>`;
       } else {
-        payWrap.style.display = 'none'; payWrap.innerHTML = '';
+        pay.style.display = 'none'; pay.innerHTML = '';
       }
 
-      if (canCancel(reg)) { cancelBtn.style.display = 'inline-block'; cancelBtn.onclick = () => cancelRegister(reg.registration_id, reg.booking_id ?? null); }
-      else { cancelBtn.style.display = 'none'; cancelBtn.onclick = null; }
-    }
-
-    /* ================== LOAD LIST ================== */
-    async function loadRegs() {
-      try {
-        const { data } = await fetchJSON(API_BASE + "get_my_registrations.php", {
-          headers: { Authorization: `Bearer ${token}` }, cache: 'no-store'
-        });
-        const tbody = $("#regTable tbody"); tbody.innerHTML = "";
-
-        if (data.status !== "success" || !Array.isArray(data.registrations) || !data.registrations.length) {
-          $("#currentRegCard").style.display = 'none';
-          tbody.innerHTML = '<tr><td colspan="8" class="text-center">ไม่พบประวัติการลงทะเบียน</td></tr>';
-          return;
-        }
-
-        paintCurrent(data.registrations[0]);
-
-        data.registrations.forEach(r => {
-          const tr = document.createElement('tr');
-          const badge = {
-            pending: '<span class="badge bg-warning text-dark">รอชำระเงิน</span>',
-            paid: '<span class="badge bg-success">ชำระแล้ว</span>',
-            free: '<span class="badge bg-info">สิทธิ์ฟรี</span>',
-            cancelled: '<span class="badge bg-secondary">ยกเลิกแล้ว</span>'
-          }[r.payment_status] || '<span class="badge bg-secondary">ไม่ทราบสถานะ</span>';
-
-          tr.className = ({ pending: 'table-warning', paid: 'table-success', free: 'table-info', cancelled: 'table-secondary' }[r.payment_status]) || '';
-          tr.innerHTML = `
-        <td>${formatThaiDate(r.slot_date)}</td>
-        <td>${formatTime(r.start_time)} - ${formatTime(r.end_time)}</td>
-        <td>${r.attempt_no}</td>
-        <td>${r.fee_amount > 0 ? `${r.fee_amount} บาท` : 'ฟรี'}</td>
-        <td>${badge}</td>
-        <td>${r.ref_no || '-'}</td>
-        <td>${r.paid_at ? fmtTH(new Date(r.paid_at)) : '-'}</td>
-        <td>${actionCell(r)}</td>`;
-          tbody.appendChild(tr);
-        });
-      } catch (err) {
-        console.error(err);
-        Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: err.message || 'กรุณาลองใหม่อีกครั้ง' });
+      if (canCancel(reg)) {
+        cancel.style.display = 'inline-block';
+        cancel.onclick = () => cancelRegister(reg.registration_id, reg.booking_id ?? null);
+      } else {
+        cancel.style.display = 'none'; cancel.onclick = null;
       }
     }
 
-    /* ================== CANCEL ================== */
+    // ===== CANCEL =====
     async function cancelRegister(registrationId, bookingId = null) {
       const btn = document.activeElement?.closest('button');
-      if (btn) { btn.disabled = true; btn.dataset._old = btn.innerHTML; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังยกเลิก...'; }
+      if (btn) { btn.disabled = true; btn.dataset._t = btn.innerHTML; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังยกเลิก...'; }
       try {
         const { value: reason, isConfirmed } = await Swal.fire({
-          icon: 'warning', title: 'ยกเลิกการลงทะเบียน?', showCancelButton: true,
-          confirmButtonText: 'ยืนยันยกเลิก', cancelButtonText: 'ไม่ยกเลิก',
-          html: `<div class="text-start mini">ต้องยกเลิกล่วงหน้าอย่างน้อย <b>3 วัน</b> ก่อนวันสอบ</div>
-            <textarea id="reason" class="form-control mt-2" placeholder="เหตุผล (ไม่บังคับ)"></textarea>`,
-          preConfirm: () => document.getElementById('reason').value.trim()
+          icon: 'warning', title: 'ยกเลิกการลงทะเบียน?', html: `<div class="text-start">ต้องยกเลิกล่วงหน้าอย่างน้อย <b>3 วัน</b><br><label class="form-label mt-2">เหตุผล (ไม่บังคับ)</label><textarea id="reason" class="form-control" rows="3"></textarea></div>`,
+          showCancelButton: true, confirmButtonText: 'ยืนยันยกเลิก', cancelButtonText: 'ไม่ยกเลิก',
+          preConfirm: () => (document.getElementById('reason')?.value ?? '').trim()
         });
         if (!isConfirmed) return;
 
@@ -237,141 +238,76 @@
         const body = (bookingId != null && bookingId !== '') ? { booking_id: Number(bookingId), reason } : { registration_id: Number(registrationId), reason };
 
         const { res, data } = await fetchJSON(url, {
-          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(body), cache: 'no-store'
         });
-        if (!(res.ok && data.status === 'success')) throw new Error(data.message || `HTTP ${res.status}`);
 
-        await Swal.fire({ icon: 'success', title: 'ยกเลิกสำเร็จ', timer: 1300, showConfirmButton: false });
+        const msg = (data?.message || data?.msg || '').toString();
+        const ok = (res.ok && data.status === 'success') || /already\s*cancel/i.test(msg) || /success/i.test(msg);
+        if (!ok) throw new Error(msg || `ยกเลิกไม่สำเร็จ (HTTP ${res.status})`);
+
+        await Swal.fire({ icon: 'success', title: /already\s*cancel/i.test(msg) ? 'ยกเลิกไว้ก่อนแล้ว' : 'ยกเลิกสำเร็จ', timer: 1400, showConfirmButton: false });
         await loadRegs();
       } catch (e) {
-        console.error(e); Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: e.message || 'โปรดลองใหม่' });
+        console.error(e);
+        Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: e.message || 'โปรดลองใหม่' });
       } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset._old || 'ยกเลิก'; delete btn.dataset._old; }
+        if (btn) { btn.disabled = false; if (btn.dataset._t) btn.innerHTML = btn.dataset._t; delete btn.dataset._t; }
       }
     }
 
-    /* ================== PAYMENT: CREATE + QR + POLL ================== */
+    // ===== PAYMENT (QR) =====
     async function startPay(registrationId) {
       try {
-        // เรียกสร้างรายการชำระเงิน
-        const { res, data } = await fetchJSON(API_BASE + "payments/create.php?dbg=1", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ registration_id: regId }),
-          cache: "no-store",
+        const { res, data } = await fetchJSON(API_BASE + 'payments/create.php?dbg=1', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ registration_id: Number(registrationId) }),
+          cache: 'no-store'
+        });
+        if (!res.ok || data.status !== 'success') {
+          throw new Error(data?.message || `HTTP ${res.status}`);
+        }
+
+        const amount = data.amount ?? 0;
+        const ref = data.ref_no || '-';
+        const qrImg = data.qr?.image_url || '';
+        const payload = data.qr?.payload || '';
+
+        await Swal.fire({
+          title: 'ชำระเงินด้วย QR พร้อมเพย์',
+          html: `
+          <div class="text-start mb-2">
+            <div><b>จำนวนเงิน:</b> ${amount} บาท</div>
+            <div><b>เลขที่อ้างอิง:</b> ${ref}</div>
+          </div>
+          <div class="d-flex justify-content-center mb-2">
+            ${qrImg ? `<img alt="QR" src="${qrImg}" style="width:240px;height:240px;border:1px solid #eee;border-radius:8px">` : ''}
+          </div>
+          <div class="small text-muted" style="word-break:break-all">${payload ? 'Payload: ' + payload : ''}</div>
+          <hr class="my-2">
+          <div class="alert alert-info py-2">
+            <div class="mb-1"><b>หลังโอนแล้ว</b> กรุณาอัปโหลดสลิปเพื่อยืนยันการชำระ</div>
+            <a class="btn btn-outline-primary btn-sm" href="student_payment_upload.html?registration_id=${registrationId}">
+              <i class="bi bi-upload me-1"></i> ไปหน้าอัปโหลดสลิป
+            </a>
+          </div>
+        `,
+          width: 480,
+          showConfirmButton: true,
+          confirmButtonText: 'ปิด',
         });
 
-
-        // เปิด QR modal
-        await showQRModal({
-          payment_id: data.payment_id,
-          ref_no: data.ref_no,
-          amount: data.amount,
-          account: data.account,          // เบอร์/เลข PromptPay ที่รับเงิน (ถ้ามี)
-          payload: data.qr_payload,       // EMVCo/PromptPay payload พร้อมชำระ
-          expire_at: data.expire_at       // ISO string
-        });
-
-        // โหลดใหม่หลัง modal ปิด (อาจจ่ายแล้ว)
+        // โหลดตารางใหม่ (เผื่อ backend mark pending แล้ว)
         await loadRegs();
+
       } catch (err) {
         console.error(err);
         Swal.fire({ icon: 'error', title: 'เริ่มชำระเงินไม่สำเร็จ', text: err.message || 'กรุณาลองใหม่' });
       }
     }
 
-    // Modal แสดง QR + นับถอยหลัง + ปุ่มต่าง ๆ และ Poll สถานะ
-    async function showQRModal(pay) {
-      let timerId = null, pollId = null;
-
-      const html = `
-    <div class="text-center">
-      <div id="qrcanvaswrap" class="mb-2"><canvas id="qrCanvas" width="264" height="264"></canvas></div>
-      <div class="fw-bold mb-1">จำนวนเงิน: <span id="amtText">${Number(pay.amount).toFixed(2)}</span> บาท</div>
-      <div class="mini">เลขอ้างอิง: <code id="refText">${pay.ref_no}</code></div>
-      <div class="mini">ชำระภายใน: <span id="countdown">--:--</span></div>
-      <div class="qr-hint mt-2">สแกนด้วยแอปธนาคาร / พร้อมเพย์ เพื่อชำระเงิน</div>
-    </div>`;
-
-      const swal = await Swal.fire({
-        title: 'ชำระเงินด้วย QR พร้อมเพย์',
-        html, width: 420, showCancelButton: true, showConfirmButton: true,
-        confirmButtonText: 'ตรวจสถานะอีกครั้ง', cancelButtonText: 'ปิด',
-        didOpen: () => {
-          // วาด QR
-          const c = document.getElementById('qrCanvas');
-          QRCode.toCanvas(c, pay.payload, { width: 264, margin: 1 }, (err) => { if (err) console.error(err); });
-
-          // ปุ่มเสริม (คัดลอก/ดาวน์โหลด)
-          const btns = Swal.getActions();
-          const btnCopyRef = document.createElement('button');
-          btnCopyRef.className = 'swal2-styled'; btnCopyRef.textContent = 'คัดลอกเลขอ้างอิง';
-          btnCopyRef.onclick = () => navigator.clipboard?.writeText(pay.ref_no);
-          const btnCopyAmt = document.createElement('button');
-          btnCopyAmt.className = 'swal2-styled'; btnCopyAmt.textContent = 'คัดลอกจำนวนเงิน';
-          btnCopyAmt.onclick = () => navigator.clipboard?.writeText(String(pay.amount));
-          const btnDownload = document.createElement('button');
-          btnDownload.className = 'swal2-styled'; btnDownload.textContent = 'ดาวน์โหลด QR';
-          btnDownload.onclick = () => {
-            const link = document.createElement('a');
-            link.download = `QR_${pay.ref_no}.png`;
-            link.href = c.toDataURL('image/png'); link.click();
-          };
-          const btnUpload = document.createElement('a');
-          btnUpload.className = 'swal2-styled'; btnUpload.textContent = 'อัปโหลดสลิป';
-          btnUpload.href = `student_payment_upload.html?ref_no=${encodeURIComponent(pay.ref_no)}`;
-          btnUpload.target = '_blank';
-          btns.prepend(btnUpload); btns.prepend(btnDownload); btns.prepend(btnCopyAmt); btns.prepend(btnCopyRef);
-
-          // นับถอยหลัง
-          const countdownEl = document.getElementById('countdown');
-          function tick() {
-            const now = new Date();
-            const end = new Date(pay.expire_at || now);
-            const sec = Math.max(0, Math.floor((end - now) / 1000));
-            const mm = String(Math.floor(sec / 60)).padStart(2, '0');
-            const ss = String(sec % 60).padStart(2, '0');
-            countdownEl.textContent = `${mm}:${ss}`;
-            if (sec <= 0) { clearInterval(timerId); }
-          }
-          tick(); timerId = setInterval(tick, 1000);
-
-          // เริ่ม Poll สถานะทุก 4 วินาที
-          pollId = setInterval(async () => {
-            try {
-              const q = pay.payment_id ? `payment_id=${pay.payment_id}` : `ref_no=${encodeURIComponent(pay.ref_no)}`;
-              const { data } = await fetchJSON(API_BASE + `payments/status.php?${q}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
-              if (data.status === 'success' && data.payment_status === 'paid') {
-                clearInterval(timerId); clearInterval(pollId);
-                await Swal.fire({ icon: 'success', title: 'ชำระเงินสำเร็จ', timer: 1200, showConfirmButton: false });
-                Swal.close();
-              }
-            } catch (e) { console.warn('poll fail', e.message); }
-          }, 4000);
-        },
-        willClose: () => {
-          if (timerId) clearInterval(timerId);
-          if (pollId) clearInterval(pollId);
-        }
-      });
-
-      // ถ้ากด “ตรวจสถานะอีกครั้ง”
-      if (swal.isConfirmed) {
-        try {
-          const q = pay.payment_id ? `payment_id=${pay.payment_id}` : `ref_no=${encodeURIComponent(pay.ref_no)}`;
-          const { data } = await fetchJSON(API_BASE + `payments/status.php?${q}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
-          if (data.status === 'success' && data.payment_status === 'paid') {
-            await Swal.fire({ icon: 'success', title: 'ชำระเงินสำเร็จ', timer: 1200, showConfirmButton: false });
-          } else {
-            await Swal.fire({ icon: 'info', title: 'ยังไม่พบการชำระ', text: 'หากชำระแล้ว โปรดรอสักครู่หรือลองอัปโหลดสลิปยืนยัน' });
-          }
-        } catch (e) {
-          await Swal.fire({ icon: 'error', title: 'ตรวจสถานะไม่สำเร็จ', text: e.message || 'กรุณาลองใหม่' });
-        }
-      }
-    }
-
-    /* ================== BOOT ================== */
+    // boot
     loadRegs();
   </script>
 </body>
