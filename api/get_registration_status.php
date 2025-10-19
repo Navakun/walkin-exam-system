@@ -29,10 +29,10 @@ if (!in_array($role, ['teacher', 'instructor'], true)) {
 }
 
 try {
-    // timezone ไทย (กรณี DB เป็น UTC)
+    // ให้เวลาเป็นโซนไทย (ถ้า DB เก็บ UTC)
     $pdo->exec("SET time_zone = '+07:00'");
 
-    // ดึงรายการลงทะเบียนจากตารางหลัก exam_slot_registrations
+    // ดึงจากตารางลงทะเบียนหลัก + slot + student (+ examset ถ้ามี)
     $sql = "
         SELECT
             r.id                AS reg_id,
@@ -54,18 +54,17 @@ try {
 
             COALESCE(es.title,'ยังไม่กำหนดชุดข้อสอบ') AS exam_title,
 
-            /* เคยสอบจบไหม (ดูจากตาราง session ของคุณ) */
+            /* เคยสอบจบของ ‘รายการนี้’ ไหม: คนเดียวกัน + end_time มี + เวลา session อยู่ในช่วงสอบของ slot */
             (
-            SELECT CASE WHEN COUNT(*)>0 THEN 1 ELSE 0 END
-            FROM examsession x
-            WHERE x.student_id = r.student_id
+              SELECT CASE WHEN COUNT(*)>0 THEN 1 ELSE 0 END
+              FROM examsession x
+              WHERE x.student_id = r.student_id
                 AND x.end_time IS NOT NULL
-                AND (
-                    x.registration_id = r.id       /* ถ้ามีคอลัมน์นี้ใน examsession */
-                    OR x.slot_id = r.slot_id       /* หรือใช้ slot_id แทน */
-                    )
+                AND x.start_time BETWEEN TIMESTAMP(sl.exam_date, sl.start_time)
+                                     AND     TIMESTAMP(sl.exam_date, sl.end_time)
             ) AS has_completed_this,
 
+            /* ครั้งล่าสุดที่เคยสอบ (ทั้งหมดของนิสิต) */
             COALESCE((
               SELECT MAX(x2.attempt_no)
               FROM examsession x2
@@ -83,11 +82,9 @@ try {
 
     $nowTs = time();
     $out = array_map(function (array $r) use ($nowTs) {
-        // datetime ที่คำนวณจาก date+time
         $startAt = $r['v_start_at'] ?? null;
         $endAt   = $r['v_end_at']   ?? null;
 
-        // เวลาแสดงผล
         $st = trim((string)($r['start_time'] ?? ''));
         $et = trim((string)($r['end_time'] ?? ''));
         $examTimeText = $st . ((strlen($st) && strlen($et)) ? ' - ' : '') . $et;
@@ -99,25 +96,19 @@ try {
         $last = (int)($r['last_attempt'] ?? 0);
 
         return [
-            // ใช้ reg_id ที่ alias มาจาก r.id
-            'booking_id'     => (int)$r['reg_id'],              // ชื่อคีย์เดิม แต่เป็น id ของ registration
+            'booking_id'     => (int)$r['reg_id'],     // คีย์เดิมของ UI แต่คือ id ของ registration
             'student_id'     => $r['student_id'],
             'student_name'   => $r['student_name'],
             'exam_date'      => $r['exam_date'],
-            'exam_time'      => $examTimeText,                  // "HH:MM(:SS) - HH:MM(:SS)"
+            'exam_time'      => $examTimeText,
             'start_at'       => $startAt ?: null,
             'end_at'         => $endAt   ?: null,
             'exam_title'     => $r['exam_title'],
-
-            // ตารางนี้ไม่มี status → ใช้ payment_status เป็นตัวแทน
-            'status'         => $r['payment_status'],
-
-            // ตารางนี้ไม่มี scheduled_at → ใช้ registered_at (หรือ fallback created_at)
+            'status'         => $r['payment_status'],  // ใช้สถานะชำระเงินเป็นตัวแทน
             'scheduled_at'   => $r['registered_at'] ?: $r['created_at'] ?: null,
-
-            'has_completed'        => (int)($r['has_completed_this'] ?? 0), // เปลี่ยนให้ส่งเฉพาะรายการนี้
-            'last_attempt'         => (int)($r['last_attempt'] ?? 0),
-            'next_attempt'         => (int)($r['last_attempt'] ?? 0) + 1,
+            'has_completed'  => (int)($r['has_completed_this'] ?? 0), // ใช้ของ “รายการนี้” เท่านั้น
+            'last_attempt'   => $last,
+            'next_attempt'   => $last + 1,
             'is_future'      => $isFuture,
             'days_until'     => $daysUntil,
         ];
