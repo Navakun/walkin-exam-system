@@ -6,307 +6,261 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>รายชื่อผู้เข้าสอบ</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  <link rel="stylesheet" href="assets/css/main.css">
-  <link rel="stylesheet" href="assets/css/teacher.css">
-  <!-- Font Awesome (ลิงก์ถูกต้อง) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-    integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
-    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- ไอคอน (v6 ให้ตรงกับหน้าหลัก) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" />
+
+  <!-- สไตล์ของเพจนี้ -->
+  <link rel="stylesheet" href="assets/css/exam-user.css" />
+
+  <!-- เสริม layout ให้เหมือนแดชบอร์ด (กันกรณีไม่มี main.css/teacher.css) -->
+  <style>
+    .shell {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh
+    }
+
+    @media(max-width:1024px) {
+      .shell {
+        grid-template-columns: 1fr
+      }
+
+      .sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 25
+      }
+    }
+
+    .sidebar {
+      background: #0b1220;
+      color: #e5edff;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px
+    }
+
+    .side-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .side-brand img {
+      height: 42px;
+      width: auto
+    }
+
+    .side-title {
+      margin: 0;
+      font-size: 14px
+    }
+
+    .side-sub {
+      font-size: 12px;
+      opacity: .75
+    }
+
+    .me-chip {
+      background: rgba(255, 255, 255, .08);
+      border: 1px solid rgba(255, 255, 255, .14);
+      padding: 10px 12px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #e5edff;
+      width: 100%
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px
+    }
+
+    .nav .group {
+      margin: 14px 0 6px;
+      font-weight: 600;
+      color: #bcd2ff;
+      font-size: 12px;
+      letter-spacing: .3px
+    }
+
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: #e5edff;
+      text-decoration: none;
+      border: 1px solid transparent
+    }
+
+    .nav a:hover {
+      background: rgba(255, 255, 255, .06);
+      border-color: rgba(255, 255, 255, .14)
+    }
+
+    .nav a.active {
+      background: linear-gradient(90deg, rgba(14, 165, 233, .18), rgba(37, 99, 235, .18));
+      border-color: rgba(37, 99, 235, .35)
+    }
+
+    .side-footer {
+      margin-top: auto
+    }
+
+    .logout {
+      background: #ef4444;
+      color: #fff;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px
+    }
+
+    .main {
+      padding: 24px 28px;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto
+    }
+
+    .page-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px
+    }
+  </style>
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
-
-  <style>
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, .45);
-      display: none;
-      z-index: 999
-    }
-
-    .modal {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, .2);
-      width: min(900px, 92vw);
-      max-height: 90vh;
-      display: none;
-      z-index: 1000
-    }
-
-    .modal header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 14px 18px;
-      border-bottom: 1px solid #e5e7eb
-    }
-
-    .modal .body {
-      padding: 16px 18px;
-      overflow: auto;
-      max-height: calc(60vh - 56px)
-    }
-
-    .kpi {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 12px
-    }
-
-    .kpi .card {
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 12px
-    }
-
-    .wrong-list {
-      margin-top: 12px
-    }
-
-    .wrong-item {
-      border: 1px solid #fee2e2;
-      background: #fff7f7;
-      border-radius: 10px;
-      padding: 10px;
-      margin: 8px 0
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
-      font-size: 12px
-    }
-
-    .close-btn {
-      background: #ef4444;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 8px 14px;
-      cursor: pointer
-    }
-
-    .mismatch-note {
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      background: #fff7e6;
-      border: 1px solid #ffe0b3;
-      color: #7c4a03;
-    }
-
-    /* กล่องค้นหา */
-    .search-container {
-      margin: 14px 0 10px;
-    }
-
-    .search-container input {
-      width: min(460px, 100%);
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 10px 14px;
-      outline: none;
-      transition: box-shadow .15s, border-color .15s;
-    }
-
-    .search-container input:focus {
-      border-color: #7c3aed;
-      box-shadow: 0 0 0 3px rgba(124, 58, 237, .15);
-    }
-
-    /* ตาราง */
-    #results-container {
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #fff;
-    }
-
-    #results-container table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      min-width: 920px;
-    }
-
-    #results-container thead th {
-      position: sticky;
-      top: 0;
-      background: #f8fafc;
-      z-index: 1;
-      font-weight: 600;
-      color: #334155;
-      border-bottom: 1px solid #e5e7eb;
-      padding: 12px 14px;
-    }
-
-    #results-container tbody td {
-      padding: 12px 14px;
-      border-bottom: 1px solid #f1f5f9;
-    }
-
-    #results-container tbody tr:hover {
-      background: #fbfbff;
-    }
-
-    /* สีสถานะเป็นแถบด้านซ้ายของแถว */
-    tr[data-status="completed"] {
-      box-shadow: inset 3px 0 0 #10b981;
-    }
-
-    /* เขียว */
-    tr[data-status="in_progress"] {
-      box-shadow: inset 3px 0 0 #f59e0b;
-    }
-
-    /* เหลือง */
-    tr[data-status="registered"] {
-      box-shadow: inset 3px 0 0 #94a3b8;
-    }
-
-    /* เทา */
-
-    /* ปุ่ม "ดูรายละเอียด" */
-    .btn-details {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: #eef2ff;
-      color: #4338ca;
-      border: 1px solid #c7d2fe;
-      padding: 8px 12px;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: transform .05s ease, background .15s, border-color .15s;
-    }
-
-    .btn-details:hover {
-      background: #e0e7ff;
-      border-color: #a5b4fc;
-    }
-
-    .btn-details:active {
-      transform: translateY(1px);
-    }
-
-    /* ปรับ Modal เล็กน้อย */
-    .modal header h3 {
-      font-weight: 700;
-      color: #1f2937;
-    }
-
-    .modal .body {
-      max-height: calc(70vh - 56px);
-    }
-
-    /* Error message */
-    .message.error {
-      margin: 10px 0 14px;
-      padding: 10px 12px;
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #7f1d1d;
-      border-radius: 10px;
-    }
-  </style>
 </head>
 
 <body>
-  <header>
-    <div class="logo-text">
-      <img src="nulogo.png" alt="Logo" height="80" />
-      <div class="course-title">
-        <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ มหาวิทยาลัยนเรศวร</h2>
-      </div>
-    </div>
-    <div class="top-right">
-      <button type="button" id="backBtn" class="home-btn">กลับหน้าหลัก</button>
-      <button id="logoutBtn" class="logout-btn">ออกจากระบบ</button>
-    </div>
-  </header>
-
-  <main class="teacher-dashboard">
-    <h1>รายชื่อผู้เข้าสอบและผลคะแนน</h1>
-
-    <div id="errorBox" class="message error" style="display:none;"></div>
-
-    <div class="search-container">
-      <input type="text" id="searchInput" placeholder="ค้นหาจากรหัสนักศึกษา หรือ ชื่อ-นามสกุล..." />
-    </div>
-
-    <div id="results-container">
-      <table>
-        <thead>
-          <tr>
-            <th>รหัสนักศึกษา</th>
-            <th>ชื่อ - นามสกุล</th>
-            <th>ชุดข้อสอบ</th>
-            <th>คะแนน</th>
-            <th>เวลาเริ่มสอบ</th>
-            <th>เวลา-ส่งข้อสอบ</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="results-table-body">
-          <tr>
-            <td colspan="7">กำลังโหลดข้อมูล...</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div id="detailBackdrop" class="modal-backdrop"></div>
-    <div id="detailModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
-      <header>
-        <h3 id="detailTitle">รายละเอียดการสอบ</h3>
-        <button class="close-btn" onclick="closeDetailModal()">ปิด</button>
-      </header>
-      <div class="body">
-        <div id="detailMeta" style="margin-bottom:10px"></div>
-
-
-        <div class="kpi">
-          <div class="card">
-            <div class="badge">จำนวนข้อ</div>
-            <div id="kpi_total" style="font-size:20px;font-weight:700">-</div>
-          </div>
-          <div class="card">
-            <div class="badge">ตอบถูก</div>
-            <div id="kpi_correct" style="font-size:20px;font-weight:700">-</div>
-          </div>
-          <div class="card">
-            <div class="badge">ตอบผิด</div>
-            <div id="kpi_wrong" style="font-size:20px;font-weight:700">-</div>
-          </div>
-          <div class="card">
-            <div class="badge">คะแนน</div>
-            <div id="kpi_score" style="font-size:20px;font-weight:700">-</div>
-          </div>
-        </div>
-
-
-        <canvas id="resultChart" height="160"></canvas>
-
-
-        <div class="wrong-list">
-          <h4 style="margin:14px 0 6px">ข้อที่ตอบผิด</h4>
-          <div id="wrongContainer">—</div>
+  <div class="shell">
+    <!-- Sidebar (เหมือนหน้าแดชบอร์ด) -->
+    <aside class="sidebar">
+      <div class="side-brand">
+        <img src="nulogo.png" alt="NU" />
+        <div>
+          <p class="side-title">ระบบจัดสอบ Walk-in</p>
+          <div class="side-sub">(สำหรับอาจารย์)</div>
         </div>
       </div>
-    </div>
-  </main>
+
+      <button class="me-chip" id="editProfileBtn" title="แก้ไขโปรไฟล์">
+        <i class="fa-solid fa-circle-user"></i>
+        <span id="teacherName">อาจารย์ผู้สอน</span>
+      </button>
+      <button class="logout" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
+
+      <nav class="nav">
+        <div class="group">เมนูหลัก</div>
+        <a href="teacher_dashboard.html"><i class="fa-solid fa-house"></i> หน้าหลัก</a>
+
+        <div class="group">การจัดการข้อสอบ</div>
+        <a href="teacher_question_bank.html"><i class="fa-solid fa-file-invoice"></i> คลังข้อสอบ</a>
+
+        <div class="group">การจัดการสอบ</div>
+        <a href="teacher_exam_out.html"><i class="fa-solid fa-calendar-days"></i> ช่วงเวลาการสอบ</a>
+        <a href="#" class="active"><i class="fa-solid fa-users"></i> รายชื่อผู้เข้าสอบ</a>
+        <a href="exam_registration_status.html"><i class="fa-solid fa-clipboard-check"></i> ตรวจสอบสถานะนิสิต</a>
+        <a href="exam_statistics.html"><i class="fa-solid fa-chart-bar"></i> สถิติการสอบ</a>
+
+        <div class="group">เนื้อหารายวิชา</div>
+        <a href="teaching_materials.html"><i class="fa-solid fa-file-arrow-up"></i> อัปโหลดสื่อการสอน</a>
+        <a href="teacher_open_materials.html"><i class="fa-solid fa-book-open-reader"></i> ดูสื่อการสอน</a>
+      </nav>
+
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <div class="page-head">
+        <h1 class="m-0">รายชื่อผู้เข้าสอบและผลคะแนน</h1>
+        <!-- <a href="teacher_dashboard.html" class="btn btn-primary"><i class="fa-solid fa-arrow-left"></i> กลับหน้าหลัก</a> -->
+      </div>
+
+      <div id="errorBox" class="message error" style="display:none;"></div>
+
+      <div class="search-container">
+        <input type="text" id="searchInput" placeholder="ค้นหาจากรหัสนักศึกษา หรือ ชื่อ-นามสกุล..." />
+      </div>
+
+      <div id="results-container">
+        <table>
+          <thead>
+            <tr>
+              <th>รหัสนักศึกษา</th>
+              <th>ชื่อ - นามสกุล</th>
+              <th>ชุดข้อสอบ</th>
+              <th>คะแนน</th>
+              <th>เวลาเริ่มสอบ</th>
+              <th>เวลา-ส่งข้อสอบ</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="results-table-body">
+            <tr>
+              <td colspan="7">กำลังโหลดข้อมูล...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Modal รายละเอียด -->
+      <div id="detailBackdrop" class="modal-backdrop"></div>
+      <div id="detailModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+        <header>
+          <h3 id="detailTitle">รายละเอียดการสอบ</h3>
+          <button class="close-btn" onclick="closeDetailModal()">ปิด</button>
+        </header>
+        <div class="body">
+          <div id="detailMeta" style="margin-bottom:10px"></div>
+
+          <div class="kpi">
+            <div class="card">
+              <div class="badge">จำนวนข้อ</div>
+              <div id="kpi_total" style="font-size:20px;font-weight:700">-</div>
+            </div>
+            <div class="card">
+              <div class="badge">ตอบถูก</div>
+              <div id="kpi_correct" style="font-size:20px;font-weight:700">-</div>
+            </div>
+            <div class="card">
+              <div class="badge">ตอบผิด</div>
+              <div id="kpi_wrong" style="font-size:20px;font-weight:700">-</div>
+            </div>
+            <div class="card">
+              <div class="badge">คะแนน</div>
+              <div id="kpi_score" style="font-size:20px;font-weight:700">-</div>
+            </div>
+          </div>
+
+          <canvas id="resultChart" height="160"></canvas>
+
+          <div class="wrong-list">
+            <h4 style="margin:14px 0 6px">ข้อที่ตอบผิด</h4>
+            <div id="wrongContainer">—</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
 
   <script>
     // ---------- Config / State ----------
@@ -340,6 +294,19 @@
         null
       );
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const name = localStorage.getItem('instructor_name');
+      if (name) document.getElementById('teacherName').textContent = name;
+
+      document.getElementById('logoutBtn')?.addEventListener('click', () => {
+        if (confirm('ต้องการออกจากระบบหรือไม่')) {
+          localStorage.removeItem('teacherToken');
+          localStorage.removeItem('instructor_name');
+          location.href = 'teacher_login.html';
+        }
+      });
+    });
 
     // (ตัวช่วย debug) ดู role ใน payload ได้ทันทีที่โหลดหน้า
     function _peekRole(token) {

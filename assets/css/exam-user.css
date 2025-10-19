@@ -1,0 +1,202 @@
+.modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .45);
+      display: none;
+      z-index: 999
+    }
+
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .2);
+      width: min(900px, 92vw);
+      max-height: 90vh;
+      display: none;
+      z-index: 1000
+    }
+
+    .modal header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid #e5e7eb
+    }
+
+    .modal .body {
+      padding: 16px 18px;
+      overflow: auto;
+      max-height: calc(60vh - 56px)
+    }
+
+    .kpi {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 12px
+    }
+
+    .kpi .card {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 12px
+    }
+
+    .wrong-list {
+      margin-top: 12px
+    }
+
+    .wrong-item {
+      border: 1px solid #fee2e2;
+      background: #fff7f7;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 8px 0
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      font-size: 12px
+    }
+
+    .close-btn {
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer
+    }
+
+    .mismatch-note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #fff7e6;
+      border: 1px solid #ffe0b3;
+      color: #7c4a03;
+    }
+
+    /* กล่องค้นหา */
+    .search-container {
+      margin: 14px 0 10px;
+    }
+
+    .search-container input {
+      width: min(460px, 100%);
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px 14px;
+      outline: none;
+      transition: box-shadow .15s, border-color .15s;
+    }
+
+    .search-container input:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, .15);
+    }
+
+    /* ตาราง */
+    #results-container {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    #results-container table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 920px;
+    }
+
+    #results-container thead th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      z-index: 1;
+      font-weight: 600;
+      color: #334155;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 12px 14px;
+    }
+
+    #results-container tbody td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    #results-container tbody tr:hover {
+      background: #fbfbff;
+    }
+
+    /* สีสถานะเป็นแถบด้านซ้ายของแถว */
+    tr[data-status="completed"] {
+      box-shadow: inset 3px 0 0 #10b981;
+    }
+
+    /* เขียว */
+    tr[data-status="in_progress"] {
+      box-shadow: inset 3px 0 0 #f59e0b;
+    }
+
+    /* เหลือง */
+    tr[data-status="registered"] {
+      box-shadow: inset 3px 0 0 #94a3b8;
+    }
+
+    /* เทา */
+
+    /* ปุ่ม "ดูรายละเอียด" */
+    .btn-details {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #eef2ff;
+      color: #4338ca;
+      border: 1px solid #c7d2fe;
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform .05s ease, background .15s, border-color .15s;
+    }
+
+    .btn-details:hover {
+      background: #e0e7ff;
+      border-color: #a5b4fc;
+    }
+
+    .btn-details:active {
+      transform: translateY(1px);
+    }
+
+    /* ปรับ Modal เล็กน้อย */
+    .modal header h3 {
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .modal .body {
+      max-height: calc(70vh - 56px);
+    }
+
+    /* Error message */
+    .message.error {
+      margin: 10px 0 14px;
+      padding: 10px 12px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #7f1d1d;
+      border-radius: 10px;
+    }

@@ -4,124 +4,291 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>กำหนดช่วงเวลาสอบ</title>
+  <title>กำหนดช่วงเวลาการสอบ</title>
 
-  <!-- CSS -->
+  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/main.css" />
+
+  <!-- Font Awesome v6 ให้ไอคอนตรงกับหน้าหลัก -->
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet" />
+
+  <!-- สไตล์ของโปรเจกต์ -->
+  <!-- <link rel="stylesheet" href="assets/css/main.css" /> -->
   <link rel="stylesheet" href="assets/css/teacher.css" />
   <link rel="stylesheet" href="assets/css/slot-scheduler.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
   <link rel="icon" href="data:," />
 
   <!-- SweetAlert2 -->
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+  <style>
+    /* กันกรณีไฟล์เก่าบางส่วนไม่มี layout เดียวกับแดชบอร์ด */
+    .shell {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
 
+    @media(max-width:1024px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 25;
+      }
+    }
+
+    .sidebar {
+      background: #0b1220;
+      color: #e5edff;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .side-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .side-brand img {
+      height: 42px;
+      width: auto;
+    }
+
+    .side-title {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .side-sub {
+      font-size: 12px;
+      opacity: .75;
+    }
+
+    .me-chip {
+      background: rgba(255, 255, 255, .08);
+      border: 1px solid rgba(255, 255, 255, .14);
+      padding: 10px 12px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #e5edff;
+      width: 100%;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .nav .group {
+      margin: 14px 0 6px;
+      font-weight: 600;
+      color: #bcd2ff;
+      font-size: 12px;
+      letter-spacing: .3px;
+    }
+
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: #e5edff;
+      text-decoration: none;
+      border: 1px solid transparent;
+    }
+
+    .nav a:hover {
+      background: rgba(255, 255, 255, .06);
+      border-color: rgba(255, 255, 255, .14);
+    }
+
+    .nav a.active {
+      background: linear-gradient(90deg, rgba(14, 165, 233, .18), rgba(37, 99, 235, .18));
+      border-color: rgba(37, 99, 235, .35);
+    }
+
+    .side-footer {
+      margin-top: auto;
+    }
+
+    .logout {
+      background: #ef4444;
+      color: #fff;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .main {
+      padding: 24px 28px;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .page-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+  </style>
 </head>
 
 <body>
-  <!-- HEADER -->
-  <header>
-    <div class="logo-text">
-      <img src="nulogo.png" alt="Logo" height="80" />
-      <div class="course-title">
-        <h2 class="text-center m-0">กำหนดช่วงเวลาการสอบ</h2>
-      </div>
-    </div>
-    <div class="top-right">
-      <button id="backBtn" class="home-btn">กลับหน้าหลัก</button>
-      <button id="logoutBtn" class="logout-btn">ออกจากระบบ</button>
-    </div>
-  </header>
-
-  <!-- MAIN -->
-  <main class="teacher-dashboard">
-    <div class="time-slots">
-      <h2 class="text-center mb-3">เพิ่มช่วงเวลาสอบ</h2>
-      <div id="errorBox"></div>
-
-      <form id="timeSlotForm" class="time-slot-form">
-        <div class="form-group">
-          <label for="regOpenAt">เปิดลงทะเบียน:</label>
-          <input type="datetime-local" id="regOpenAt" name="reg_open_at" class="form-control" required />
-        </div>
-        <div class="form-group">
-          <label for="regCloseAt">ปิดลงทะเบียน:</label>
-          <input type="datetime-local" id="regCloseAt" name="reg_close_at" class="form-control" required />
-        </div>
-        <div class="form-group">
-          <label for="examDate">วันที่สอบ:</label>
-          <input type="date" id="examDate" name="slot_date" class="form-control" required />
-        </div>
-
-        <div class="form-group">
-          <label for="startTime">เวลาเริ่มสอบ:</label>
-          <input type="time" id="startTime" name="start_time" class="form-control" required />
-        </div>
-        <div class="form-group">
-          <label for="endTime">เวลาสิ้นสุดการสอบ:</label>
-          <input type="time" id="endTime" name="end_time" class="form-control" required />
-        </div>
-        <div class="form-group">
-          <label for="duration">ระยะเวลาสอบ (นาที):</label>
-          <input type="number" id="duration" name="duration_minutes" class="form-control" min="1" value="60" required />
-        </div>
-
-        <div class="form-group">
-          <label for="capacity">จำนวนที่รับได้:</label>
-          <input type="number" id="capacity" name="max_seats" class="form-control" min="1" required />
-        </div>
-        <div class="form-group">
-          <label for="examsetTitle">ชื่อชุดข้อสอบ:</label>
-          <input type="text" id="examsetTitle" name="examset_title" class="form-control" required />
-        </div>
-        <div class="form-group">
-          <label for="easyCount">จำนวนข้อสอบง่าย:</label>
-          <input type="number" id="easyCount" name="easy_count" class="form-control" min="0" required />
-        </div>
-
-        <div class="form-group">
-          <label for="mediumCount">จำนวนข้อสอบปานกลาง:</label>
-          <input type="number" id="mediumCount" name="medium_count" class="form-control" min="0" required />
-        </div>
-        <div class="form-group">
-          <label for="hardCount">จำนวนข้อสอบยาก:</label>
-          <input type="number" id="hardCount" name="hard_count" class="form-control" min="0" required />
-        </div>
-        <div class="form-group align-self-end">
-          <button type="submit" id="submitBtn" class="btn btn-success">
-            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-            เพิ่มช่วงเวลาสอบ
-          </button>
-        </div>
-      </form>
-
-      <h2 class="mt-3">ช่วงเวลาสอบที่เปิดรับ</h2>
-      <table class="slots-table table table-bordered table-striped align-middle text-center">
-        <thead class="table-light">
-          <tr>
-            <th>วันที่เปิดลงทะเบียน</th>
-            <th>วันที่ปิดลงทะเบียน</th>
-            <th>วันที่สอบ</th>
-            <th>เวลาเริ่มสอบ</th>
-            <th>เวลาสิ้นสุดการสอบ</th>
-            <th>จำนวนที่รับ</th>
-            <th>จำนวนที่ลงทะเบียน</th>
-            <th>สถานะ</th>
-            <th>จัดการ</th>
-          </tr>
-        </thead>
-        <tbody id="timeSlotsList"></tbody>
-      </table>
-      <div id="loadingSpinner" style="display:none;text-align:center;margin-top:10px;">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
+  <div class="shell">
+    <!-- Sidebar (เหมือนหน้าแดชบอร์ด) -->
+    <aside class="sidebar">
+      <div class="side-brand">
+        <img src="nulogo.png" alt="NU">
+        <div>
+          <p class="side-title">ระบบจัดสอบ Walk-in</p>
+          <div class="side-sub">(สำหรับอาจารย์)</div>
         </div>
       </div>
-    </div>
-  </main>
+
+      <button class="me-chip" id="editProfileBtn" title="แก้ไขโปรไฟล์">
+        <i class="fa-solid fa-circle-user"></i>
+        <span id="teacherName">อาจารย์ผู้สอน</span>
+      </button>
+      <button class="logout" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
+
+      <nav class="nav">
+        <div class="group">เมนูหลัก</div>
+        <a href="teacher_dashboard.html"><i class="fa-solid fa-house"></i> หน้าหลัก</a>
+
+        <div class="group">การจัดการข้อสอบ</div>
+        <a href="teacher_question_bank.html"><i class="fa-solid fa-file-invoice"></i> คลังข้อสอบ</a>
+
+        <div class="group">การจัดการสอบ</div>
+        <a href="#" class="active"><i class="fa-solid fa-calendar-days"></i> ช่วงเวลาการสอบ</a>
+        <a href="exam_users.html"><i class="fa-solid fa-users"></i> รายชื่อผู้เข้าสอบ</a>
+        <a href="exam_registration_status.html"><i class="fa-solid fa-clipboard-check"></i> ตรวจสอบสถานะนิสิต</a>
+        <a href="exam_statistics.html"><i class="fa-solid fa-chart-bar"></i> สถิติการสอบ</a>
+
+        <div class="group">เนื้อหารายวิชา</div>
+        <a href="teaching_materials.html"><i class="fa-solid fa-file-arrow-up"></i> อัปโหลดสื่อการสอน</a>
+        <a href="teacher_open_materials.html"><i class="fa-solid fa-book-open-reader"></i> ดูสื่อการสอน</a>
+      </nav>
+
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <div class="page-head">
+        <h2 class="m-0">กำหนดช่วงเวลาการสอบ</h2>
+        <!-- <a href="teacher_dashboard.html" class="btn btn-primary"><i class="fa-solid fa-arrow-left"></i> กลับหน้าหลัก</a> -->
+      </div>
+
+      <div class="teacher-dashboard">
+        <div class="time-slots">
+          <h2 class="text-center mb-3">เพิ่มช่วงเวลาสอบ</h2>
+          <div id="errorBox"></div>
+
+          <form id="timeSlotForm" class="time-slot-form">
+            <div class="form-group">
+              <label for="regOpenAt">เปิดลงทะเบียน:</label>
+              <input type="datetime-local" id="regOpenAt" name="reg_open_at" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="regCloseAt">ปิดลงทะเบียน:</label>
+              <input type="datetime-local" id="regCloseAt" name="reg_close_at" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="examDate">วันที่สอบ:</label>
+              <input type="date" id="examDate" name="slot_date" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+              <label for="startTime">เวลาเริ่มสอบ:</label>
+              <input type="time" id="startTime" name="start_time" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="endTime">เวลาสิ้นสุดการสอบ:</label>
+              <input type="time" id="endTime" name="end_time" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="duration">ระยะเวลาสอบ (นาที):</label>
+              <input type="number" id="duration" name="duration_minutes" class="form-control" min="1" value="60"
+                required />
+            </div>
+
+            <div class="form-group">
+              <label for="capacity">จำนวนที่รับได้:</label>
+              <input type="number" id="capacity" name="max_seats" class="form-control" min="1" required />
+            </div>
+            <div class="form-group">
+              <label for="examsetTitle">ชื่อชุดข้อสอบ:</label>
+              <input type="text" id="examsetTitle" name="examset_title" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="easyCount">จำนวนข้อสอบง่าย:</label>
+              <input type="number" id="easyCount" name="easy_count" class="form-control" min="0" required />
+            </div>
+
+            <div class="form-group">
+              <label for="mediumCount">จำนวนข้อสอบปานกลาง:</label>
+              <input type="number" id="mediumCount" name="medium_count" class="form-control" min="0" required />
+            </div>
+            <div class="form-group">
+              <label for="hardCount">จำนวนข้อสอบยาก:</label>
+              <input type="number" id="hardCount" name="hard_count" class="form-control" min="0" required />
+            </div>
+            <div class="form-group align-self-end">
+              <button type="submit" id="submitBtn" class="btn btn-success">
+                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                เพิ่มช่วงเวลาสอบ
+              </button>
+            </div>
+          </form>
+
+          <h2 class="mt-3">ช่วงเวลาสอบที่เปิดรับ</h2>
+          <table class="slots-table table table-bordered table-striped align-middle text-center">
+            <thead class="table-light">
+              <tr>
+                <th>วันที่เปิดลงทะเบียน</th>
+                <th>วันที่ปิดลงทะเบียน</th>
+                <th>วันที่สอบ</th>
+                <th>เวลาเริ่มสอบ</th>
+                <th>เวลาสิ้นสุดการสอบ</th>
+                <th>จำนวนที่รับ</th>
+                <th>จำนวนที่ลงทะเบียน</th>
+                <th>สถานะ</th>
+                <th>จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="timeSlotsList"></tbody>
+          </table>
+
+          <div id="loadingSpinner" style="display:none;text-align:center;margin-top:10px;">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
 
   <script>
     (() => {
@@ -225,6 +392,24 @@
         dur.addEventListener('change', recalc);
         recalc();
       }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const name = localStorage.getItem('instructor_name');
+        if (name) document.getElementById('teacherName').textContent = name;
+
+        document.getElementById('logoutBtn')?.addEventListener('click', () => {
+          Swal.fire({
+            icon: 'warning', title: 'ออกจากระบบ?', text: 'ต้องการออกจากระบบตอนนี้หรือไม่',
+            showCancelButton: true, confirmButtonText: 'ออกจากระบบ', cancelButtonText: 'ยกเลิก'
+          }).then(r => {
+            if (r.isConfirmed) {
+              localStorage.removeItem('teacherToken');
+              localStorage.removeItem('instructor_name');
+              location.href = 'teacher_login.html';
+            }
+          });
+        });
+      });
 
       async function loadTimeSlots() {
         $('#loadingSpinner').style.display = 'block';

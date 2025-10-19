@@ -5,8 +5,8 @@
 
 /* ---- Design tokens ---- */
 :root{
-  --thai-font: "Prompt","Noto Sans Thai",system-ui,-apple-system,"Segoe UI",
-               Roboto,"Helvetica Neue",Arial,sans-serif;
+  /* --thai-font: "Prompt","Noto Sans Thai",system-ui,-apple-system,"Segoe UI",
+               Roboto,"Helvetica Neue",Arial,sans-serif; */
   --brand:#1e4fbf;
   --brand-2:#4f7de8;
   --bg:#f5f6fa;
@@ -19,10 +19,11 @@
   --ok:#10b981;
   --warn:#f59e0b;
   --err:#ef4444;
+  --font-family:"Inter","Noto Sans Thai",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue","Noto Sans",sans-serif;
 }
 
 /* ---- Base / Layout ---- */
-html,body{ font-family:var(--thai-font); background:var(--bg); color:var(--text); }
+html,body{ font-family:var(--font-family); background:var(--bg); color:var(--text); }
 .teacher-dashboard{ max-width:1200px; margin:0 auto; padding:28px; }
 
 /* กล่องหลัก */

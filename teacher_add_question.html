@@ -7,95 +7,108 @@
   <title>เพิ่มคำถามใหม่</title>
 
   <link rel="icon" href="data:," />
+  <!-- Font Awesome v6 -->
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet">
+
+  <!-- สไตล์หลักของโปรเจกต์ -->
   <link rel="stylesheet" href="assets/css/main.css">
   <link rel="stylesheet" href="assets/css/teacher.css">
-  <!-- ใช้สไตล์เดียวกับหน้าแก้ไข -->
   <link rel="stylesheet" href="assets/css/teacher-edit-question.css">
 
   <!-- SweetAlert2 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-  <style>
-    /* ปรับโทน SweetAlert2 ให้เข้ากับ UI */
-    .swal2-popup {
-      border-radius: 16px !important;
-      box-shadow: 0 18px 44px rgba(17, 24, 39, .18)
-    }
 
-    .swal2-styled.swal2-confirm {
-      border-radius: 12px !important;
-      background: #2563eb !important;
-      font-weight: 700
-    }
-
-    .swal2-styled.swal2-cancel {
-      border-radius: 12px !important;
-      background: #e5e7eb !important;
-      color: #111827 !important
-    }
-  </style>
 </head>
 
 <body>
-  <header>
-    <div class="logo-text">
-      <img src="nulogo.png" alt="Logo" height="60">
-      <div class="course-title">
-        <h2>เพิ่มคำถามใหม่</h2>
+  <div class="shell">
+    <!-- Sidebar (เหมือนหน้าแดชบอร์ด) -->
+    <aside class="sidebar">
+      <div class="side-brand">
+        <img src="nulogo.png" alt="NU">
+        <div>
+          <p class="side-title">ระบบจัดสอบ Walk-in</p>
+          <div class="side-sub">(สำหรับอาจารย์)</div>
+        </div>
       </div>
-    </div>
-    <div class="top-right">
-      <button id="backBtn" class="home-btn">คลังข้อสอบ</button>
-      <button id="logoutBtn" class="logout-btn">ออกจากระบบ</button>
-    </div>
-  </header>
 
-  <div class="container">
-    <h2>เพิ่มคำถามใหม่</h2>
-    <form id="addQuestionForm">
-      <label for="question_text">คำถาม:</label>
-      <textarea id="question_text" required placeholder="พิมพ์คำถามของคุณที่นี่..."></textarea>
+      <button class="me-chip" id="editProfileBtn" title="แก้ไขโปรไฟล์">
+        <i class="fa-solid fa-circle-user"></i>
+        <span id="teacherName">อาจารย์ผู้สอน</span>
+      </button>
+      <button class="logout" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
 
-      <label for="choiceA">ตัวเลือก A:</label>
-      <input type="text" id="choiceA" required placeholder="ตัวเลือก A">
+      <nav class="nav">
+        <div class="group">เมนูหลัก</div>
+        <a href="teacher_dashboard.html"><i class="fa-solid fa-house"></i> หน้าหลัก</a>
 
-      <label for="choiceB">ตัวเลือก B:</label>
-      <input type="text" id="choiceB" required placeholder="ตัวเลือก B">
+        <div class="group">การจัดการข้อสอบ</div>
+        <a href="teacher_question_bank.html"><i class="fa-solid fa-file-invoice"></i> คลังข้อสอบ</a>
+        <a href="#" class="active"><i class="fa-solid fa-square-plus"></i> เพิ่มคำถามใหม่</a>
 
-      <label for="choiceC">ตัวเลือก C:</label>
-      <input type="text" id="choiceC" required placeholder="ตัวเลือก C">
+        <div class="group">การจัดการสอบ</div>
+        <a href="teacher_exam_out.html"><i class="fa-solid fa-calendar-days"></i> ช่วงเวลาการสอบ</a>
+        <a href="exam_users.html"><i class="fa-solid fa-users"></i> รายชื่อผู้เข้าสอบ</a>
+        <a href="exam_registration_status.html"><i class="fa-solid fa-clipboard-check"></i> ตรวจสอบสถานะนิสิต</a>
+        <a href="exam_statistics.html"><i class="fa-solid fa-chart-bar"></i> สถิติการสอบ</a>
 
-      <label for="choiceD">ตัวเลือก D:</label>
-      <input type="text" id="choiceD" required placeholder="ตัวเลือก D">
+        <div class="group">เนื้อหารายวิชา</div>
+        <a href="teaching_materials.html"><i class="fa-solid fa-file-arrow-up"></i> อัปโหลดสื่อการสอน</a>
+        <a href="teacher_open_materials.html"><i class="fa-solid fa-book-open-reader"></i> ดูสื่อการสอน</a>
+      </nav>
 
-      <label for="correct_choice">คำตอบที่ถูกต้อง:</label>
-      <select id="correct_choice" required>
-        <option value="A">A</option>
-        <option value="B">B</option>
-        <option value="C">C</option>
-        <option value="D">D</option>
-      </select>
+    </aside>
 
-      <label for="difficulty">ระดับความยาก:</label>
-      <!-- ให้เหมือนหน้าแก้ไข: easy/medium/hard แล้ว map เป็น 0.15/0.5/0.85 -->
-      <select id="difficulty" required>
-        <option value="easy">ง่าย</option>
-        <option value="medium" selected>ปานกลาง</option>
-        <option value="hard">ยาก</option>
-      </select>
+    <!-- Main -->
+    <main class="main">
+      <div class="page-head">
+        <h2>เพิ่มคำถามใหม่</h2>
+        <button id="backBtn" class="btn btn-back"><i class="fa-solid fa-arrow-left"></i> คลังข้อสอบ</button>
+      </div>
 
-      <!-- ปุ่ม sticky มุมขวาล่าง -->
-      <button type="submit" class="submit-btn sticky-save">บันทึกคำถาม</button>
-    </form>
+      <div class="container">
+        <form id="addQuestionForm">
+          <label for="question_text">คำถาม:</label>
+          <textarea id="question_text" required placeholder="พิมพ์คำถามของคุณที่นี่..."></textarea>
+
+          <label for="choiceA">ตัวเลือก A:</label>
+          <input type="text" id="choiceA" required placeholder="ตัวเลือก A">
+
+          <label for="choiceB">ตัวเลือก B:</label>
+          <input type="text" id="choiceB" required placeholder="ตัวเลือก B">
+
+          <label for="choiceC">ตัวเลือก C:</label>
+          <input type="text" id="choiceC" required placeholder="ตัวเลือก C">
+
+          <label for="choiceD">ตัวเลือก D:</label>
+          <input type="text" id="choiceD" required placeholder="ตัวเลือก D">
+
+          <label for="correct_choice">คำตอบที่ถูกต้อง:</label>
+          <select id="correct_choice" required>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+          </select>
+
+          <label for="difficulty">ระดับความยาก:</label>
+          <select id="difficulty" required>
+            <option value="easy">ง่าย</option>
+            <option value="medium" selected>ปานกลาง</option>
+            <option value="hard">ยาก</option>
+          </select>
+
+          <button type="submit" class="submit-btn sticky-save">บันทึกคำถาม</button>
+        </form>
+      </div>
+    </main>
   </div>
 
-  <!-- โหลด SweetAlert2 ก่อนโค้ดของเรา -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
   <script>
     (function init() {
       if (!window.Swal) { console.error('SweetAlert2 ไม่ได้โหลด'); return; }
 
-      // Helpers (เหมือนหน้าแก้ไข)
       const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 2200, timerProgressBar: true });
       const showError = (msg) => Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: msg });
       const showWarn = (title, text, goto) =>
@@ -104,30 +117,43 @@
       const showLoading = (t = 'กำลังบันทึก...') => Swal.fire({ title: t, allowOutsideClick: false, allowEscapeKey: false, didOpen: () => Swal.showLoading() });
       const closeLoading = () => Swal.close();
 
-      // ตรวจ token
+      // ตั้งชื่ออาจารย์บน sidebar (ถ้ามีใน token/localStorage)
       const token = localStorage.getItem('teacherToken');
       if (!token) { showWarn('ยังไม่ได้เข้าสู่ระบบ', 'กรุณาเข้าสู่ระบบสำหรับอาจารย์ก่อน', 'teacher_login.html'); return; }
-      const authHeader = { 'Authorization': 'Bearer ' + token };
+      document.getElementById('teacherName').textContent =
+        localStorage.getItem('instructor_name') || 'อาจารย์ผู้สอน';
 
-      // Map label -> float (ให้เหมือนหน้าแก้ไข)
+      // ปุ่มนำทาง
+      document.getElementById('backBtn').onclick = () => (location.href = 'teacher_question_bank.html');
+      document.getElementById('logoutBtn').onclick = () => {
+        Swal.fire({
+          icon: 'warning', title: 'ออกจากระบบ?', text: 'ต้องการออกจากระบบตอนนี้หรือไม่',
+          showCancelButton: true, confirmButtonText: 'ออกจากระบบ', cancelButtonText: 'ยกเลิก'
+        }).then(r => {
+          if (r.isConfirmed) {
+            localStorage.removeItem('teacherToken');
+            localStorage.removeItem('instructor_name');
+            location.href = 'teacher_login.html';
+          }
+        });
+      };
+
+      // map difficulty → float
       const toFloatDifficulty = (label) => label === 'easy' ? 0.15 : (label === 'hard' ? 0.85 : 0.5);
 
-      // Submit
+      // submit
       const form = document.getElementById('addQuestionForm');
       const saveBtn = document.querySelector('.submit-btn');
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // ยืนยันก่อน
         const ok = await Swal.fire({
           icon: 'question', title: 'ยืนยันการบันทึก?', text: 'ระบบจะเพิ่มคำถามใหม่ตามข้อมูลที่กรอก',
           showCancelButton: true, confirmButtonText: 'บันทึกเลย', cancelButtonText: 'ยกเลิก'
         });
         if (!ok.isConfirmed) return;
 
-        // เตรียม payload
-        const diffVal = toFloatDifficulty(document.getElementById('difficulty').value);
         const payload = {
           question_text: document.getElementById('question_text').value.trim(),
           choices: {
@@ -137,16 +163,14 @@
             D: document.getElementById('choiceD').value.trim(),
           },
           correct_choice: document.getElementById('correct_choice').value,
-          difficulty: diffVal,          // ให้เหมือนหน้าแก้ไข
-          difficulty_level: diffVal     // เผื่อ backend เดิมใช้ชื่อนี้
+          difficulty: toFloatDifficulty(document.getElementById('difficulty').value),
+          difficulty_level: toFloatDifficulty(document.getElementById('difficulty').value)
         };
 
-        // ตรวจฟิลด์ว่าง (กันช่องว่างเฉย ๆ)
         if (!payload.question_text || !payload.choices.A || !payload.choices.B || !payload.choices.C || !payload.choices.D) {
           return showError('กรุณากรอกข้อมูลให้ครบทุกช่อง');
         }
 
-        // loading state
         const originalText = saveBtn.textContent;
         saveBtn.disabled = true; saveBtn.classList.add('is-loading'); saveBtn.textContent = 'กำลังบันทึก...';
         showLoading('กำลังบันทึก...');
@@ -154,18 +178,17 @@
         try {
           const res = await fetch('api/create_question.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeader },
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
             body: JSON.stringify(payload),
             credentials: 'same-origin'
           });
-
           closeLoading();
 
           if (res.status === 401) {
             return showWarn('เซสชันหมดอายุ', 'กรุณาเข้าสู่ระบบใหม่', 'teacher_login.html');
           }
 
-          const result = await res.json();
+          const result = await res.json().catch(() => ({}));
           if (res.ok && result.status === 'success') {
             Toast.fire({ icon: 'success', title: 'เพิ่มคำถามสำเร็จ' });
             setTimeout(() => location.href = 'teacher_question_bank.html', 1200);
@@ -182,15 +205,6 @@
           saveBtn.textContent = originalText;
         }
       });
-
-      // ปุ่มนำทางเหมือนหน้าแก้ไข
-      document.getElementById('backBtn').onclick = () => (location.href = 'teacher_question_bank.html');
-      document.getElementById('logoutBtn').onclick = () => {
-        Swal.fire({
-          icon: 'warning', title: 'ออกจากระบบ?', text: 'ต้องการออกจากระบบตอนนี้หรือไม่',
-          showCancelButton: true, confirmButtonText: 'ออกจากระบบ', cancelButtonText: 'ยกเลิก'
-        }).then(r => { if (r.isConfirmed) { localStorage.removeItem('teacherToken'); location.href = 'teacher_login.html'; } });
-      };
     })();
   </script>
 </body>
