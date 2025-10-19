@@ -75,11 +75,11 @@
                     <div class="meta"><span class="label">สอบเสร็จแล้ว (ทั้งหมด)</span><span class="val"
                             id="kpiCompleted">—</span></div>
                 </div>
-                <div class="kpi">
+                <!-- <div class="kpi">
                     <div class="icon"><i class="fa-solid fa-chart-line"></i></div>
                     <div class="meta"><span class="label">คะแนนเฉลี่ย</span><span class="val" id="kpiAvgScore">—</span>
                     </div>
-                </div>
+                </div> -->
             </div>
 
             <div class="grid">
@@ -182,6 +182,33 @@
         }
         function goLogin() { location.replace('teacher_login.html'); setTimeout(() => location.href = 'teacher_login.html', 150); }
 
+        // พยายามดึง pass/fail จาก API โดยตรง ถ้าไม่มีจะ fallback จาก metrics
+        async function loadPassFail({ token, metrics }) {
+            const ENDPOINT_PASS_FAIL = `${API}/teacher_pass_fail.php?range=30d`; // แก้ชื่อ endpoint/พารามิเตอร์ได้
+
+            // 2.1 ลองเรียก API โดยตรง (คาดหวังรูปแบบ {status:'success', data:{pass:..., fail:...}})
+            try {
+                const r = await fetch(ENDPOINT_PASS_FAIL, {
+                    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+                    cache: 'no-store'
+                });
+                const raw = await r.text();
+                let d = null; try { d = JSON.parse(raw); } catch { }
+                if (r.ok && d && d.status === 'success' && d.data) {
+                    const pass = Number(d.data.pass || d.data.pass_count || 0);
+                    const fail = Number(d.data.fail || d.data.fail_count || 0);
+                    if (pass + fail >= 0) return { passCount: pass, failCount: fail };
+                }
+            } catch { /* เงียบไว้ ไป fallback */ }
+
+            // 2.2 Fallback: ใช้ completed + passRate จาก metrics เดิม
+            const completed = Number(metrics?.exams?.completed || 0);
+            const passRate = Number(metrics?.scores?.passRate || 0); // 0..1
+            const passCount = Math.round(completed * passRate);
+            const failCount = Math.max(0, completed - passCount);
+            return { passCount, failCount };
+        }
+
         // ---------- charts ----------
         let _diffChart, _passChart, _timeChart; const kill = c => { if (c) c.destroy(); };
         function drawDifficulty({ easy = 0, mid = 0, hard = 0 } = {}) {
@@ -192,12 +219,23 @@
                 options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
             });
         }
-        function drawPassRate({ pass = 0, fail = 0 } = {}) {
+        function drawPassRate({ passCount = 0, failCount = 0 } = {}) {
+            const total = Math.max(0, Number(passCount) + Number(failCount));
+            const passPct = total ? Math.round((passCount / total) * 100) : 0;
+            const failPct = total ? 100 - passPct : 0;
+
             kill(_passChart);
             _passChart = new Chart(document.getElementById('passChart'), {
                 type: 'doughnut',
-                data: { labels: ['ผ่าน', 'ไม่ผ่าน'], datasets: [{ data: [pass, fail] }] },
-                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+                data: {
+                    labels: [`ผ่าน (${passPct}%)`, `ไม่ผ่าน (${failPct}%)`],
+                    datasets: [{ data: [passCount, failCount] }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } },
+                    cutout: '60%'
+                }
             });
         }
         function drawTimeline({ labels = [], values = [] } = {}) {
@@ -251,7 +289,14 @@
                 drawDifficulty({ easy: diff?.easy ?? 0, mid: diff?.mid ?? 0, hard: diff?.hard ?? 0 });
                 const pass = (passRate != null) ? Math.round(passRate * 100) : 0;
                 const fail = (passRate != null) ? 100 - pass : 0;
-                drawPassRate({ pass, fail });
+                try {
+                    // โหลด pass/fail (จะใช้ API หรือคำนวณจาก metrics ก็ได้)
+                    const pf = await loadPassFail({ token, metrics });
+                    drawPassRate(pf);
+                } catch {
+                    // สำรองสุดท้ายถ้าโหลดไม่ได้จริง ๆ แสดง 0/0
+                    drawPassRate({ passCount: 0, failCount: 0 });
+                }
 
                 const byDay = Array.isArray(metrics?.exams?.byDay) ? metrics.exams.byDay : [];
                 drawTimeline({ labels: byDay.map(d => d.date?.slice(5)), values: byDay.map(d => d.count || 0) });
