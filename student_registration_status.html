@@ -254,12 +254,13 @@
     async function startPay(registrationId) {
       try {
         // เรียกสร้างรายการชำระเงิน
-        const { data } = await fetchJSON(API_BASE + 'payments/create.php', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ registration_id: Number(registrationId) })
+        const { res, data } = await fetchJSON(API_BASE + "payments/create.php?dbg=1", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ registration_id: regId }),
+          cache: "no-store",
         });
-        if (data.status !== 'success') throw new Error(data.message || 'ไม่สามารถสร้างรายการชำระเงินได้');
+
 
         // เปิด QR modal
         await showQRModal({
