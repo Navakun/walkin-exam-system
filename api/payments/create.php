@@ -57,39 +57,75 @@ if (in_array($payStatus, ['paid', 'free', 'waived'], true)) {
 // ===== Begin Tx =====
 $pdo->beginTransaction();
 try {
-    // อัปเดตสถานะให้เป็น pending (ถ้ายังไม่ใช่)
+    // อัปเดตสถานะเป็น pending ถ้ายังไม่ใช่
     if ($payStatus !== 'pending') {
         $u = $pdo->prepare("UPDATE exam_slot_registrations SET payment_status='pending' WHERE id=:rid");
         $u->execute([':rid' => $registrationId]);
     }
 
-    // gen ref_no แบบอ่านง่าย (REG + yymmdd + 6 หลัก)
-    $refNo = 'REG' . date('ymd') . str_pad((string)$registrationId, 6, '0', STR_PAD_LEFT);
+    // 1) ลองหา payment เดิมที่ pending ของ registration นี้ก่อน (ทำให้ idempotent)
+    $sel = $pdo->prepare("SELECT payment_id, ref_no, amount, status 
+                          FROM payments 
+                          WHERE registration_id=:rid AND status='pending'
+                          ORDER BY payment_id DESC LIMIT 1");
+    $sel->execute([':rid' => $registrationId]);
+    $existing = $sel->fetch(PDO::FETCH_ASSOC);
 
-    // แทรก payments
-    $ins = $pdo->prepare("
-        INSERT INTO payments (student_id, registration_id, amount, method, status, ref_no, created_at)
-        VALUES (:sid, :rid, :amt, 'simulate', 'pending', :ref, NOW())
-    ");
-    $ins->execute([
-        ':sid' => $studentId,
-        ':rid' => $registrationId,
-        ':amt' => (float)$reg['fee_amount'],
-        ':ref' => $refNo,
-    ]);
-    $paymentId = (int)$pdo->lastInsertId();
+    if ($existing) {
+        // มีอยู่แล้ว -> ใช้ตัวเดิม
+        $paymentId = (int)$existing['payment_id'];
+        $refNo     = (string)$existing['ref_no'];
+        $amountVal = (float)$existing['amount'];
+    } else {
+        // 2) ยังไม่มี -> สร้างใหม่ พร้อมกันชน unique_ref_no
+        $amountVal = (float)$reg['fee_amount'];
 
-    // ผูก ref เข้า registration (เผื่อยังไม่มี)
-    $upd = $pdo->prepare("UPDATE exam_slot_registrations SET payment_ref=:ref WHERE id=:rid AND (payment_ref IS NULL OR payment_ref='')");
-    $upd->execute([':ref' => $refNo, ':rid' => $registrationId]);
+        // base ref (ไม่ต้อง unique แน่ๆในรอบแรก เราจะวนจนกว่าจะสำเร็จ)
+        $base = 'REG' . date('ymd') . str_pad((string)$registrationId, 6, '0', STR_PAD_LEFT);
+
+        $ins = $pdo->prepare("
+            INSERT INTO payments (student_id, registration_id, amount, method, status, ref_no, created_at)
+            VALUES (:sid, :rid, :amt, 'simulate', 'pending', :ref, NOW())
+        ");
+
+        $attempts = 0;
+        do {
+            $attempts++;
+            // เพิ่มสุ่มสั้นๆ กันชน (ครั้งแรกไม่มี suffix)
+            $refNoTry = $attempts === 1 ? $base : ($base . substr(strval(mt_rand(100, 999)), -3));
+            try {
+                $ins->execute([
+                    ':sid' => $studentId,
+                    ':rid' => $registrationId,
+                    ':amt' => $amountVal,
+                    ':ref' => $refNoTry,
+                ]);
+                $refNo = $refNoTry;
+                $paymentId = (int)$pdo->lastInsertId();
+                break; // สำเร็จเลิกวน
+            } catch (PDOException $e) {
+                // 1062 = duplicate entry -> วนใหม่
+                if ($e->getCode() !== '23000' || stripos($e->getMessage(), 'duplicate') === false) {
+                    throw $e; // ไม่ใช่ชน unique -> โยนต่อ
+                }
+                if ($attempts >= 5) { // กันวนยาวเกินไป
+                    throw new RuntimeException('ไม่สามารถสร้างเลขอ้างอิงที่ไม่ซ้ำได้ ลองใหม่อีกครั้ง');
+                }
+            }
+        } while (true);
+
+        // ผูก ref เข้า registration หากยังว่าง
+        $upd = $pdo->prepare("UPDATE exam_slot_registrations 
+                              SET payment_ref=:ref 
+                              WHERE id=:rid AND (payment_ref IS NULL OR payment_ref='')");
+        $upd->execute([':ref' => $refNo, ':rid' => $registrationId]);
+    }
 
     $pdo->commit();
 
-    // ===== สร้างข้อมูล QR พร้อมเพย์ (payload + รูป)
-    // หมายเหตุ: นี่เป็นตัวอย่างง่ายๆ ใช้ไอดี PromptPay สมมุติ ถ้าคุณมี promptpay จริงให้แทนที่
-    $promptpayId = '0105546111234'; // ตัวอย่าง (ต้องแทนด้วยหมายเลข PromptPay/เลขนิติ/เบอร์โทรจริง)
-    $amount = number_format((float)$reg['fee_amount'], 2, '.', '');
-    // payload ขอย่อ/สาธิต ไม่ใช่ EMV เต็มรูปแบบ (ถ้าต้องการตามสเปก EMVCo ให้ใช้ lib สร้าง)
+    // ===== สร้าง QR =====
+    $promptpayId = '0105546111234'; // TODO: ใส่ PromptPay จริง
+    $amount = number_format($amountVal, 2, '.', '');
     $payload = "PROMPTPAY|A={$promptpayId}|AMT={$amount}|REF={$refNo}";
     $qrUrl   = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' . urlencode($payload);
 
@@ -97,7 +133,7 @@ try {
         'status'  => 'success',
         'payment_id' => $paymentId,
         'ref_no'  => $refNo,
-        'amount'  => (float)$reg['fee_amount'],
+        'amount'  => (float)$amountVal,
         'registration' => [
             'id' => (int)$reg['registration_id'],
             'slot_date'  => $reg['exam_date'],
@@ -107,8 +143,7 @@ try {
         'qr' => [
             'payload'   => $payload,
             'image_url' => $qrUrl,
-        ],
-        'debug' => isset($_GET['dbg']) ? ['claim_sid' => $studentId] : null
+        ]
     ], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     $pdo->rollBack();
