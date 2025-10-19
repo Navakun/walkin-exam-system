@@ -106,10 +106,7 @@
       const payBtns = `
       <button class="btn btn-sm btn-primary" onclick="startPay(${r.registration_id})">
         <i class="bi bi-credit-card me-1"></i>ชำระเงิน
-      </button>
-      <a href="student_payment_upload.html?registration_id=${r.registration_id}" class="btn btn-sm btn-outline-primary">
-        <i class="bi bi-upload me-1"></i>อัปโหลดสลิป
-      </a>`;
+      </button>`;
       if (canCancel(r) && r.booking_id) {
         const cancelBtn = `
         <button class="btn btn-sm btn-outline-danger" onclick="cancelRegister(${r.registration_id}, ${r.booking_id})">
@@ -206,9 +203,6 @@
           <button class="btn btn-primary" onclick="startPay(${reg.registration_id})">
             <i class="bi bi-credit-card me-1"></i>ชำระเงิน
           </button>
-          <a class="btn btn-outline-primary" href="student_payment_upload.html?registration_id=${reg.registration_id}">
-            <i class="bi bi-upload me-1"></i>อัปโหลดสลิป
-          </a>
         </div>`;
       } else {
         pay.style.display = 'none'; pay.innerHTML = '';
