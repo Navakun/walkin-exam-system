@@ -56,11 +56,15 @@ try {
 
             /* เคยสอบจบไหม (ดูจากตาราง session ของคุณ) */
             (
-              SELECT CASE WHEN COUNT(*)>0 THEN 1 ELSE 0 END
-              FROM examsession x
-              WHERE x.student_id = r.student_id
+            SELECT CASE WHEN COUNT(*)>0 THEN 1 ELSE 0 END
+            FROM examsession x
+            WHERE x.student_id = r.student_id
                 AND x.end_time IS NOT NULL
-            ) AS has_completed,
+                AND (
+                    x.registration_id = r.id       /* ถ้ามีคอลัมน์นี้ใน examsession */
+                    OR x.slot_id = r.slot_id       /* หรือใช้ slot_id แทน */
+                    )
+            ) AS has_completed_this,
 
             COALESCE((
               SELECT MAX(x2.attempt_no)
@@ -111,9 +115,9 @@ try {
             // ตารางนี้ไม่มี scheduled_at → ใช้ registered_at (หรือ fallback created_at)
             'scheduled_at'   => $r['registered_at'] ?: $r['created_at'] ?: null,
 
-            'has_completed'  => (int)($r['has_completed'] ?? 0),
-            'last_attempt'   => $last,
-            'next_attempt'   => $last + 1,
+            'has_completed'        => (int)($r['has_completed_this'] ?? 0), // เปลี่ยนให้ส่งเฉพาะรายการนี้
+            'last_attempt'         => (int)($r['last_attempt'] ?? 0),
+            'next_attempt'         => (int)($r['last_attempt'] ?? 0) + 1,
             'is_future'      => $isFuture,
             'days_until'     => $daysUntil,
         ];

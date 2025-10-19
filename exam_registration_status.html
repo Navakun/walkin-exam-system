@@ -166,31 +166,42 @@
         }
 
         // ===== Status logic =====
+        // สถานะที่ถือว่า “ลงทะเบียนอยู่”
         const ACTIVE_BOOK_STATUSES = new Set(['free', 'paid', 'waived', 'pending', 'booked']);
+
         function computeStatus(row) {
             const ps = (row.payment_status || '').toLowerCase();
+
+            // ถ้าระบบบันทึกว่ารายการนี้สอบจบจริง
+            if (Number(row.has_completed) === 1) return 'completed';
+
+            // ถ้ายกเลิก
             if (ps === 'cancelled' || ps === 'canceled') return 'cancelled';
 
-            const done = row.has_completed === 1 || row.status === 'completed';
-            if (done) return 'completed';
+            // ยังถือว่าลงทะเบียนอยู่ (จะ/ไม่ต้องจ่ายเงินแล้วแต่ ps)
+            if (ACTIVE_BOOK_STATUSES.has(ps)) return 'registered';
 
-            const endStamp = row.end_at || (row.exam_date && row.end_time ? `${row.exam_date} ${row.end_time}` : '');
-            const endDt = endStamp ? new Date(endStamp.replace(' ', 'T')) : null;
-            if (endDt && !isNaN(endDt) && endDt.getTime() < Date.now()) return 'completed';
-
-            if (ps && ACTIVE_BOOK_STATUSES.has(ps)) return 'registered';
+            // default
             return 'registered';
         }
+
         function statusText(row) {
             const s = computeStatus(row);
             if (s === 'completed') {
-                const n = row.last_attempt || row.attempt_no || row.attempt || '';
+                const n = row.last_attempt || row.attempt_no || '';
                 return n ? `สอบแล้ว (ครั้งที่ ${n})` : 'สอบแล้ว';
             }
             if (s === 'cancelled') return 'ยกเลิกแล้ว';
-            const n = row.next_attempt || row.attempt_no || row.attempt || '';
-            return n ? `ลงทะเบียนแล้ว (จะเป็นครั้งที่ ${n})` : 'ลงทะเบียนแล้ว';
+
+            // แสดงรายละเอียดการชำระเงินให้ชัดขึ้น
+            const ps = (row.payment_status || '').toLowerCase();
+            if (ps === 'pending') return 'รอชำระเงิน';
+            if (ps === 'paid') return 'ลงทะเบียนแล้ว (ชำระแล้ว)';
+            if (ps === 'free' || ps === 'waived') return 'ลงทะเบียนแล้ว (สิทธิ์ฟรี)';
+
+            return 'ลงทะเบียนแล้ว';
         }
+
 
         // ===== Data =====
         async function verifyTokenSilently(token) {
