@@ -37,70 +37,285 @@
             top: 36px;
             transform: translateX(-50%)
         }
+
+        .shell {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            min-height: 100vh;
+        }
+
+        @media(max-width:1024px) {
+            .shell {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: sticky;
+                top: 0;
+                z-index: 25;
+            }
+        }
+
+        .sidebar {
+            background: #0b1220;
+            color: #e5edff;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .side-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .side-brand img {
+            height: 42px;
+            width: auto;
+        }
+
+        .side-title {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .side-sub {
+            font-size: 12px;
+            opacity: .75;
+        }
+
+        .me-chip {
+            background: rgba(255, 255, 255, .08);
+            border: 1px solid rgba(255, 255, 255, .14);
+            padding: 10px 12px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #e5edff;
+            width: 100%;
+        }
+
+        .nav {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .nav .group {
+            margin: 14px 0 6px;
+            font-weight: 600;
+            color: #bcd2ff;
+            font-size: 12px;
+            letter-spacing: .3px;
+        }
+
+        .nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            color: #e5edff;
+            text-decoration: none;
+            border: 1px solid transparent;
+        }
+
+        .nav a:hover {
+            background: rgba(255, 255, 255, .06);
+            border-color: rgba(255, 255, 255, .14);
+        }
+
+        .nav a.active {
+            background: linear-gradient(90deg, rgba(14, 165, 233, .18), rgba(37, 99, 235, .18));
+            border-color: rgba(37, 99, 235, .35);
+        }
+
+        .side-footer {
+            margin-top: auto;
+        }
+
+        .logout {
+            background: #ef4444;
+            color: #fff;
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .main {
+            padding: 24px 28px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .page-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        /* ===== Fix modal size & scroll ===== */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .45);
+            z-index: 60;
+            backdrop-filter: blur(2px)
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 70;
+            width: min(960px, 96vw);
+            max-height: 90vh;
+            /* ไม่ให้สูงเกินจอ */
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            /* ตัดส่วนเกิน */
+        }
+
+        .modal header {
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 1
+        }
+
+        .modal .body {
+            overflow: auto;
+            /* เนื้อหาเลื่อนในตัวโมดัล */
+        }
+
+        /* ===== Chart area ===== */
+        .chart-wrap {
+            height: 280px;
+            /* ความสูงชัดเจน */
+            max-height: 40vh;
+            /* บนจอเล็กๆ จะย่อให้ไม่กินพื้นที่ */
+        }
+
+        #resultChart {
+            width: 100% !important;
+            height: 100% !important;
+            /* ให้กราฟเติมเต็ม chart-wrap */
+            display: block;
+        }
+
+        /* กัน CSS อื่นที่เผื่อไปตั้งค่า canvas แปลกๆ */
+        canvas {
+            max-width: 100%
+        }
     </style>
 </head>
 
 <body>
-    <!-- HEADER -->
-    <header>
-        <div class="logo-text">
-            <img src="nulogo.png" alt="Logo" height="60">
-            <div class="course-title">
-                <h2>รายวิชา 273252 กฎหมายเทคโนโลยีสารสนเทศ<br>มหาวิทยาลัยนเรศวร</h2>
+    <div class="shell">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="side-brand">
+                <img src="nulogo.png" alt="NU">
+                <div>
+                    <p class="side-title">ระบบจัดสอบ Walk-in</p>
+                    <div class="side-sub">(สำหรับอาจารย์)</div>
+                </div>
             </div>
-        </div>
-        <div class="top-right">
-            <button id="backBtn" class="home-btn">กลับหน้าหลัก</button>
-            <button id="logoutBtn" class="logout-btn">ออกจากระบบ</button>
-        </div>
-    </header>
 
-    <div class="container my-3">
-        <div class="d-flex align-items-center mb-3">
-            <i class="fas fa-list-check fa-2x text-primary me-2"></i>
-            <h2 class="mb-1">สถานะการลงทะเบียนสอบ</h2>
-        </div>
+            <button class="me-chip" id="editProfileBtn" title="แก้ไขโปรไฟล์">
+                <i class="fa-solid fa-user-circle"></i>
+                <span id="teacherName">อาจารย์ผู้สอน</span>
+            </button>
 
-        <!-- เดิม: alert แดง -->
-        <div id="errorAlert" class="alert alert-danger" style="display:none;"></div>
+            <button class="logout" id="logoutBtn">
+                <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+            </button>
 
-        <!-- ค้นหา -->
-        <div class="search-section mb-3">
-            <div class="search-filters">
-                <input type="text" id="searchInput" class="form-control"
-                    placeholder="ค้นหาด้วยรหัสนิสิต หรือ ชื่อ-นามสกุล">
-                <input type="date" id="searchDate" class="form-control" title="ค้นหาด้วยวันที่สอบ">
-                <button id="btnSearch" class="btn btn-primary">
-                    <i class="fas fa-search"></i> ค้นหา
-                </button>
-                <button id="btnReset" class="btn btn-secondary">
-                    <i class="fas fa-redo"></i> ล้างการค้นหา
-                </button>
+            <nav class="nav">
+                <div class="group">เมนูหลัก</div>
+                <a href="#" class="active"><i class="fa-solid fa-house"></i> หน้าหลัก</a>
+
+                <div class="group">การจัดการข้อสอบ</div>
+                <a href="teacher_question_bank.html"><i class="fa-solid fa-file-invoice"></i> คลังข้อสอบ</a>
+
+                <div class="group">การจัดการสอบ</div>
+                <a href="teacher_exam_out.html"><i class="fa-solid fa-calendar-alt"></i> ช่วงเวลาการสอบ</a>
+                <a href="exam_users.html"><i class="fa-solid fa-users"></i> รายชื่อผู้เข้าสอบ</a>
+                <a href="exam_registration_status.html"><i class="fa-solid fa-clipboard-check"></i>
+                    ตรวจสอบสถานะนิสิต</a>
+                <a href="exam_statistics.html"><i class="fa-solid fa-chart-bar"></i> สถิติการสอบ</a>
+
+                <div class="group">เนื้อหารายวิชา</div>
+                <a href="teaching_materials.html"><i class="fa-solid fa-file-arrow-up"></i> อัปโหลดสื่อการสอน</a>
+                <a href="teacher_open_materials.html"><i class="fa-solid fa-book-open-reader"></i> ดูสื่อการสอน</a>
+            </nav>
+        </aside>
+
+
+        <div class="container my-3">
+            <div class="d-flex align-items-center mb-3">
+                <i class="fas fa-list-check fa-2x text-primary me-2"></i>
+                <h2 class="mb-1">สถานะการลงทะเบียนสอบ</h2>
             </div>
-        </div>
 
-        <!-- ตาราง -->
-        <div class="table-container">
-            <div id="loadingMask">
-                <div class="spinner-border text-primary" role="status"></div>
+            <!-- เดิม: alert แดง -->
+            <div id="errorAlert" class="alert alert-danger" style="display:none;"></div>
+
+            <!-- ค้นหา -->
+            <div class="search-section mb-3">
+                <div class="search-filters">
+                    <input type="text" id="searchInput" class="form-control"
+                        placeholder="ค้นหาด้วยรหัสนิสิต หรือ ชื่อ-นามสกุล">
+                    <input type="date" id="searchDate" class="form-control" title="ค้นหาด้วยวันที่สอบ">
+                    <button id="btnSearch" class="btn btn-primary">
+                        <i class="fas fa-search"></i> ค้นหา
+                    </button>
+                    <button id="btnReset" class="btn btn-secondary">
+                        <i class="fas fa-redo"></i> ล้างการค้นหา
+                    </button>
+                </div>
             </div>
-            <table class="table table-bordered table-striped align-middle text-center">
-                <thead class="table-light">
-                    <tr>
-                        <th>รหัสนิสิต</th>
-                        <th>ชื่อ-นามสกุล</th>
-                        <th>วันที่สอบ</th>
-                        <th>เวลา</th>
-                        <th>หัวข้อสอบ</th>
-                        <th>สถานะ</th>
-                    </tr>
-                </thead>
-                <tbody id="registrationTable">
-                    <tr>
-                        <td colspan="6" class="text-center">กำลังโหลดข้อมูล…</td>
-                    </tr>
-                </tbody>
-            </table>
+
+            <!-- ตาราง -->
+            <div class="table-container">
+                <div id="loadingMask">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                <table class="table table-bordered table-striped align-middle text-center">
+                    <thead class="table-light">
+                        <tr>
+                            <th>รหัสนิสิต</th>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>วันที่สอบ</th>
+                            <th>เวลา</th>
+                            <th>หัวข้อสอบ</th>
+                            <th>สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="registrationTable">
+                        <tr>
+                            <td colspan="6" class="text-center">กำลังโหลดข้อมูล…</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 

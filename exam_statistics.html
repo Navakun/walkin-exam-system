@@ -16,157 +16,201 @@
 
     <!-- Page style -->
     <link rel="stylesheet" href="assets/css/exam-stats.css">
+
 </head>
 
 <body>
-    <div class="page-wrap">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-            <h2 class="h5 mb-0">สถิติการสอบ</h2>
-            <div class="d-flex gap-2">
-                <!-- ปรับสไตล์ + aria + ไอคอน -->
-                <button id="backBtn" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"
-                    title="กลับไปแดชบอร์ดอาจารย์" aria-label="กลับไปแดชบอร์ดอาจารย์">
-                    <i class="fa-solid fa-arrow-left-long" aria-hidden="true"></i>
-                    <span>กลับหน้าหลัก</span>
-                </button>
-                <button class="btn btn-danger btn-sm" id="logoutBtn">ออกจากระบบ</button>
-            </div>
-        </div>
-
-        <!-- Filters + KPIs -->
-        <div class="row g-3 align-items-end">
-            <div class="col-md-4">
-                <label for="examsetSelect" class="form-label">ชุดข้อสอบ (Examset)</label>
-                <select id="examsetSelect" class="form-select" aria-label="เลือกชุดข้อสอบ" title="เลือกชุดข้อสอบ">
-                    <option value="">— ทั้งหมด —</option>
-                </select>
-            </div>
-
-            <div class="col-md-3">
-                <label for="fromDate" class="form-label">ตั้งแต่ (From)</label>
-                <input id="fromDate" type="date" class="form-control" placeholder="ตั้งแต่" aria-label="ตั้งแต่วันที่"
-                    title="ตั้งแต่วันที่">
-            </div>
-
-            <div class="col-md-3">
-                <label for="toDate" class="form-label">ถึง (To)</label>
-                <input id="toDate" type="date" class="form-control" placeholder="ถึง" aria-label="ถึงวันที่"
-                    title="ถึงวันที่">
-            </div>
-
-            <div class="col-md-2 d-grid">
-                <button id="showBtn" class="btn btn-primary" aria-label="แสดงสถิติ">แสดงสถิติ</button>
-            </div>
-        </div>
-
-        <div class="row g-2 my-3">
-            <div class="col-md-3">
-                <div class="card card-kpi p-3">
-                    <div class="text-muted">จำนวน Sessions</div>
-                    <div id="kpiSessions" class="num">—</div>
+    <div class="shell">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="side-brand">
+                <img src="nulogo.png" alt="NU">
+                <div>
+                    <p class="side-title">ระบบจัดสอบ Walk-in</p>
+                    <div class="side-sub">(สำหรับอาจารย์)</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card card-kpi p-3">
-                    <div class="text-muted">จำนวนข้อในชุด</div>
-                    <div id="kpiQuestions" class="num">—</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card card-kpi p-3">
-                    <div class="text-muted">ค่าเฉลี่ยข้อที่ถูก</div>
-                    <div id="kpiAvgCorrect" class="num">—</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card card-kpi p-3">
-                    <div class="text-muted">คะแนนเฉลี่ย (%)</div>
-                    <div id="kpiAvgScore" class="num">—</div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Charts -->
-        <div class="row g-3">
-            <div class="col-md-7">
-                <div class="chart-card">
-                    <h5 class="h6 mb-3">จำนวน “ถูก” ต่อข้อ</h5>
-                    <canvas id="perQuestionChart" class="chart-box" role="img"
-                        aria-label="กราฟจำนวนตอบถูกต่อข้อ"></canvas>
-                </div>
-            </div>
-            <div class="col-md-5">
-                <div class="chart-card">
-                    <h5 class="h6 mb-3">จำนวนคนตามจำนวนข้อที่ทำถูก</h5>
-                    <canvas id="histChart" class="chart-box" role="img"
-                        aria-label="ฮิสโตแกรมจำนวนนักศึกษาตามจำนวนข้อที่ทำถูก"></canvas>
-                </div>
-            </div>
-        </div>
+            <button class="me-chip" id="editProfileBtn" title="แก้ไขโปรไฟล์">
+                <i class="fa-solid fa-user-circle"></i>
+                <span id="teacherName">อาจารย์ผู้สอน</span>
+            </button>
 
-        <!-- Question statistics panel -->
-        <section class="panel mt-3">
-            <div class="panel-head">
-                <h3 class="panel-title mb-0">สถิติรายข้อ</h3>
-                <div class="panel-head-actions">
-                    <button id="qExport" class="btn btn-sm btn-outline-secondary btn-icon"
-                        aria-label="ส่งออกสถิติรายข้อเป็นไฟล์ CSV">
-                        <i class="fa-solid fa-file-export" aria-hidden="true"></i><span>Export CSV</span>
+            <button class="logout" id="logoutBtn">
+                <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+            </button>
+
+            <nav class="nav">
+                <div class="group">เมนูหลัก</div>
+                <a href="#" class="active"><i class="fa-solid fa-house"></i> หน้าหลัก</a>
+
+                <div class="group">การจัดการข้อสอบ</div>
+                <a href="teacher_question_bank.html"><i class="fa-solid fa-file-invoice"></i> คลังข้อสอบ</a>
+
+                <div class="group">การจัดการสอบ</div>
+                <a href="teacher_exam_out.html"><i class="fa-solid fa-calendar-alt"></i> ช่วงเวลาการสอบ</a>
+                <a href="exam_users.html"><i class="fa-solid fa-users"></i> รายชื่อผู้เข้าสอบ</a>
+                <a href="exam_registration_status.html"><i class="fa-solid fa-clipboard-check"></i>
+                    ตรวจสอบสถานะนิสิต</a>
+                <a href="exam_statistics.html"><i class="fa-solid fa-chart-bar"></i> สถิติการสอบ</a>
+
+                <div class="group">เนื้อหารายวิชา</div>
+                <a href="teaching_materials.html"><i class="fa-solid fa-file-arrow-up"></i> อัปโหลดสื่อการสอน</a>
+                <a href="teacher_open_materials.html"><i class="fa-solid fa-book-open-reader"></i> ดูสื่อการสอน</a>
+            </nav>
+        </aside>
+
+
+        <div class="page-wrap">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h2 class="h5 mb-0">สถิติการสอบ</h2>
+                <div class="d-flex gap-2">
+                    <!-- ปรับสไตล์ + aria + ไอคอน -->
+                    <button id="backBtn" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"
+                        title="กลับไปแดชบอร์ดอาจารย์" aria-label="กลับไปแดชบอร์ดอาจารย์">
+                        <i class="fa-solid fa-arrow-left-long" aria-hidden="true"></i>
+                        <span>กลับหน้าหลัก</span>
                     </button>
+                    <button class="btn btn-danger btn-sm" id="logoutBtn">ออกจากระบบ</button>
                 </div>
             </div>
 
-            <div class="panel-controls">
-                <div class="control-item">
-                    <label for="qSearch" class="form-label">ค้นหาเลขข้อ / คำถาม</label>
-                    <input id="qSearch" class="form-control form-control-sm" placeholder="เช่น 12 หรือคำสำคัญของคำถาม"
-                        aria-label="ค้นหาเลขข้อหรือข้อความคำถาม" title="ค้นหาข้อหรือคำถาม">
-                </div>
-
-                <div class="control-item">
-                    <label for="qSort" class="form-label">การเรียงข้อมูล</label>
-                    <select id="qSort" class="form-select form-select-sm q-sort" aria-label="วิธีการเรียงตารางรายข้อ"
-                        title="วิธีการเรียงตารางรายข้อ">
-                        <option value="id_asc">เรียงตามเลขข้อ (น้อย→มาก)</option>
-                        <option value="id_desc">เรียงตามเลขข้อ (มาก→น้อย)</option>
-                        <option value="pct_desc">% ถูก (มาก→น้อย)</option>
-                        <option value="pct_asc">% ถูก (น้อย→มาก)</option>
-                        <option value="wrong_desc">จำนวนผิด (มาก→น้อย)</option>
-                        <option value="wrong_asc">จำนวนผิด (น้อย→มาก)</option>
+            <!-- Filters + KPIs -->
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="examsetSelect" class="form-label">ชุดข้อสอบ (Examset)</label>
+                    <select id="examsetSelect" class="form-select" aria-label="เลือกชุดข้อสอบ" title="เลือกชุดข้อสอบ">
+                        <option value="">— ทั้งหมด —</option>
                     </select>
                 </div>
-            </div>
 
-            <div class="panel-body">
-                <div class="table-responsive table-wrap">
-                    <table class="table table-sm table-hover align-middle table-sticky table-zebra" id="qTable">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="q-col-id">ข้อ</th>
-                                <th>คำถาม (ย่อ)</th>
-                                <th class="text-end">ทำทั้งหมด (คน)</th>
-                                <th class="text-end text-success">ถูก (คน)</th>
-                                <th class="text-end text-danger">ผิด (คน)</th>
-                                <th class="text-end">% ถูก</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+                <div class="col-md-3">
+                    <label for="fromDate" class="form-label">ตั้งแต่ (From)</label>
+                    <input id="fromDate" type="date" class="form-control" placeholder="ตั้งแต่"
+                        aria-label="ตั้งแต่วันที่" title="ตั้งแต่วันที่">
+                </div>
+
+                <div class="col-md-3">
+                    <label for="toDate" class="form-label">ถึง (To)</label>
+                    <input id="toDate" type="date" class="form-control" placeholder="ถึง" aria-label="ถึงวันที่"
+                        title="ถึงวันที่">
+                </div>
+
+                <div class="col-md-2 d-grid">
+                    <button id="showBtn" class="btn btn-primary" aria-label="แสดงสถิติ">แสดงสถิติ</button>
                 </div>
             </div>
 
-            <div class="panel-foot d-flex justify-content-between align-items-center">
-                <small id="qInfo" class="text-muted"></small>
-                <div class="btn-group btn-group-sm">
-                    <button id="qPrev" class="btn btn-outline-secondary" type="button">
-                        <i class="fa-solid fa-chevron-left"></i> ก่อนหน้า
-                    </button>
-                    <button id="qNext" class="btn btn-outline-secondary" type="button">
-                        ถัดไป <i class="fa-solid fa-chevron-right"></i>
-                    </button>
+            <div class="row g-2 my-3">
+                <div class="col-md-3">
+                    <div class="card card-kpi p-3">
+                        <div class="text-muted">จำนวน Sessions</div>
+                        <div id="kpiSessions" class="num">—</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card card-kpi p-3">
+                        <div class="text-muted">จำนวนข้อในชุด</div>
+                        <div id="kpiQuestions" class="num">—</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card card-kpi p-3">
+                        <div class="text-muted">ค่าเฉลี่ยข้อที่ถูก</div>
+                        <div id="kpiAvgCorrect" class="num">—</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card card-kpi p-3">
+                        <div class="text-muted">คะแนนเฉลี่ย (%)</div>
+                        <div id="kpiAvgScore" class="num">—</div>
+                    </div>
                 </div>
             </div>
-        </section>
+
+            <!-- Charts -->
+            <div class="row g-3">
+                <div class="col-md-7">
+                    <div class="chart-card">
+                        <h5 class="h6 mb-3">จำนวน “ถูก” ต่อข้อ</h5>
+                        <canvas id="perQuestionChart" class="chart-box" role="img"
+                            aria-label="กราฟจำนวนตอบถูกต่อข้อ"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="chart-card">
+                        <h5 class="h6 mb-3">จำนวนคนตามจำนวนข้อที่ทำถูก</h5>
+                        <canvas id="histChart" class="chart-box" role="img"
+                            aria-label="ฮิสโตแกรมจำนวนนักศึกษาตามจำนวนข้อที่ทำถูก"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question statistics panel -->
+            <section class="panel mt-3">
+                <div class="panel-head">
+                    <h3 class="panel-title mb-0">สถิติรายข้อ</h3>
+                    <div class="panel-head-actions">
+                        <button id="qExport" class="btn btn-sm btn-outline-secondary btn-icon"
+                            aria-label="ส่งออกสถิติรายข้อเป็นไฟล์ CSV">
+                            <i class="fa-solid fa-file-export" aria-hidden="true"></i><span>Export CSV</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel-controls">
+                    <div class="control-item">
+                        <label for="qSearch" class="form-label">ค้นหาเลขข้อ / คำถาม</label>
+                        <input id="qSearch" class="form-control form-control-sm"
+                            placeholder="เช่น 12 หรือคำสำคัญของคำถาม" aria-label="ค้นหาเลขข้อหรือข้อความคำถาม"
+                            title="ค้นหาข้อหรือคำถาม">
+                    </div>
+
+                    <div class="control-item">
+                        <label for="qSort" class="form-label">การเรียงข้อมูล</label>
+                        <select id="qSort" class="form-select form-select-sm q-sort"
+                            aria-label="วิธีการเรียงตารางรายข้อ" title="วิธีการเรียงตารางรายข้อ">
+                            <option value="id_asc">เรียงตามเลขข้อ (น้อย→มาก)</option>
+                            <option value="id_desc">เรียงตามเลขข้อ (มาก→น้อย)</option>
+                            <option value="pct_desc">% ถูก (มาก→น้อย)</option>
+                            <option value="pct_asc">% ถูก (น้อย→มาก)</option>
+                            <option value="wrong_desc">จำนวนผิด (มาก→น้อย)</option>
+                            <option value="wrong_asc">จำนวนผิด (น้อย→มาก)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="panel-body">
+                    <div class="table-responsive table-wrap">
+                        <table class="table table-sm table-hover align-middle table-sticky table-zebra" id="qTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="q-col-id">ข้อ</th>
+                                    <th>คำถาม (ย่อ)</th>
+                                    <th class="text-end">ทำทั้งหมด (คน)</th>
+                                    <th class="text-end text-success">ถูก (คน)</th>
+                                    <th class="text-end text-danger">ผิด (คน)</th>
+                                    <th class="text-end">% ถูก</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="panel-foot d-flex justify-content-between align-items-center">
+                    <small id="qInfo" class="text-muted"></small>
+                    <div class="btn-group btn-group-sm">
+                        <button id="qPrev" class="btn btn-outline-secondary" type="button">
+                            <i class="fa-solid fa-chevron-left"></i> ก่อนหน้า
+                        </button>
+                        <button id="qNext" class="btn btn-outline-secondary" type="button">
+                            ถัดไป <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
     </div>
 
     <script>
