@@ -6,13 +6,77 @@
     <title>สถานะการลงทะเบียนสอบ</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- CSS -->
+    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome + SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- QR generator (ใช้แปลง string เป็นภาพ QR) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
     <link rel="stylesheet" href="assets/css/main.css">
     <link rel="stylesheet" href="assets/css/student.css">
     <link rel="stylesheet" href="assets/css/student-status.css">
     <link rel="icon" href="favicon.ico">
 
+    <style>
+        #loadingMask {
+            display: none;
+            position: relative;
+            min-height: 120px
+        }
+
+        #loadingMask .spinner-border {
+            position: absolute;
+            left: 50%;
+            top: 36px;
+            transform: translateX(-50%)
+        }
+
+        .pay-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .25rem .6rem;
+            border-radius: 999px;
+            font-weight: 600
+        }
+
+        .pay-pill.pending {
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid #fdba74
+        }
+
+        .pay-pill.paid {
+            background: #ecfdf5;
+            color: #047857;
+            border: 1px solid #6ee7b7
+        }
+
+        .pay-pill.free {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe
+        }
+
+        .pay-pill.waived {
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #cbd5e1
+        }
+
+        .pay-pill.cancelled {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca
+        }
+    </style>
 </head>
 
 <body>
@@ -67,11 +131,14 @@
                         <th>เวลา</th>
                         <th>หัวข้อสอบ</th>
                         <th>สถานะ</th>
+                        <!-- NEW: ชำระเงิน -->
+                        <th>การชำระเงิน</th>
+                        <th>ดำเนินการ</th>
                     </tr>
                 </thead>
                 <tbody id="registrationTable">
                     <tr>
-                        <td colspan="6" class="text-center">กำลังโหลดข้อมูล…</td>
+                        <td colspan="8" class="text-center">กำลังโหลดข้อมูล…</td>
                     </tr>
                 </tbody>
             </table>
@@ -79,25 +146,27 @@
     </div>
 
     <script>
-        // ===== Base config (ทำให้รันได้ทั้ง root และวางในโฟลเดอร์ย่อย /walkin-exam-system/) =====
+        // ===== Base config =====
         const ROOT = location.pathname.includes('/walkin-exam-system/') ? '/walkin-exam-system' : '';
-        const API_BASE = `${ROOT}/api/`; // e.g. "/api/" หรือ "/walkin-exam-system/api/"
+        const API_BASE = `${ROOT}/api/`;
 
-        const ENDPOINT_VERIFY = 'verify_token.php';              // ถ้าไม่มีไฟล์นี้ -> จะข้ามอย่างเงียบ ๆ
-        const ENDPOINT_LIST = 'get_registration_status.php';   // <- ใช้จริง
-        const ENDPOINT_DETAIL = 'get_booking_details.php';       // (optional)
+        const ENDPOINT_VERIFY = 'verify_token.php';        // optional
+        const ENDPOINT_LIST = 'get_registration_status.php';
+        const ENDPOINT_PAY_CREATE = 'payments/create.php';
+        const ENDPOINT_PAY_STATUS = 'payments/status.php';
 
-        // ===== DOM short-hands =====
+        // ===== DOM & SweetAlert =====
         const $ = (id) => document.getElementById(id);
         const show = (el, on = true) => el && (el.style.display = on ? '' : 'none');
+        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+        function showError(msg) { Toast.fire({ icon: 'error', title: msg || 'เกิดข้อผิดพลาด' }); }
 
-        // ===== Token helpers =====
+        // ===== Token (หน้านี้สำหรับอาจารย์/สตาฟ) =====
         const getToken = () => localStorage.getItem('teacherToken') || sessionStorage.getItem('teacherToken') || '';
         function logout() {
             try {
                 localStorage.removeItem('teacherToken');
                 sessionStorage.removeItem('teacherToken');
-                // ล้างคุกกี้ auth ถ้ามี
                 document.cookie.split(';').forEach(c => {
                     const name = c.split('=')[0].trim();
                     if (/token|auth|session/i.test(name)) {
@@ -105,21 +174,17 @@
                     }
                 });
             } catch { }
-            // กัน BFCache
             location.replace('teacher_login.html');
             setTimeout(() => location.href = 'teacher_login.html', 150);
         }
 
-        // ===== Date/Time formatters =====
-        // dd/mm/yyyy (รองรับ 'YYYY-MM-DD' หรือ 'YYYY-MM-DD HH:MM:SS')
+        // ===== Formatters =====
         function formatDate(ymdOrDt) {
             if (!ymdOrDt) return '';
             const ymd = String(ymdOrDt).slice(0, 10);
             if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymdOrDt;
-            const [y, m, d] = ymd.split('-');
-            return `${d}/${m}/${y}`;
+            const [y, m, d] = ymd.split('-'); return `${d}/${m}/${y}`;
         }
-        // HH:MM (รองรับ 'HH:MM(:SS)?' หรือ 'YYYY-MM-DD HH:MM:SS')
         function formatTime(v) {
             if (!v) return '';
             const s = String(v);
@@ -128,40 +193,23 @@
             return s;
         }
 
-        // ===== Error UI =====
-        function showError(msg) {
-            const el = $('errorAlert');
-            if (!el) return;
-            el.textContent = msg || 'เกิดข้อผิดพลาด';
-            show(el, true);
-            setTimeout(() => show(el, false), 5000);
-        }
-
-        // อ่าน JSON แบบกันกรณี backend ส่ง HTML error
         async function readJSONorThrow(res) {
             const raw = await res.text();
             try { return JSON.parse(raw); }
             catch { throw new Error(raw.replace(/<[^>]*>/g, '').trim() || `HTTP ${res.status}`); }
         }
 
-        // ===== Status logic (ยืดหยุ่นชื่อ field) =====
-        const ACTIVE_BOOK_STATUSES = new Set(['free', 'paid', 'waived', 'pending', 'booked']); // ปรับได้
+        // ===== Registration status logic =====
+        const ACTIVE_BOOK_STATUSES = new Set(['free', 'paid', 'waived', 'pending', 'booked']);
         function computeStatus(row) {
             const ps = (row.payment_status || '').toLowerCase();
             if (ps === 'cancelled' || ps === 'canceled') return 'cancelled';
-
-            // หากมี flag/เวลาที่บอก “สอบจบแล้ว”
             const done = row.has_completed === 1 || row.status === 'completed';
             if (done) return 'completed';
-
-            // ถ้าเวลาจบสอบ (end_at/end_time) อยู่ในอดีต → completed
             const endStamp = row.end_at || (row.exam_date && row.end_time ? `${row.exam_date} ${row.end_time}` : '');
             const endDt = endStamp ? new Date(endStamp.replace(' ', 'T')) : null;
             if (endDt && !isNaN(endDt) && endDt.getTime() < Date.now()) return 'completed';
-
-            // เหลือกรณีลงทะเบียน
             if (ps && ACTIVE_BOOK_STATUSES.has(ps)) return 'registered';
-            // เผื่อ API ไม่ส่ง payment_status มาแต่คือรายการที่ลงทะเบียนอยู่
             return 'registered';
         }
         function statusText(row) {
@@ -175,24 +223,145 @@
             return n ? `ลงทะเบียนแล้ว (จะเป็นครั้งที่ ${n})` : 'ลงทะเบียนแล้ว';
         }
 
-        // ===== Data loading =====
+        // ===== Payment helpers =====
+        function paymentPill(status) {
+            const s = (status || '').toLowerCase();
+            const cls = s === 'paid' ? 'paid' : s === 'pending' ? 'pending'
+                : s === 'free' ? 'free' : s === 'waived' ? 'waived'
+                    : s === 'cancelled' ? 'cancelled' : 'pending';
+            const label = s === 'paid' ? 'ชำระแล้ว' : s === 'pending' ? 'รอชำระ'
+                : s === 'free' ? 'สิทธิ์ฟรี' : s === 'waived' ? 'ยกเว้น'
+                    : s === 'cancelled' ? 'ยกเลิก' : (s || '-');
+            return `<span class="pay-pill ${cls}"><i class="fa-solid fa-receipt"></i>${label}</span>`;
+        }
+
+        // แสดงป็อปอัพคิวอาร์ + เริ่ม poll สถานะ
+        async function showPaymentPopupAndPoll({ registration_id, amount, ref_no, payment_id, qr_string, expires_at }) {
+            // สร้าง HTML กล่อง
+            const html = `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+          <div>ยอดชำระ <b>${Number(amount || 0).toFixed(2)}</b> บาท</div>
+          <canvas id="qrcanvas" width="220" height="220" style="border-radius:12px"></canvas>
+          <div style="font-size:12px;color:#64748b">
+            อ้างอิง: <code>${ref_no || payment_id || '-'}</code><br>
+            <span id="expireTxt"></span>
+          </div>
+        </div>
+      `;
+
+            await Swal.fire({
+                title: 'ชำระเงินด้วย QR',
+                html,
+                allowOutsideClick: false,
+                showCancelButton: true,
+                confirmButtonText: 'ตรวจสอบสถานะ',
+                cancelButtonText: 'ปิด',
+                didOpen: async () => {
+                    // วาด QR จาก qr_string (ถ้าเซิร์ฟเวอร์ส่งเป็น image URL ก็ใช้ <img> แทนได้)
+                    const canvas = document.getElementById('qrcanvas');
+                    try {
+                        await QRCode.toCanvas(canvas, String(qr_string || ref_no || ''), { margin: 1, width: 220 });
+                    } catch (e) { console.error('QR gen error', e); }
+
+                    // แสดงเวลาหมดอายุ (ถ้ามี)
+                    if (expires_at) {
+                        const expEl = document.getElementById('expireTxt');
+                        const exp = new Date(expires_at.replace(' ', 'T')).getTime();
+                        const t = setInterval(() => {
+                            const left = Math.max(0, exp - Date.now());
+                            const mm = String(Math.floor(left / 60000)).padStart(2, '0');
+                            const ss = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
+                            expEl.textContent = left ? `หมดอายุใน ${mm}:${ss}` : 'QR นี้หมดอายุแล้ว';
+                            if (!left) clearInterval(t);
+                        }, 1000);
+                    }
+                }
+            }).then(async (r) => {
+                if (r.isConfirmed) {
+                    // เช็คสถานะทันที 1 ครั้ง
+                    const ok = await checkPaymentStatus({ payment_id, ref_no });
+                    if (ok) {
+                        Swal.fire({ icon: 'success', title: 'ชำระเงินสำเร็จ', timer: 1500, showConfirmButton: false });
+                        await loadRegistrations();
+                    } else {
+                        // ถ้ายังไม่สำเร็จ ให้เริ่มโหมด polling ทุก 5 วิ สูงสุด 2 นาที
+                        await pollUntilPaid({ payment_id, ref_no }, 120, 5);
+                    }
+                }
+            });
+        }
+
+        async function createPayment(reg) {
+            // reg = แถวรายการลงทะเบียนที่กดจ่าย (ต้องมี reg.id หรือ booking_id)
+            const token = getToken();
+            const body = { registration_id: reg.id || reg.booking_id || reg.reg_id };
+
+            const res = await fetch(API_BASE + ENDPOINT_PAY_CREATE, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(body)
+            });
+            const data = await readJSONorThrow(res);
+            if (!res.ok || data.status !== 'success') throw new Error(data.message || `HTTP ${res.status}`);
+
+            // รองรับทั้ง data.payment หรือ field แบน
+            const p = data.payment || data;
+            return {
+                registration_id: body.registration_id,
+                amount: p.amount,
+                ref_no: p.ref_no || p.reference || p.reference_no,
+                payment_id: p.payment_id || p.id,
+                qr_string: p.qr_string || p.qr || p.payload || p.promptpay_string,
+                expires_at: p.expires_at || p.expire_at || p.qr_expire_at
+            };
+        }
+
+        async function checkPaymentStatus({ payment_id, ref_no }) {
+            const token = getToken();
+            const qs = payment_id ? `payment_id=${encodeURIComponent(payment_id)}`
+                : `ref_no=${encodeURIComponent(ref_no)}`;
+            const res = await fetch(`${API_BASE}${ENDPOINT_PAY_STATUS}?${qs}`, {
+                headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+                cache: 'no-store'
+            });
+            const data = await readJSONorThrow(res);
+            if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+            const s = (data.status || data.payment_status || '').toLowerCase();
+            return s === 'paid' || s === 'success';
+        }
+
+        async function pollUntilPaid(keys, maxSeconds = 120, intervalSeconds = 5) {
+            const start = Date.now();
+            const timer = setInterval(async () => {
+                try {
+                    const ok = await checkPaymentStatus(keys);
+                    if (ok) {
+                        clearInterval(timer);
+                        Swal.fire({ icon: 'success', title: 'ชำระเงินสำเร็จ', timer: 1500, showConfirmButton: false });
+                        await loadRegistrations();
+                    } else if (Date.now() - start > maxSeconds * 1000) {
+                        clearInterval(timer);
+                        Swal.fire({ icon: 'info', title: 'ยังไม่พบการชำระ', text: 'ลองกดตรวจสอบอีกครั้งภายหลัง' });
+                    }
+                } catch (e) {
+                    clearInterval(timer);
+                    showError(e.message);
+                }
+            }, intervalSeconds * 1000);
+        }
+
+        // ===== Data loading & rendering =====
         async function verifyTokenSilently(token) {
             try {
-                const r = await fetch(API_BASE + ENDPOINT_VERIFY, {
-                    method: 'POST',
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                // บางโฮสต์ไม่มีไฟล์นี้ → 404 ถือว่าไปต่อได้
+                const r = await fetch(API_BASE + ENDPOINT_VERIFY, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
                 if (r.status === 404) return;
                 const d = await readJSONorThrow(r);
                 if (!r.ok || d.status === 'error') throw new Error(d.message || `HTTP ${r.status}`);
             } catch (e) {
-                // ถ้าเป็น 401/403 → token หมดอายุ
                 if (String(e.message).match(/401|403|unauth/i)) {
                     showError('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
                     setTimeout(logout, 1200);
                 }
-                // ที่เหลือปล่อยผ่าน (เช่น ไม่มี endpoint)
             }
         }
 
@@ -200,8 +369,7 @@
             const tableBody = $('registrationTable');
             const mask = $('loadingMask');
             show(mask, true);
-            tableBody.innerHTML = `<tr><td colspan="6" class="text-center">กำลังโหลดข้อมูล…</td></tr>`;
-
+            tableBody.innerHTML = `<tr><td colspan="8" class="text-center">กำลังโหลดข้อมูล…</td></tr>`;
             try {
                 const token = getToken();
                 const r = await fetch(API_BASE + ENDPOINT_LIST, {
@@ -210,55 +378,55 @@
                 });
                 const data = await readJSONorThrow(r);
                 if (!r.ok) throw new Error(data?.message || `HTTP ${r.status}`);
-
                 const list = Array.isArray(data?.registrations) ? data.registrations
-                    : Array.isArray(data?.data) ? data.data
-                        : [];
-
+                    : Array.isArray(data?.data) ? data.data : [];
                 renderTable(list);
             } catch (e) {
                 console.error(e);
-                tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">ไม่สามารถโหลดข้อมูลได้</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">ไม่สามารถโหลดข้อมูลได้</td></tr>`;
                 showError(e.message || 'โหลดข้อมูลไม่สำเร็จ');
-            } finally {
-                show(mask, false);
-            }
+            } finally { show(mask, false); }
         }
 
         function renderTable(rows) {
             const t = $('registrationTable');
             if (!rows.length) {
-                t.innerHTML = `<tr><td colspan="6" class="text-center">ไม่มีข้อมูลการลงทะเบียนสอบ</td></tr>`;
+                t.innerHTML = `<tr><td colspan="8" class="text-center">ไม่มีข้อมูลการลงทะเบียนสอบ</td></tr>`;
                 return;
             }
 
-            // เรียง: ลงทะเบียนล่าสุดก่อน → ถัดไปตามวันสอบ-เวลา
-            const getWhen = (r) =>
-                r.registered_at || r.created_at || r.booking_time || r.booked_at || r.updated_at || '';
+            const getWhen = (r) => r.registered_at || r.created_at || r.booking_time || r.booked_at || r.updated_at || '';
             rows.sort((a, b) => {
                 const tb = new Date(String(getWhen(b)).replace(' ', 'T'));
                 const ta = new Date(String(getWhen(a)).replace(' ', 'T'));
                 if (!isNaN(tb) && !isNaN(ta)) return tb - ta;
-
-                // fallback: ตามวันสอบ-เวลา
                 const kb = new Date(`${b.exam_date || ''} ${b.exam_time || b.start_time || ''}`.trim().replace(' ', 'T'));
                 const ka = new Date(`${a.exam_date || ''} ${a.exam_time || a.start_time || ''}`.trim().replace(' ', 'T'));
                 if (!isNaN(kb) && !isNaN(ka)) return kb - ka;
-
-                // สุดท้ายตาม id ถ้ามี
                 return (Number(b.booking_id || b.id || 0) - Number(a.booking_id || a.id || 0));
             });
 
             const html = rows.map(r => {
-                // รองรับชื่อ field หลายแบบจาก API ต่างเวอร์ชัน
                 const sid = r.student_id ?? r.sid ?? '-';
                 const name = r.student_name ?? r.name ?? '-';
                 const date = r.exam_date ?? r.slot_date ?? r.date ?? '';
                 const time = r.exam_time ?? r.slot_start_time ?? r.start_time ?? '';
                 const title = r.exam_title ?? r.title ?? r.examset_title ?? r.examset_name ?? '-';
-
                 const st = computeStatus(r);
                 const txt = statusText(r);
+
+                const payStatus = (r.payment_status || (r.fee_amount > 0 ? 'pending' : 'free'));
+                const payCell = paymentPill(payStatus);
+
+                // ปุ่มชำระเงิน: แสดงเฉพาะ pending
+                const canPay = String(payStatus).toLowerCase() === 'pending';
+                const actionBtn = canPay
+                    ? `<button class="btn btn-sm btn-success" data-pay="${r.id || r.booking_id || r.reg_id}">
+               <i class="fa-solid fa-qrcode me-1"></i> ชำระเงิน
+             </button>`
+                    : `<button class="btn btn-sm btn-outline-secondary" disabled>
+               <i class="fa-regular fa-circle-check me-1"></i> —
+             </button>`;
 
                 return `
           <tr>
@@ -268,55 +436,68 @@
             <td>${formatTime(time)}</td>
             <td>${title}</td>
             <td><span class="status-badge ${st}">${txt}</span></td>
+            <td>${payCell}</td>
+            <td>${actionBtn}</td>
           </tr>`;
             }).join('');
 
             t.innerHTML = html;
+
+            // bind ปุ่มชำระเงิน
+            t.querySelectorAll('button[data-pay]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    // หา record ที่ตรงกับปุ่ม (จากแถว DOM → index)
+                    const tr = btn.closest('tr');
+                    const idx = Array.from(t.children).indexOf(tr);
+                    const row = rows[idx];
+
+                    try {
+                        btn.disabled = true;
+                        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> สร้าง QR...`;
+                        const p = await createPayment(row);
+                        await showPaymentPopupAndPoll(p);
+                    } catch (e) {
+                        showError(e.message);
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = `<i class="fa-solid fa-qrcode me-1"></i> ชำระเงิน`;
+                    }
+                });
+            });
         }
 
         // ===== Search & Reset =====
         function applySearch() {
             const q = ($('searchInput').value || '').toLowerCase().trim();
-            const selDate = $('searchDate').value; // yyyy-mm-dd
+            const selDate = $('searchDate').value;
             const rows = $('registrationTable').querySelectorAll('tr');
-
             rows.forEach(tr => {
                 const cells = tr.children;
                 const sid = (cells[0]?.textContent || '').toLowerCase();
                 const name = (cells[1]?.textContent || '').toLowerCase();
-                const ddmmy = (cells[2]?.textContent || ''); // dd/mm/yyyy
-
+                const ddmmy = (cells[2]?.textContent || '');
                 let matchDate = true;
                 if (selDate && ddmmy.includes('/')) {
-                    const [d, m, y] = ddmmy.split('/');
-                    const ymd = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                    const [d, m, y] = ddmmy.split('/'); const ymd = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
                     matchDate = (ymd === selDate);
                 }
                 const matchText = !q || sid.includes(q) || name.includes(q);
                 tr.style.display = (matchText && matchDate) ? '' : 'none';
             });
         }
-        const resetSearch = () => {
-            $('searchInput').value = '';
-            $('searchDate').value = '';
-            applySearch();
-        };
+        const resetSearch = () => { $('searchInput').value = ''; $('searchDate').value = ''; applySearch(); };
 
         // ===== Boot =====
         document.addEventListener('DOMContentLoaded', async () => {
-            // ปุ่มหัว
             $('backBtn')?.addEventListener('click', () => location.href = 'teacher_dashboard.html');
             $('logoutBtn')?.addEventListener('click', logout);
-
             $('btnSearch')?.addEventListener('click', applySearch);
             $('btnReset')?.addEventListener('click', resetSearch);
 
             const token = getToken();
             if (!token) { logout(); return; }
 
-            // verify แบบเงียบ (ถ้าไม่มีไฟล์นี้จะข้าม)
             await verifyTokenSilently(token);
-            // โหลดข้อมูล
             await loadRegistrations();
         });
     </script>
