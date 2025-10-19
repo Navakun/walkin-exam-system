@@ -1,129 +1,155 @@
 <?php
-require_once '../config/db.php';
-require_once '../vendor/autoload.php';
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
 header('Content-Type: application/json; charset=utf-8');
-ini_set('display_errors', 1);
+ini_set('display_errors', '1');
 error_reporting(E_ALL);
 
-// ================== ตรวจสอบ JWT ==================
-$headers = getallheaders();
-if (!isset($headers['Authorization']) || !preg_match('/Bearer\s+(.*)$/i', $headers['Authorization'], $matches)) {
+// ---------- ตรวจ JWT ----------
+$headers = function_exists('getallheaders') ? getallheaders() : [];
+if (!isset($headers['Authorization']) || !preg_match('/Bearer\s+(.+)$/i', $headers['Authorization'], $m)) {
     http_response_code(401);
-    echo json_encode(['status'=>'error','message'=>'ไม่พบ token']);
+    echo json_encode(['status' => 'error', 'message' => 'ไม่พบ token']);
     exit;
 }
+$token = $m[1];
 
-$token = $matches[1];
 try {
     $decoded = JWT::decode($token, new Key($jwt_key, 'HS256'));
     $student_id = $decoded->student_id ?? null;
-    if (!$student_id) throw new Exception("Token ไม่มี student_id");
-} catch (Exception $e) {
+    if (!$student_id) {
+        throw new Exception('Token ไม่มี student_id');
+    }
+} catch (Throwable $e) {
     http_response_code(401);
-    echo json_encode(['status'=>'error','message'=>'Token ไม่ถูกต้องหรือหมดอายุ','debug'=>$e->getMessage()]);
+    echo json_encode(['status' => 'error', 'message' => 'Token ไม่ถูกต้องหรือหมดอายุ', 'debug' => $e->getMessage()]);
     exit;
 }
 
-// ================== รับข้อมูล ==================
-$registration_id = $_POST['registration_id'] ?? null;
-$ref_no = $_POST['ref_no'] ?? null;
+// ---------- รับข้อมูล ----------
+$registration_id = isset($_POST['registration_id']) ? (int)$_POST['registration_id'] : 0;
+$ref_no = isset($_POST['ref_no']) ? trim((string)$_POST['ref_no']) : '';
 $slipFile = null;
 
-// Debug ข้อมูลที่รับมา
-error_log("==[pay_registration.php]==");
-error_log("student_id: $student_id");
-error_log("registration_id: $registration_id");
-error_log("ref_no: $ref_no");
-
-if (!$registration_id || !$ref_no) {
+// ตรวจความถูกต้อง ref_no (ตัวเลข >= 10 หลัก)
+if ($registration_id <= 0 || $ref_no === '' || !preg_match('/^\d{10,}$/', $ref_no)) {
     http_response_code(400);
-    echo json_encode(['status'=>'error','message'=>'ข้อมูลไม่ครบถ้วน (registration_id, ref_no)']);
+    echo json_encode(['status' => 'error', 'message' => 'ข้อมูลไม่ครบถ้วนหรือรูปแบบอ้างอิงไม่ถูกต้อง (registration_id, ref_no)']);
     exit;
 }
 
-// ================== อัปโหลดไฟล์ (ถ้ามี) ==================
+// ---------- อัปโหลดไฟล์ (ถ้ามี) ----------
+$relSlipPath = ''; // path ที่จะเก็บใน DB (relative)
 if (!empty($_FILES['slip_file']['name'])) {
-    $uploadDir = __DIR__ . '/../uploads/slips/';
-    if (!file_exists($uploadDir)) {
-        mkdir($uploadDir, 0777, true);
-    }
-    $ext = pathinfo($_FILES['slip_file']['name'], PATHINFO_EXTENSION);
-    $fileName = 'slip_' . time() . '_' . $student_id . '.' . $ext;
-    $filePath = $uploadDir . $fileName;
-
-    if (move_uploaded_file($_FILES['slip_file']['tmp_name'], $filePath)) {
-        $slipFile = 'uploads/slips/' . $fileName;
-    } else {
+    $allowed = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    $type = mime_content_type($_FILES['slip_file']['tmp_name']);
+    if (!in_array($type, $allowed, true)) {
         http_response_code(400);
-        echo json_encode(['status'=>'error','message'=>'อัปโหลดสลิปไม่สำเร็จ']);
+        echo json_encode(['status' => 'error', 'message' => 'ชนิดไฟล์ไม่อนุญาต (อนุญาต .jpg .jpeg .png .pdf)']);
         exit;
     }
-} else {
-    $slipFile = ''; // fallback ถ้าไม่ได้อัปโหลด
+    if ((int)$_FILES['slip_file']['size'] > 5 * 1024 * 1024) { // 5MB
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'ขนาดไฟล์เกิน 5 MB']);
+        exit;
+    }
+
+    $uploadDir = __DIR__ . '/../uploads/slips/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+    $ext = strtolower(pathinfo($_FILES['slip_file']['name'], PATHINFO_EXTENSION));
+    $fname = 'slip_' . date('Ymd_His') . '_' . preg_replace('/\D/', '', $student_id) . '.' . $ext;
+    $dest = $uploadDir . $fname;
+
+    if (!move_uploaded_file($_FILES['slip_file']['tmp_name'], $dest)) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'อัปโหลดสลิปไม่สำเร็จ']);
+        exit;
+    }
+    $relSlipPath = 'uploads/slips/' . $fname;
 }
 
 try {
     $pdo->beginTransaction();
 
-    // ===== ตรวจสอบว่า registration มีจริงและยัง pending =====
+    // ล็อกแถว registration (กันยิงพร้อมกัน)
     $stmt = $pdo->prepare("SELECT * FROM exam_slot_registrations 
-                           WHERE id=? AND student_id=? AND payment_status='pending'");
+                           WHERE id = ? AND student_id = ? FOR UPDATE");
     $stmt->execute([$registration_id, $student_id]);
     $reg = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$reg) {
-        throw new Exception("ไม่พบรายการลงทะเบียนที่รอชำระเงิน");
+        throw new Exception('ไม่พบรายการลงทะเบียนของคุณ');
+    }
+    if (!in_array($reg['payment_status'], ['pending', 'free', 'waived'], true)) {
+        // ถ้าจ่ายแล้ว/ยกเลิกแล้ว ไม่ให้จ่ายซ้ำ
+        throw new Exception('สถานะปัจจุบันไม่สามารถชำระเงินได้');
+    }
+    if ($reg['payment_status'] !== 'pending') {
+        // หากเป็น free/waived ก็ไม่ควรเข้ามาที่ endpoint นี้
+        throw new Exception('รายการนี้ไม่มีค่าธรรมเนียมที่ต้องชำระ');
     }
 
-    // ===== ตรวจสอบว่ามี payment pending อยู่หรือไม่ =====
-    $stmt = $pdo->prepare("SELECT * FROM payments 
-                           WHERE registration_id=? AND student_id=? AND status='pending'");
+    // กัน ref_no ซ้ำ: ถ้า ref_no นี้ถูกใช้โดย registration อื่น → error
+    $stmt = $pdo->prepare("SELECT payment_id, registration_id FROM payments WHERE ref_no = ? LIMIT 1");
+    $stmt->execute([$ref_no]);
+    $dup = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($dup && (int)$dup['registration_id'] !== (int)$registration_id) {
+        throw new Exception('เลขที่อ้างอิงนี้ถูกใช้กับรายการอื่นแล้ว');
+    }
+
+    // มี payment pending อยู่ก่อนแล้วหรือไม่
+    $stmt = $pdo->prepare("SELECT * FROM payments WHERE registration_id = ? AND student_id = ? LIMIT 1");
     $stmt->execute([$registration_id, $student_id]);
     $payment = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    $now = date('Y-m-d H:i:s');
     if ($payment) {
-        // มี payment แล้ว → อัปเดต
-        error_log("Updating existing payment_id: " . $payment['payment_id']);
-        $stmt = $pdo->prepare("UPDATE payments 
-            SET status='paid', ref_no=?, slip_file=?, paid_at=NOW() 
-            WHERE payment_id=?");
-        $stmt->execute([$ref_no, $slipFile, $payment['payment_id']]);
+        // อัปเดตเป็น paid พร้อมใส่ ref_no / slip
+        $stmt = $pdo->prepare("UPDATE payments
+                               SET status='paid', ref_no=?, slip_file=?, paid_at=?, method=COALESCE(method,'manual')
+                               WHERE payment_id=?");
+        $stmt->execute([$ref_no, $relSlipPath, $now, $payment['payment_id']]);
     } else {
-        // ไม่มี → แทรกใหม่
-        error_log("Inserting new payment for registration_id: $registration_id");
-        $stmt = $pdo->prepare("INSERT INTO payments 
+        // แทรกใหม่เป็น paid
+        $stmt = $pdo->prepare("INSERT INTO payments
             (student_id, registration_id, amount, method, status, paid_at, ref_no, slip_file, created_at)
-            VALUES (?, ?, ?, ?, 'paid', NOW(), ?, ?, NOW())");
+            VALUES (?, ?, ?, 'manual', 'paid', ?, ?, ?, ?)");
         $stmt->execute([
             $student_id,
             $registration_id,
             $reg['fee_amount'],
-            'manual', // หรือ method ที่ส่งจาก client
+            $now,
             $ref_no,
-            $slipFile
+            $relSlipPath,
+            $now
         ]);
     }
 
-    // ===== อัปเดตสถานะใน exam_slot_registrations =====
-    $stmt = $pdo->prepare("UPDATE exam_slot_registrations SET payment_status='paid' WHERE id=?");
+    // อัปเดตสถานะ registration
+    $stmt = $pdo->prepare("UPDATE exam_slot_registrations SET payment_status='paid' WHERE id = ?");
     $stmt->execute([$registration_id]);
 
     $pdo->commit();
 
     echo json_encode([
-        'status'=>'success',
-        'message'=>'ชำระเงินสำเร็จ',
-        'registration_id'=>$registration_id,
-        'ref_no'=>$ref_no,
-        'slip_file'=>$slipFile
+        'status' => 'success',
+        'message' => 'ชำระเงินสำเร็จ',
+        'registration_id' => $registration_id,
+        'ref_no' => $ref_no,
+        'slip_file' => $relSlipPath
     ]);
-
-} catch (Exception $e) {
+} catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     http_response_code(400);
-    error_log("❌ Payment Error: " . $e->getMessage());
-    echo json_encode(['status'=>'error','message'=>$e->getMessage()]);
+    error_log('❌ pay_registration error: ' . $e->getMessage());
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }

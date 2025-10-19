@@ -1,46 +1,57 @@
 <?php
 
 declare(strict_types=1);
-header('Content-Type: application/json; charset=utf-8');
+
 require_once __DIR__ . '/../config/db.php';
-require_once __DIR__ . '/../helpers/jwt_helper.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
-$hdrs = function_exists('getallheaders') ? array_change_key_case(getallheaders(), CASE_LOWER) : [];
-$auth = $hdrs['authorization'] ?? '';
-if (!preg_match('/bearer\s+(\S+)/i', $auth)) {
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+
+header('Content-Type: application/json; charset=utf-8');
+ini_set('display_errors', '1');
+error_reporting(E_ALL);
+
+// JWT
+$headers = function_exists('getallheaders') ? getallheaders() : [];
+if (!isset($headers['Authorization']) || !preg_match('/Bearer\s+(.+)$/i', $headers['Authorization'], $m)) {
     http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => 'unauthorized']);
+    echo json_encode(['status' => 'error', 'message' => 'ไม่พบ token']);
     exit;
 }
-$claims = decodeToken(preg_replace('/^Bearer\s+/i', '', $auth));
-$studentId = (string)($claims['sid'] ?? $claims['student_id'] ?? '');
+try {
+    $decoded = JWT::decode($m[1], new Key($jwt_key, 'HS256'));
+    $student_id = $decoded->student_id ?? null;
+    if (!$student_id) throw new Exception('Token ไม่มี student_id');
+} catch (Throwable $e) {
+    http_response_code(401);
+    echo json_encode(['status' => 'error', 'message' => 'Token ไม่ถูกต้องหรือหมดอายุ', 'debug' => $e->getMessage()]);
+    exit;
+}
 
-$paymentId = isset($_GET['payment_id']) ? (int)$_GET['payment_id'] : 0;
-$refNo = isset($_GET['ref_no']) ? (string)$_GET['ref_no'] : '';
-
-if ($paymentId <= 0 && $refNo === '') {
+$registration_id = isset($_GET['registration_id']) ? (int)$_GET['registration_id'] : 0;
+if ($registration_id <= 0) {
     http_response_code(400);
-    echo json_encode(['status' => 'error', 'message' => 'missing payment_id or ref_no']);
+    echo json_encode(['status' => 'error', 'message' => 'registration_id ไม่ถูกต้อง']);
     exit;
 }
 
-$sql = "SELECT p.payment_id, p.registration_id, p.amount, p.status, p.ref_no, p.paid_at, r.student_id
-        FROM payments p
-        JOIN exam_slot_registrations r ON r.id = p.registration_id
-        WHERE " . ($paymentId ? "p.payment_id=?" : "p.ref_no=?") . " LIMIT 1";
-$st = $pdo->prepare($sql);
-$st->execute([$paymentId ?: $refNo]);
-$row = $st->fetch(PDO::FETCH_ASSOC);
-if (!$row || $row['student_id'] !== $studentId) {
-    http_response_code(404);
-    echo json_encode(['status' => 'error', 'message' => 'not found']);
-    exit;
-}
+try {
+    // ดึง payment ล่าสุดของ reg นี้ (ของนิสิตคนนี้เท่านั้น)
+    $sql = "SELECT payment_id, student_id, registration_id, amount, method, status, paid_at, ref_no, slip_file, created_at
+            FROM payments
+            WHERE registration_id = ? AND student_id = ?
+            ORDER BY payment_id DESC
+            LIMIT 1";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$registration_id, $student_id]);
+    $pay = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// หากมีระบบเชื่อม bank จริง ให้ sync ที่นี่ แล้วอัปเดตตาราง payments
-echo json_encode([
-    'status'          => 'success',
-    'payment_status'  => $row['status'],   // 'pending' | 'paid' | 'failed' | 'refunded'
-    'ref_no'          => $row['ref_no'],
-    'paid_at'         => $row['paid_at']
-], JSON_UNESCAPED_UNICODE);
+    echo json_encode([
+        'status'  => 'success',
+        'payment' => $pay ?: null
+    ]);
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'ไม่สามารถดึงสถานะการชำระเงิน', 'debug' => $e->getMessage()]);
+}
