@@ -89,53 +89,93 @@ try {
         $start->modify('+1 day');
     }
 
-    // ---------- 4) Scores / Pass-Fail ----------
+    // ---------- 4) Scores ----------
     $scores = [
-        'avg'       => null,
-        'passRate'  => null, // 0..1
-        'pass'      => 0,
-        'fail'      => 0,
+        'avg'      => null, // ค่าเฉลี่ยคะแนน
+        'pass'     => 0,    // จำนวนที่ผ่าน
+        'fail'     => 0,    // จำนวนที่ไม่ผ่าน
+        'passRate' => null  // อัตราผ่าน (0..1)
     ];
 
-    // 4.A ถ้ามีตาราง exam_results(score, is_pass[, created_at])
-    if ($tableExists('exam_results') && $colExists('exam_results', 'score')) {
-        // คะแนนเฉลี่ย
-        $avg = $db->query("SELECT AVG(score) FROM exam_results WHERE score IS NOT NULL")->fetchColumn();
-        if ($avg !== false && $avg !== null) {
-            $scores['avg'] = (float)$avg;
+    $PASS_MARK = 60; // เกณฑ์ผ่านของระบบ (แก้ไขได้ตามจริง)
+
+    // helper ตรวจชื่อ table/column (ถ้ายังไม่มีในไฟล์คุณ ให้วางเพิ่มไว้ด้านบน)
+    if (!function_exists('tableExists')) {
+        function tableExists(PDO $db, string $table): bool
+        {
+            $stmt = $db->prepare("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?");
+            $stmt->execute([$table]);
+            return (bool)$stmt->fetchColumn();
+        }
+    }
+    if (!function_exists('colExists')) {
+        function colExists(PDO $db, string $table, string $col): bool
+        {
+            $stmt = $db->prepare("SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?");
+            $stmt->execute([$table, $col]);
+            return (bool)$stmt->fetchColumn();
+        }
+    }
+
+    // เลือกตารางที่ใช้งานจริง (examsession ก่อน, ไม่งั้นลอง exam_sessions)
+    $scoreTable = null;
+    $finishedCol = null;
+
+    if (tableExists($db, 'examsession') && colExists($db, 'examsession', 'score')) {
+        $scoreTable = 'examsession';
+        // ใช้ end_time เป็นตัวบอกว่าจบแล้ว
+        $finishedCol = colExists($db, 'examsession', 'end_time') ? 'end_time' : null;
+    } elseif (tableExists($db, 'exam_sessions') && colExists($db, 'exam_sessions', 'score')) {
+        $scoreTable = 'exam_sessions';
+        // เดาชื่อคอลัมน์สิ้นสุดตามที่มี
+        foreach (['ended_at', 'finished_at', 'end_time', 'updated_at', 'created_at'] as $c) {
+            if (colExists($db, 'exam_sessions', $c)) {
+                $finishedCol = $c;
+                break;
+            }
+        }
+    }
+
+    // ถ้าพบตารางคะแนนจริง ให้คำนวน avg / pass / fail
+    if ($scoreTable) {
+        $whereFinished = $finishedCol ? "WHERE {$finishedCol} IS NOT NULL" : "";
+
+        // ค่าเฉลี่ยคะแนน
+        $avgRow = $db->query("
+        SELECT AVG(score) AS avg_score
+        FROM {$scoreTable}
+        {$whereFinished}
+    ")->fetch(PDO::FETCH_ASSOC);
+        if ($avgRow && $avgRow['avg_score'] !== null) {
+            $scores['avg'] = (float)$avgRow['avg_score'];
         }
 
         // จำนวนผ่าน/ไม่ผ่าน
-        if ($colExists('exam_results', 'is_pass')) {
-            $row = $db->query("
-                SELECT
-                    SUM(CASE WHEN is_pass IN (1, '1', 'true', 'TRUE', 't', 'Y', 'y') THEN 1 ELSE 0 END) AS pass_count,
-                    SUM(CASE WHEN is_pass IN (0, '0', 'false', 'FALSE', 'f', 'N', 'n') THEN 1 ELSE 0 END) AS fail_count
-                FROM exam_results
-            ")->fetch(PDO::FETCH_ASSOC);
-            $scores['pass'] = (int)($row['pass_count'] ?? 0);
-            $scores['fail'] = (int)($row['fail_count'] ?? 0);
-        } else {
-            // ไม่มี is_pass → ตัดสินจากคะแนนกับเกณฑ์ผ่านดีฟอลต์
-            $passMark = PASSING_SCORE_DEFAULT;
-            $row = $db->query("
-                SELECT
-                    SUM(CASE WHEN score >= {$passMark} THEN 1 ELSE 0 END) AS pass_count,
-                    SUM(CASE WHEN score IS NOT NULL AND score < {$passMark} THEN 1 ELSE 0 END) AS fail_count
-                FROM exam_results
-            ")->fetch(PDO::FETCH_ASSOC);
-            $scores['pass'] = (int)($row['pass_count'] ?? 0);
-            $scores['fail'] = (int)($row['fail_count'] ?? 0);
-        }
+        $pfRow = $db->query("
+        SELECT
+            SUM(CASE WHEN score >= {$PASS_MARK} THEN 1 ELSE 0 END) AS pass_count,
+            SUM(CASE WHEN score IS NOT NULL AND score < {$PASS_MARK} THEN 1 ELSE 0 END) AS fail_count
+        FROM {$scoreTable}
+        {$whereFinished}
+    ")->fetch(PDO::FETCH_ASSOC);
+
+        $pass = (int)($pfRow['pass_count'] ?? 0);
+        $fail = (int)($pfRow['fail_count'] ?? 0);
+        $total = $pass + $fail;
+
+        $scores['pass'] = $pass;
+        $scores['fail'] = $fail;
+        $scores['passRate'] = $total > 0 ? ($pass / $total) : null;
     }
-    // 4.B ถ้าไม่มี exam_results ให้ลองใช้ exam_sessions(score[, ended_at|updated_at|created_at])
-    elseif ($tableExists('exam_sessions') && $colExists('exam_sessions', 'score')) {
+
+    // 4.B ถ้าไม่มี exam_results ให้ลองใช้ examsession(score[, ended_at|updated_at|created_at])
+    elseif ($tableExists('examsession') && $colExists('examsession', 'score')) {
         $passMark = PASSING_SCORE_DEFAULT;
 
         // ถ้ามี status/ended_at จะนับเฉพาะที่จบแล้วก็ได้ (ป้องกันนับกลางคัน)
         $endedCol = null;
         foreach (['ended_at', 'finished_at', 'end_time', 'updated_at', 'created_at'] as $c) {
-            if ($colExists('exam_sessions', $c)) {
+            if ($colExists('examsession', $c)) {
                 $endedCol = $c;
                 break;
             }
@@ -146,7 +186,7 @@ try {
         // คะแนนเฉลี่ย
         $avgRow = $db->query("
             SELECT AVG(score) AS avg_score
-            FROM exam_sessions
+            FROM examsession
             {$whereFinished}
         ")->fetch(PDO::FETCH_ASSOC);
         if ($avgRow && $avgRow['avg_score'] !== null) {
@@ -160,7 +200,7 @@ try {
             SELECT
                 SUM(CASE WHEN score >= {$passMark} THEN 1 ELSE 0 END) AS pass_count,
                 SUM(CASE WHEN score IS NOT NULL AND score < {$passMark} THEN 1 ELSE 0 END) AS fail_count
-            FROM exam_sessions
+            FROM examsession
             {$whereFinished}
         ")->fetch(PDO::FETCH_ASSOC);
 
