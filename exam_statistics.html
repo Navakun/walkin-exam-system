@@ -16,57 +16,7 @@
 
     <!-- Page style -->
     <link rel="stylesheet" href="assets/css/exam-stats.css">
-    <style>
-        /* เพิ่มเติมเล็กน้อยให้ตารางและการ์ดอ่านง่าย */
-        .card-kpi .num {
-            font-weight: 700;
-            font-size: 22px
-        }
 
-        .chart-card {
-            background: #fff;
-            border: 1px solid #e9ecef;
-            border-radius: 12px;
-            padding: 16px
-        }
-
-        .chart-box {
-            width: 100%;
-            height: 320px
-        }
-
-        .table-wrap {
-            max-height: 520px;
-            overflow: auto
-        }
-
-        .table-sticky thead th {
-            position: sticky;
-            top: 0;
-            background: #f8f9fa;
-            z-index: 2
-        }
-
-        .table-zebra tbody tr:nth-child(odd) {
-            background: rgba(0, 0, 0, .015)
-        }
-
-        .low-pct {
-            background: rgba(239, 68, 68, .06) !important
-        }
-
-        .mid-pct {
-            background: rgba(245, 158, 11, .06) !important
-        }
-
-        .high-pct {
-            background: rgba(34, 197, 94, .06) !important
-        }
-
-        .msg-error {
-            display: none
-        }
-    </style>
 </head>
 
 <body>
@@ -86,13 +36,13 @@
                 <span id="teacherName">อาจารย์ผู้สอน</span>
             </button>
 
-            <button class="logout" data-logout>
+            <button class="logout" id="logoutBtn">
                 <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
             </button>
 
             <nav class="nav">
                 <div class="group">เมนูหลัก</div>
-                <a href="teacher_dashboard.html"><i class="fa-solid fa-house"></i> หน้าหลัก</a>
+                <a href="teacher_dashboard.html" class="active"><i class="fa-solid fa-house"></i> หน้าหลัก</a>
 
                 <div class="group">การจัดการข้อสอบ</div>
                 <a href="teacher_question_bank.html"><i class="fa-solid fa-file-invoice"></i> คลังข้อสอบ</a>
@@ -102,7 +52,7 @@
                 <a href="exam_users.html"><i class="fa-solid fa-users"></i> รายชื่อผู้เข้าสอบ</a>
                 <a href="exam_registration_status.html"><i class="fa-solid fa-clipboard-check"></i>
                     ตรวจสอบสถานะนิสิต</a>
-                <a href="exam_statistics.html" class="active"><i class="fa-solid fa-chart-bar"></i> สถิติการสอบ</a>
+                <a href="exam_statistics.html"><i class="fa-solid fa-chart-bar"></i> สถิติการสอบ</a>
 
                 <div class="group">เนื้อหารายวิชา</div>
                 <a href="teaching_materials.html"><i class="fa-solid fa-file-arrow-up"></i> อัปโหลดสื่อการสอน</a>
@@ -110,21 +60,20 @@
             </nav>
         </aside>
 
+
         <div class="page-wrap">
             <div class="d-flex align-items-center justify-content-between mb-3">
                 <h2 class="h5 mb-0">สถิติการสอบ</h2>
                 <div class="d-flex gap-2">
+                    <!-- ปรับสไตล์ + aria + ไอคอน -->
                     <button id="backBtn" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"
                         title="กลับไปแดชบอร์ดอาจารย์" aria-label="กลับไปแดชบอร์ดอาจารย์">
                         <i class="fa-solid fa-arrow-left-long" aria-hidden="true"></i>
                         <span>กลับหน้าหลัก</span>
                     </button>
-                    <!-- ใช้ data-logout เพื่อหลีกเลี่ยง id ชนกัน -->
-                    <button class="btn btn-danger btn-sm" data-logout>ออกจากระบบ</button>
+                    <button class="btn btn-danger btn-sm" id="logoutBtn">ออกจากระบบ</button>
                 </div>
             </div>
-
-            <div id="errorBox" class="alert alert-danger msg-error" role="alert"></div>
 
             <!-- Filters + KPIs -->
             <div class="row g-3 align-items-end">
@@ -199,17 +148,17 @@
 
             <!-- Question statistics panel -->
             <section class="panel mt-3">
-                <div class="panel-head d-flex justify-content-between align-items-center">
+                <div class="panel-head">
                     <h3 class="panel-title mb-0">สถิติรายข้อ</h3>
                     <div class="panel-head-actions">
                         <button id="qExport" class="btn btn-sm btn-outline-secondary btn-icon"
                             aria-label="ส่งออกสถิติรายข้อเป็นไฟล์ CSV">
-                            <i class="fa-solid fa-file-export" aria-hidden="true"></i><span> Export CSV</span>
+                            <i class="fa-solid fa-file-export" aria-hidden="true"></i><span>Export CSV</span>
                         </button>
                     </div>
                 </div>
 
-                <div class="panel-controls d-flex gap-3 flex-wrap mt-2">
+                <div class="panel-controls">
                     <div class="control-item">
                         <label for="qSearch" class="form-label">ค้นหาเลขข้อ / คำถาม</label>
                         <input id="qSearch" class="form-control form-control-sm"
@@ -273,34 +222,7 @@
             ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])
         );
 
-        const ROOT = location.pathname.includes('/walkin-exam-system/') ? '/walkin-exam-system' : '';
-        const API = `${ROOT}/api`;
-
-        const TOK = (() =>
-            localStorage.getItem('teacherToken') ||
-            localStorage.getItem('instructorToken') ||
-            sessionStorage.getItem('teacherToken') ||
-            sessionStorage.getItem('instructorToken') ||
-            ''
-        )();
-
-        if (!TOK) { alert('กรุณาเข้าสู่ระบบ'); location.href = 'teacher_login.html'; }
-
-        // ชื่อบนชิป
-        (function () {
-            const name = localStorage.getItem('instructor_name') || '';
-            if (name) $('#teacherName').textContent = name;
-        })();
-
-        // ออกจากระบบได้ทุกปุ่มที่มี data-logout
-        document.querySelectorAll('[data-logout]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                try { localStorage.clear(); sessionStorage.clear(); } catch { }
-                location.href = 'teacher_login.html';
-            });
-        });
-
-        // smartBack → กลับได้ก็กลับ, ไม่ได้ให้ไป dashboard
+        // smartBack → กลับได้ก็กลับ, ไม่ได้ให้ไป teacher_dashboard.html
         function smartBack() {
             const fallback = 'teacher_dashboard.html';
             const ref = document.referrer || '';
@@ -314,63 +236,11 @@
             } catch { }
             location.href = fallback;
         }
-        $('#backBtn').addEventListener('click', smartBack);
-        window.addEventListener('keydown', (e) => {
-            if ((e.key === 'b' || e.key === 'B') && e.altKey && !e.ctrlKey && !e.metaKey) {
-                e.preventDefault(); smartBack();
-            }
-        });
 
-        // ---------- Charts ----------
+        const token = localStorage.getItem('instructorToken') || localStorage.getItem('teacherToken');
+        if (!token) { alert('กรุณาเข้าสู่ระบบ'); location.href = 'teacher_login.html'; }
+
         let perQuestionChart, histChart;
-        const kill = inst => { try { inst?.destroy(); } catch { } };
-
-        function drawPerQuestionChart(rows) {
-            const labels = (rows || []).map(r => 'ข้อ ' + (r.question_id ?? r.id));
-            const corrects = (rows || []).map(r => Number(r.corrects ?? 0));
-            const attempts = (rows || []).map(r => Number(r.attempts ?? 0));
-
-            kill(perQuestionChart);
-            perQuestionChart = new Chart($('#perQuestionChart'), {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [
-                        { label: 'ถูก (คน)', data: corrects },
-                        { label: 'ทำทั้งหมด (คน)', data: attempts }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top' } },
-                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-                }
-            });
-        }
-
-        function drawHistogram(rows) {
-            const labels = (rows || []).map(r => Number(r.corrects ?? r.score ?? 0));
-            const students = (rows || []).map(r => Number(r.students ?? r.count ?? 0));
-
-            kill(histChart);
-            histChart = new Chart($('#histChart'), {
-                type: 'bar',
-                data: { labels, datasets: [{ label: 'จำนวนนักศึกษาที่ทำถูก n ข้อ', data: students }] },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { title: { display: true, text: 'จำนวนข้อที่ทำถูก' } },
-                        y: { beginAtZero: true, title: { display: true, text: 'จำนวนคน' }, ticks: { precision: 0 } }
-                    }
-                }
-            });
-        }
-
-        // ---------- Data fetch ----------
-        let _ctrl = null;
 
         async function fetchStats() {
             const ex = $('#examsetSelect').value;
@@ -382,24 +252,18 @@
             if (f) params.set('from', f);
             if (t) params.set('to', t);
 
-            const url = `${API}/get_exam_statistics.php` + (params.toString() ? ('?' + params.toString()) : '');
-
-            // cancel request เก่าถ้ายังไม่จบ
-            try { _ctrl?.abort(); } catch { }
-            _ctrl = new AbortController();
-
+            const url = 'api/get_exam_statistics.php' + (params.toString() ? ('?' + params.toString()) : '');
             const res = await fetch(url, {
-                headers: { 'Authorization': 'Bearer ' + TOK, 'Accept': 'application/json' },
-                cache: 'no-store',
-                signal: _ctrl.signal
+                headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+                cache: 'no-store'
             });
-
             const raw = await res.text();
-            let data; try { data = JSON.parse(raw); } catch {
-                throw new Error(raw.replace(/<[^>]*>/g, '').trim() || `HTTP ${res.status}`);
-            }
-            if (!res.ok || data.status !== 'success') {
-                throw new Error(data?.message || `HTTP ${res.status}`);
+            let data; try { data = JSON.parse(raw); } catch { data = null; }
+
+            if (!data || data.status !== 'success') {
+                console.error('bad stats response:', raw);
+                alert(data?.message || 'โหลดสถิติไม่สำเร็จ');
+                return null;
             }
             return data.data;
         }
@@ -423,10 +287,44 @@
             $('#kpiSessions').textContent = t.sessions ?? '0';
             $('#kpiQuestions').textContent = t.total_questions ?? '0';
             $('#kpiAvgCorrect').textContent = (t.avg_correct ?? 0).toString();
-            const avgPct = (t.avg_score_percent != null)
-                ? Number(t.avg_score_percent).toFixed(2)
-                : '0.00';
-            $('#kpiAvgScore').textContent = `${avgPct}%`;
+            $('#kpiAvgScore').textContent = ((t.avg_score_percent ?? 0).toFixed?.(2) ?? (t.avg_score_percent ?? 0) + '') + '%';
+        }
+
+        function drawPerQuestionChart(rows) {
+            const labels = (rows || []).map(r => 'ข้อ ' + (r.question_id ?? r.id));
+            const corrects = (rows || []).map(r => Number(r.corrects ?? 0));
+            const attempts = (rows || []).map(r => Number(r.attempts ?? 0));
+
+            perQuestionChart?.destroy();
+            perQuestionChart = new Chart($('#perQuestionChart'), {
+                type: 'bar',
+                data: {
+                    labels, datasets: [
+                        { label: 'ถูก (คน)', data: corrects },
+                        { label: 'ทำทั้งหมด (คน)', data: attempts }
+                    ]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        function drawHistogram(rows) {
+            const labels = (rows || []).map(r => Number(r.corrects ?? r.score ?? 0));
+            const students = (rows || []).map(r => Number(r.students ?? r.count ?? 0));
+
+            histChart?.destroy();
+            histChart = new Chart($('#histChart'), {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'จำนวนนักศึกษาที่ทำถูก n ข้อ', data: students }] },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { title: { display: true, text: 'จำนวนข้อที่ทำถูก' } },
+                        y: { beginAtZero: true, title: { display: true, text: 'จำนวนคน' } }
+                    }
+                }
+            });
         }
 
         // ---------- ตารางรายข้อ ----------
@@ -529,36 +427,35 @@
         $('#qPrev').addEventListener('click', () => { Q_PAGE = Math.max(1, Q_PAGE - 1); paintQTable(); });
         $('#qNext').addEventListener('click', () => { Q_PAGE += 1; paintQTable(); });
         $('#qExport').addEventListener('click', exportQCSV);
-        $('#showBtn').addEventListener('click', run);
+
+        // ปุ่ม Back + คีย์ลัด Alt+B
+        document.getElementById('backBtn').addEventListener('click', smartBack);
+        window.addEventListener('keydown', (e) => {
+            if ((e.key === 'b' || e.key === 'B') && e.altKey && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                smartBack();
+            }
+        });
+
+        // ปุ่ม Show → เรียกดึงข้อมูลใหม่ (เดิมเผลอพาไปหน้า dashboard)
+        document.getElementById('showBtn').addEventListener('click', run);
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.clear();
+            location.href = 'teacher_login.html';
+        });
 
         // ---------- Boot ----------
         async function run() {
-            const err = $('#errorBox');
-            err.style.display = 'none'; err.textContent = '';
+            const stats = await fetchStats();
+            if (!stats) return;
 
-            try {
-                const stats = await fetchStats();
-                if (!stats) return;
-
-                fillExamsetOptions(stats.examsets || []);
-                renderKPI(stats.totals || {});
-                drawPerQuestionChart(stats.per_question || []);
-                drawHistogram(stats.histogram || []);
-                renderQuestionTable(stats.per_question || []);
-            } catch (e) {
-                err.textContent = e?.message || 'โหลดสถิติไม่สำเร็จ';
-                err.style.display = 'block';
-            }
+            fillExamsetOptions(stats.examsets || []);
+            renderKPI(stats.totals || {});
+            drawPerQuestionChart(stats.per_question || []);
+            drawHistogram(stats.histogram || []);
+            renderQuestionTable(stats.per_question || []);
         }
-
-        // set default วันที่เป็น 30 วันล่าสุด
-        (function initDefaultDates() {
-            const to = new Date();
-            const from = new Date(); from.setDate(to.getDate() - 29);
-            const pad = n => String(n).padStart(2, '0');
-            $('#toDate').value = `${to.getFullYear()}-${pad(to.getMonth() + 1)}-${pad(to.getDate())}`;
-            $('#fromDate').value = `${from.getFullYear()}-${pad(from.getMonth() + 1)}-${pad(from.getDate())}`;
-        })();
 
         run();
     </script>
