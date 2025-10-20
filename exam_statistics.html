@@ -234,72 +234,72 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Question statistics panel -->
+            <section class="panel mt-3">
+                <div class="panel-head d-flex justify-content-between align-items-center">
+                    <h3 class="panel-title mb-0">สถิติรายข้อ</h3>
+                    <div class="panel-head-actions">
+                        <button id="qExport" class="btn btn-sm btn-outline-secondary btn-icon"
+                            aria-label="ส่งออกสถิติรายข้อเป็นไฟล์ CSV">
+                            <i class="fa-solid fa-file-export" aria-hidden="true"></i><span> Export CSV</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel-controls d-flex gap-3 flex-wrap mt-2">
+                    <div class="control-item">
+                        <label for="qSearch" class="form-label">ค้นหาเลขข้อ / คำถาม</label>
+                        <input id="qSearch" class="form-control form-control-sm"
+                            placeholder="เช่น 12 หรือคำสำคัญของคำถาม" aria-label="ค้นหาเลขข้อหรือข้อความคำถาม"
+                            title="ค้นหาข้อหรือคำถาม">
+                    </div>
+
+                    <div class="control-item">
+                        <label for="qSort" class="form-label">การเรียงข้อมูล</label>
+                        <select id="qSort" class="form-select form-select-sm q-sort"
+                            aria-label="วิธีการเรียงตารางรายข้อ" title="วิธีการเรียงตารางรายข้อ">
+                            <option value="id_asc">เรียงตามเลขข้อ (น้อย→มาก)</option>
+                            <option value="id_desc">เรียงตามเลขข้อ (มาก→น้อย)</option>
+                            <option value="pct_desc">% ถูก (มาก→น้อย)</option>
+                            <option value="pct_asc">% ถูก (น้อย→มาก)</option>
+                            <option value="wrong_desc">จำนวนผิด (มาก→น้อย)</option>
+                            <option value="wrong_asc">จำนวนผิด (น้อย→มาก)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="panel-body">
+                    <div class="table-responsive table-wrap">
+                        <table class="table table-sm table-hover align-middle table-sticky table-zebra" id="qTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="q-col-id">ข้อ</th>
+                                    <th>คำถาม (ย่อ)</th>
+                                    <th class="text-end">ทำทั้งหมด (คน)</th>
+                                    <th class="text-end text-success">ถูก (คน)</th>
+                                    <th class="text-end text-danger">ผิด (คน)</th>
+                                    <th class="text-end">% ถูก</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="panel-foot d-flex justify-content-between align-items-center">
+                    <small id="qInfo" class="text-muted"></small>
+                    <div class="btn-group btn-group-sm">
+                        <button id="qPrev" class="btn btn-outline-secondary" type="button">
+                            <i class="fa-solid fa-chevron-left"></i> ก่อนหน้า
+                        </button>
+                        <button id="qNext" class="btn btn-outline-secondary" type="button">
+                            ถัดไป <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
         </div>
-
-        <!-- Question statistics panel -->
-        <section class="panel mt-3">
-            <div class="panel-head d-flex justify-content-between align-items-center">
-                <h3 class="panel-title mb-0">สถิติรายข้อ</h3>
-                <div class="panel-head-actions">
-                    <button id="qExport" class="btn btn-sm btn-outline-secondary btn-icon"
-                        aria-label="ส่งออกสถิติรายข้อเป็นไฟล์ CSV">
-                        <i class="fa-solid fa-file-export" aria-hidden="true"></i><span> Export CSV</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="panel-controls d-flex gap-3 flex-wrap mt-2">
-                <div class="control-item">
-                    <label for="qSearch" class="form-label">ค้นหาเลขข้อ / คำถาม</label>
-                    <input id="qSearch" class="form-control form-control-sm" placeholder="เช่น 12 หรือคำสำคัญของคำถาม"
-                        aria-label="ค้นหาเลขข้อหรือข้อความคำถาม" title="ค้นหาข้อหรือคำถาม">
-                </div>
-
-                <div class="control-item">
-                    <label for="qSort" class="form-label">การเรียงข้อมูล</label>
-                    <select id="qSort" class="form-select form-select-sm q-sort" aria-label="วิธีการเรียงตารางรายข้อ"
-                        title="วิธีการเรียงตารางรายข้อ">
-                        <option value="id_asc">เรียงตามเลขข้อ (น้อย→มาก)</option>
-                        <option value="id_desc">เรียงตามเลขข้อ (มาก→น้อย)</option>
-                        <option value="pct_desc">% ถูก (มาก→น้อย)</option>
-                        <option value="pct_asc">% ถูก (น้อย→มาก)</option>
-                        <option value="wrong_desc">จำนวนผิด (มาก→น้อย)</option>
-                        <option value="wrong_asc">จำนวนผิด (น้อย→มาก)</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="panel-body">
-                <div class="table-responsive table-wrap">
-                    <table class="table table-sm table-hover align-middle table-sticky table-zebra" id="qTable">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="q-col-id">ข้อ</th>
-                                <th>คำถาม (ย่อ)</th>
-                                <th class="text-end">ทำทั้งหมด (คน)</th>
-                                <th class="text-end text-success">ถูก (คน)</th>
-                                <th class="text-end text-danger">ผิด (คน)</th>
-                                <th class="text-end">% ถูก</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="panel-foot d-flex justify-content-between align-items-center">
-                <small id="qInfo" class="text-muted"></small>
-                <div class="btn-group btn-group-sm">
-                    <button id="qPrev" class="btn btn-outline-secondary" type="button">
-                        <i class="fa-solid fa-chevron-left"></i> ก่อนหน้า
-                    </button>
-                    <button id="qNext" class="btn btn-outline-secondary" type="button">
-                        ถัดไป <i class="fa-solid fa-chevron-right"></i>
-                    </button>
-                </div>
-            </div>
-        </section>
-    </div>
     </div>
 
     <script>
