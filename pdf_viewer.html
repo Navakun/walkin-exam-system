@@ -172,16 +172,6 @@
           <div id="textLayer" class="textLayer" aria-hidden="true"></div>
         </div>
 
-        <!-- Pager overlay (show in presentation mode) -->
-        <div class="pv-pagers">
-          <button id="pagerPrev" class="pv-pager prev" title="หน้าก่อนหน้า (←)">
-            <i class="fa-solid fa-chevron-left"></i>
-          </button>
-          <button id="pagerNext" class="pv-pager next" title="หน้าถัดไป (→)">
-            <i class="fa-solid fa-chevron-right"></i>
-          </button>
-        </div>
-
         <!-- Controls (TTS) -->
         <div class="pv-ctrls">
           <div class="pill"><i class="fa-solid fa-message"></i> อ่านออกเสียง</div>
@@ -444,52 +434,36 @@
 
     document.getElementById('rotateBtn').addEventListener('click', () => { rotation = (rotation + 90) % 360; renderPage(); });
 
-    const fsTarget = document.querySelector('.pv-view'); // ให้เต็มเฉพาะกรอบตัวแสดง
+    const fsTarget = document.querySelector('.pv-view');
 
-    function enterPresentation() {
-      document.body.classList.add('is-presentation');
-      (fsTarget.requestFullscreen?.() || fsTarget.webkitRequestFullscreen?.());
-    }
-
-    function exitPresentation() {
-      document.body.classList.remove('is-presentation');
-      (document.exitFullscreen?.() || document.webkitExitFullscreen?.());
-    }
-
-    // ปุ่มโหมดนำเสนอ
+    // เข้าสู่/ออกจาก Fullscreen เฉพาะกรอบตัวแสดง
     document.getElementById('fullscreenBtn').addEventListener('click', () => {
-      if (!document.fullscreenElement) enterPresentation(); else exitPresentation();
+      if (!document.fullscreenElement) {
+        (fsTarget.requestFullscreen?.() || fsTarget.webkitRequestFullscreen?.());
+      } else {
+        (document.exitFullscreen?.() || document.webkitExitFullscreen?.());
+      }
     });
 
-    // ดับเบิลคลิก canvas เพื่อสลับโหมด
+    // ดับเบิลคลิก canvas เพื่อสลับโหมดได้เช่นกัน
     canvas.addEventListener('dblclick', () => {
-      if (!document.fullscreenElement) enterPresentation(); else exitPresentation();
+      if (!document.fullscreenElement) {
+        (fsTarget.requestFullscreen?.() || fsTarget.webkitRequestFullscreen?.());
+      } else {
+        (document.exitFullscreen?.() || document.webkitExitFullscreen?.());
+      }
     });
 
-    function enterPresentation() {
-      document.body.classList.add('is-presentation');
-      (fsTarget.requestFullscreen?.() || fsTarget.webkitRequestFullscreen?.());
-    }
-
-    function exitPresentation() {
-      document.body.classList.remove('is-presentation');
-      (document.exitFullscreen?.() || document.webkitExitFullscreen?.());
-    }
-
-    // re-render ให้พอดีกว้างเมื่อเข้า/ออกโหมด
-    document.addEventListener('fullscreenchange', () => {
-      // ปรับ scale ให้พอดีกว้างใหม่ แล้ว render
-      (async () => {
-        try {
-          const page = await pdfDoc.getPage(pageNum);
-          const vp0 = page.getViewport({ scale: 1, rotation });
-          baseScale = fitWidthScale(vp0.width);
-          scale = 1;
-          await renderPage();
-        } catch (e) { console.warn(e); }
-      })();
+    // เข้าหรือออก Fullscreen แล้วให้ปรับสเกลพอดีกว้างอัตโนมัติ
+    document.addEventListener('fullscreenchange', async () => {
+      try {
+        const page = await pdfDoc.getPage(pageNum);
+        const vp0 = page.getViewport({ scale: 1, rotation });
+        baseScale = fitWidthScale(vp0.width);
+        scale = 1;
+        await renderPage();
+      } catch (e) { console.warn(e); }
     });
-
 
     // Pager buttons
     const pagerPrev = document.getElementById('pagerPrev');
