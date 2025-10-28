@@ -329,33 +329,28 @@
             }
             function formatTime(iso) { const d = new Date(iso); if (isNaN(d)) return ''; return d.toTimeString().slice(0, 5); }
 
+            // --- แทนที่ฟังก์ชัน fetchRegistrations เดิมทั้งหมด ---
             async function fetchRegistrations(range = '30d') {
                 const token = localStorage.getItem('teacherToken') || '';
-                const endpoints = [
-                    `${API}/teacher_registrations_by_day.php?range=${range}`,
-                    `${API}/exam_users.php?range=${range}`,
-                    `${API}/get_exam_users.php?range=${range}`,
-                ];
-                for (const url of endpoints) {
-                    try {
-                        const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store' });
-                        const raw = await r.text();
-                        let d = null; try { d = JSON.parse(raw); } catch { }
-                        if (!d) continue;
-                        const arr = Array.isArray(d) ? d : Array.isArray(d.data) ? d.data : [];
-                        if (!arr.length) continue;
-
-                        const mapped = arr.map(it => ({
-                            student_id: it.student_id || it.sid || it.studentCode || it.code || '',
-                            name: it.name || it.fullname || `${it.first_name || ''} ${it.last_name || ''}`.trim(),
-                            booked_at: it.booked_at || it.registered_at || it.created_at || it.booking_time || it.timestamp || it.time || it.date || '',
-                            slot_title: it.slot_title || it.exam_title || it.examset_title || it.title || '',
-                        })).filter(x => x.student_id || x.name || x.booked_at);
-
-                        return mapped;
-                    } catch { /* ลองตัวถัดไป */ }
+                const url = `${API}/teacher_registrations_feed.php?range=${encodeURIComponent(range)}`;
+                try {
+                    const r = await fetch(url, {
+                        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+                        cache: 'no-store'
+                    });
+                    const raw = await r.text();
+                    let d = null; try { d = JSON.parse(raw); } catch { }
+                    if (!d || (d.status !== 'success')) return [];
+                    const arr = Array.isArray(d.data) ? d.data : [];
+                    return arr.map(it => ({
+                        student_id: it.student_id || '',
+                        name: it.name || '',
+                        booked_at: it.booked_at || '',
+                        slot_title: it.slot_title || ''
+                    }));
+                } catch {
+                    return [];
                 }
-                return [];
             }
 
             function groupByDay(items, keyword = '') {
