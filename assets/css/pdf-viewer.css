@@ -126,7 +126,7 @@
 .textLayer span{ color:transparent !important; text-shadow:none !important; }
 
 /* ---------- TTS highlight ---------- */
-.tts-highlight{ background:rgba(37,99,235,.18) !important; border-radius:4px; box-shadow:0 0 0 2px rgba(37,99,235,.10); }
+.tts-highlight{ background:rgba(37, 100, 235, 0.747) !important; border-radius:4px; box-shadow:0 0 0 2px rgba(37, 100, 235, 0.753); }
 
 /* ---------- Bottom controls ---------- */
 .pv-ctrls{
@@ -182,3 +182,25 @@
 /* ---------- Fullscreen ---------- */
 :fullscreen .pv-main{ padding:8px; }
 :fullscreen .pv-canvas-wrap{ padding:10px; }
+
+/* === THEME: NU Blue === */
+:root{
+  --bg:#eef2ff;         /* พื้นหลัง */
+  --card:#ffffff;       /* กล่อง/พื้นผิว */
+  --border:#e5e7eb;
+  --text:#0f172a;       /* ตัวอักษร */
+  --brand:#2563eb;      /* น้ำเงิน NU */
+  --muted:#64748b;
+}
+/* ปุ่ม/ไฮไลท์ */
+.pv-toolbar .btn:hover,
+.pv-ctrls .btn:hover{ background:#f1f5ff; border-color:#dbeafe; }
+.tts-highlight{
+  background: rgba(255,225,67,.42) !important;   /* เหลืองไฮไลท์แบบปากกา */
+  box-shadow: 0 0 0 2px rgba(255,225,67,.18);
+}
+.pv-canvas-wrap{ background: #f3f6ff; } /* เบลอพื้นหลังนิด */
+
+.pv-view{ box-shadow: 0 10px 30px rgba(2,6,23,.06); }
+.pill{ background: color-mix(in srgb, var(--card) 92%, var(--bg) 8%); }
+#zoomLabel, #pageInfo{ color: var(--text); }
