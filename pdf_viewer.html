@@ -219,7 +219,7 @@
     document.getElementById('downloadBtn').href = pdfUrl;
 
     const canvas = document.getElementById('pdfCanvas');
-    const ctx = canvas.getContext('2d', { alpha: false });
+    const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: true });
     const textLayerDiv = document.getElementById('textLayer');
     const wrap = document.getElementById('canvasWrap');
 
@@ -308,19 +308,25 @@
       currentTextSpans.forEach(s => s.classList.remove('tts-highlight'));
     }
 
-    function buildTextLayer(page, viewport) {
-      clearTextLayer();
-      return page.getTextContent({ normalizeWhitespace: true }).then(textContent => {
-        const textLayer = new pdfjsViewer.TextLayerBuilder({
-          textLayerDiv,
-          pageIndex: page._pageIndex,
-          viewport,
-        });
-        textLayer.setTextContent(textContent);
-        textLayer.render();
-        // เก็บ spans ไว้เรียงต่อกันเพื่อไฮไลท์ง่าย ๆ
-        currentTextSpans = Array.from(textLayerDiv.querySelectorAll('span'));
+    async function buildTextLayer(page, viewport) {
+      textLayerDiv.innerHTML = '';
+      currentTextSpans = [];
+
+      const textContent = await page.getTextContent({
+        normalizeWhitespace: true,
+        includeMarkedContent: true
       });
+
+      // API ใหม่ใน pdf.js v3
+      const renderTask = pdfjsLib.renderTextLayer({
+        textContent,
+        container: textLayerDiv,
+        viewport,
+        textDivs: []   // เก็บ divs ที่ถูกสร้าง (ถ้าต้องใช้ต่อ)
+      });
+
+      await renderTask.promise;
+      currentTextSpans = Array.from(textLayerDiv.querySelectorAll('span'));
     }
 
     function pageVisibleText() {
