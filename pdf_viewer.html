@@ -172,6 +172,16 @@
           <div id="textLayer" class="textLayer" aria-hidden="true"></div>
         </div>
 
+        <!-- Pager overlay (show in presentation mode) -->
+        <div class="pv-pagers">
+          <button id="pagerPrev" class="pv-pager prev" title="หน้าก่อนหน้า (←)">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <button id="pagerNext" class="pv-pager next" title="หน้าถัดไป (→)">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
+
         <!-- Controls (TTS) -->
         <div class="pv-ctrls">
           <div class="pill"><i class="fa-solid fa-message"></i> อ่านออกเสียง</div>
@@ -456,6 +466,16 @@
       if (!document.fullscreenElement) enterPresentation(); else exitPresentation();
     });
 
+    function enterPresentation() {
+      document.body.classList.add('is-presentation');
+      (fsTarget.requestFullscreen?.() || fsTarget.webkitRequestFullscreen?.());
+    }
+
+    function exitPresentation() {
+      document.body.classList.remove('is-presentation');
+      (document.exitFullscreen?.() || document.webkitExitFullscreen?.());
+    }
+
     // re-render ให้พอดีกว้างเมื่อเข้า/ออกโหมด
     document.addEventListener('fullscreenchange', () => {
       // ปรับ scale ให้พอดีกว้างใหม่ แล้ว render
@@ -471,11 +491,38 @@
     });
 
 
+    // Pager buttons
+    const pagerPrev = document.getElementById('pagerPrev');
+    const pagerNext = document.getElementById('pagerNext');
+
+    function goPrev() { if (pageNum > 1) { pageNum--; renderPage(); } }
+    function goNext() { if (pageNum < (pdfDoc?.numPages || 1)) { pageNum++; renderPage(); } }
+
+    pagerPrev.addEventListener('click', (e) => { e.stopPropagation(); goPrev(); });
+    pagerNext.addEventListener('click', (e) => { e.stopPropagation(); goNext(); });
+
+    // คลิกครึ่งจอ: ซ้าย=ย้อน, ขวา=ถัดไป (เฉพาะโหมดนำเสนอ)
+    wrap.addEventListener('click', (e) => {
+      if (!document.fullscreenElement) return;
+      const r = wrap.getBoundingClientRect();
+      if (e.clientX < r.left + r.width / 2) goPrev(); else goNext();
+    });
+
+    // ท่า swipe บนมือถือ/ทัชแพด
+    let touchX = null;
+    wrap.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+    wrap.addEventListener('touchend', (e) => {
+      if (touchX == null) return;
+      const dx = (e.changedTouches[0].clientX - touchX);
+      if (Math.abs(dx) > 40) { dx > 0 ? goPrev() : goNext(); }
+      touchX = null;
+    }, { passive: true });
+
     // คีย์ลัด
     window.addEventListener('keydown', (e) => {
       if (e.target && ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
-      if (e.key === 'ArrowLeft') { e.preventDefault(); $('#prevPage').click(); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); $('#nextPage').click(); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev(); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); goNext(); }
       if (e.key === '+' || e.key === '=') { e.preventDefault(); $('#zoomIn').click(); }
       if (e.key === '-') { e.preventDefault(); $('#zoomOut').click(); }
       if (e.key.toLowerCase() === 'f') { e.preventDefault(); $('#fullscreenBtn').click(); }
