@@ -465,21 +465,15 @@
       } catch (e) { console.warn(e); }
     });
 
-    // Pager buttons
-    const pagerPrev = document.getElementById('pagerPrev');
-    const pagerNext = document.getElementById('pagerNext');
-
+    // ====== Navigation (use existing toolbar buttons only) ======
     function goPrev() { if (pageNum > 1) { pageNum--; renderPage(); } }
     function goNext() { if (pageNum < (pdfDoc?.numPages || 1)) { pageNum++; renderPage(); } }
 
-    pagerPrev.addEventListener('click', (e) => { e.stopPropagation(); goPrev(); });
-    pagerNext.addEventListener('click', (e) => { e.stopPropagation(); goNext(); });
-
-    // คลิกครึ่งจอ: ซ้าย=ย้อน, ขวา=ถัดไป (เฉพาะโหมดนำเสนอ)
+    // คลิกครึ่งจอเฉพาะตอน Fullscreen
     wrap.addEventListener('click', (e) => {
       if (!document.fullscreenElement) return;
       const r = wrap.getBoundingClientRect();
-      if (e.clientX < r.left + r.width / 2) goPrev(); else goNext();
+      (e.clientX < r.left + r.width / 2) ? goPrev() : goNext();
     });
 
     // ท่า swipe บนมือถือ/ทัชแพด
@@ -487,8 +481,8 @@
     wrap.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
     wrap.addEventListener('touchend', (e) => {
       if (touchX == null) return;
-      const dx = (e.changedTouches[0].clientX - touchX);
-      if (Math.abs(dx) > 40) { dx > 0 ? goPrev() : goNext(); }
+      const dx = e.changedTouches[0].clientX - touchX;
+      if (Math.abs(dx) > 40) (dx > 0 ? goPrev() : goNext());
       touchX = null;
     }, { passive: true });
 
