@@ -434,10 +434,42 @@
 
     document.getElementById('rotateBtn').addEventListener('click', () => { rotation = (rotation + 90) % 360; renderPage(); });
 
+    const fsTarget = document.querySelector('.pv-view'); // ให้เต็มเฉพาะกรอบตัวแสดง
+
+    function enterPresentation() {
+      document.body.classList.add('is-presentation');
+      (fsTarget.requestFullscreen?.() || fsTarget.webkitRequestFullscreen?.());
+    }
+
+    function exitPresentation() {
+      document.body.classList.remove('is-presentation');
+      (document.exitFullscreen?.() || document.webkitExitFullscreen?.());
+    }
+
+    // ปุ่มโหมดนำเสนอ
     document.getElementById('fullscreenBtn').addEventListener('click', () => {
-      const el = document.documentElement;
-      if (!document.fullscreenElement) el.requestFullscreen?.(); else document.exitFullscreen?.();
+      if (!document.fullscreenElement) enterPresentation(); else exitPresentation();
     });
+
+    // ดับเบิลคลิก canvas เพื่อสลับโหมด
+    canvas.addEventListener('dblclick', () => {
+      if (!document.fullscreenElement) enterPresentation(); else exitPresentation();
+    });
+
+    // re-render ให้พอดีกว้างเมื่อเข้า/ออกโหมด
+    document.addEventListener('fullscreenchange', () => {
+      // ปรับ scale ให้พอดีกว้างใหม่ แล้ว render
+      (async () => {
+        try {
+          const page = await pdfDoc.getPage(pageNum);
+          const vp0 = page.getViewport({ scale: 1, rotation });
+          baseScale = fitWidthScale(vp0.width);
+          scale = 1;
+          await renderPage();
+        } catch (e) { console.warn(e); }
+      })();
+    });
+
 
     // คีย์ลัด
     window.addEventListener('keydown', (e) => {

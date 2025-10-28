@@ -141,3 +141,21 @@
 @media (max-width:420px){
   .pv-ctrls .pill input[type="range"]{width:100px;}
 }
+/* Presentation mode: full-page viewer (not browser F11) */
+.is-presentation .pv-topbar,
+.is-presentation .pv-ctrls { 
+  opacity: 0; 
+  pointer-events: none; 
+  transition: opacity .2s ease;
+}
+
+/* โชว์คอนโทรลชั่วคราวเวลาเลื่อนเมาส์ไปใกล้ขอบบน/ล่าง */
+.is-presentation:hover .pv-topbar,
+.is-presentation:hover .pv-ctrls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* เมื่ออยู่ใน Fullscreen API ปรับ padding ให้สุดขอบ */
+:fullscreen .pv-main { padding: 0; }
+:fullscreen .pv-canvas-wrap { padding: 0; }
