@@ -317,15 +317,23 @@
         includeMarkedContent: true
       });
 
-      // API ใหม่ใน pdf.js v3
+      // สำคัญมากสำหรับ pdf.js v3: ต้องตั้งค่า CSS var ให้เท่ากับ viewport.scale
+      textLayerDiv.style.setProperty('--scale-factor', String(viewport.scale));
+
+      // ให้ขนาด textLayer เท่ากับ canvas (กันเพี้ยนตำแหน่ง)
+      textLayerDiv.style.width = canvas.style.width;
+      textLayerDiv.style.height = canvas.style.height;
+
+      // ใช้ API ใหม่
       const renderTask = pdfjsLib.renderTextLayer({
-        textContent,
         container: textLayerDiv,
         viewport,
-        textDivs: []   // เก็บ divs ที่ถูกสร้าง (ถ้าต้องใช้ต่อ)
+        textContentSource: textContent, // ✅ เปลี่ยนจาก textContent → textContentSource
+        // textDivs: [] // ถ้าต้องการเก็บ divs ที่สร้างไว้ใช้ต่อก็ใส่ได้
       });
 
       await renderTask.promise;
+
       currentTextSpans = Array.from(textLayerDiv.querySelectorAll('span'));
     }
 
@@ -397,6 +405,7 @@
       // sync textLayer ติดตาม canvas
       textLayerDiv.style.width = canvas.style.width;
       textLayerDiv.style.height = canvas.style.height;
+      textLayerDiv.style.setProperty('--scale-factor', String(viewport.scale));
 
       await page.render({ canvasContext: ctx, viewport }).promise;
       await buildTextLayer(page, viewport);
