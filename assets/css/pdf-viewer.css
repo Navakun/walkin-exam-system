@@ -34,7 +34,7 @@
 /* ---------- Dark mode ---------- */
 @media (prefers-color-scheme: dark) {
   :root {
-    --pv-bg: #0b1220;
+    --pv-bg: #ffffff;
     --pv-surface: #0f172a;
     --pv-text: #e5e7eb;
     --pv-muted: #94a3b8;
