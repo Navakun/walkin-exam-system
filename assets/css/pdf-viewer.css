@@ -141,21 +141,28 @@
 @media (max-width:420px){
   .pv-ctrls .pill input[type="range"]{width:100px;}
 }
-/* Presentation mode: full-page viewer (not browser F11) */
-.is-presentation .pv-topbar,
-.is-presentation .pv-ctrls { 
-  position: fixed; top: 0; left: 0; right: 0;
-  z-index: 1000;
-  border-radius: 0;
+
+/* ---------- Fullscreen: ใช้ปุ่มเดิม (ไม่ซ่อน) ---------- */
+/* ตรึงทูลบาร์ไว้ด้านบน */
+:fullscreen .pv-topbar{
+  position:fixed; top:0; left:0; right:0; z-index:1000; border-radius:0;
+  /* กันรอยบากมือถือ */
+  padding-top: calc(10px + env(safe-area-inset-top));
 }
 
-/* โชว์คอนโทรลชั่วคราวเวลาเลื่อนเมาส์ไปใกล้ขอบบน/ล่าง */
-.is-presentation:hover .pv-topbar,
-.is-presentation:hover .pv-ctrls {
-  opacity: 1;
-  pointer-events: auto;
+/* ตรึงแถบควบคุม TTS ไว้ด้านล่าง */
+:fullscreen .pv-ctrls{
+  position:fixed; left:0; right:0; bottom:0; z-index:1000; border-radius:0;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--border);
+  background: var(--card);
 }
 
-/* เมื่ออยู่ใน Fullscreen API ปรับ padding ให้สุดขอบ */
-:fullscreen .pv-main{ padding-top: 56px; }   /* กันทับแถบด้านบน */
-:fullscreen .pv-canvas-wrap{ padding: 0; }   /* ให้พื้นที่แสดงเต็มขอบ */
+/* เผื่อพื้นที่ให้แถบบน/ล่าง ไม่ทับเนื้อหา */
+:fullscreen .pv-main{
+  padding-top:56px;                 /* ความสูงทูลบาร์ ~56px */
+  padding-bottom:58px;              /* ความสูงแถบควบคุม ~58px */
+}
+
+/* ให้พื้นที่แสดงเต็มขอบขณะ Fullscreen */
+:fullscreen .pv-canvas-wrap{ padding:0; }
