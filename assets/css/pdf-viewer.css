@@ -1,0 +1,9 @@
+:root{
+  --bg:#f6f8fb; --card:#fff; --border:#e5e7eb; --text:#1f2937;
+  --brand:#2563eb; --muted:#6b7280; --radius:14px;
+}
+.pv-body{background:var(--bg);color:var(--text)}
+.pv-toolbar .btn{transition:.15s}
+.pv-toolbar .btn:hover{background:#f8fafc}
+.pv-toolbar .btn:active{transform:translateY(1px)}
+.tts-highlight{background:rgba(37,99,235,.18)!important}
