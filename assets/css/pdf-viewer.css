@@ -1,206 +1,143 @@
 /* =====================================================
-   PDF Viewer UI — pdf-viewer.css (Clean build)
-   - Works with pdf.js v3 textLayer
-   - Includes Jisoo base tokens
-   - No non-CSS artifacts
+   PDF Viewer UI — pdf-viewer.css (Light / NU Blue theme)
+   For Walk-in Exam System by Jisoo
    ===================================================== */
 
-/* ---------- Base Tokens ---------- */
 :root{
-  --bg:#f6f8fb; --card:#fff; --border:#e5e7eb; --text:#1f2937;
-  --brand:#2563eb; --muted:#6b7280; --radius:14px;
+  --bg:#eef2ff;
+  --card:#ffffff;
+  --border:#e5e7eb;
+  --text:#0f172a;
+  --muted:#64748b;
+  --brand:#2563eb;
+  --brand-600:#1d4ed8;
+  --radius:14px;
+  --focus:0 0 0 3px rgba(37,99,235,.25);
+  --font:"Inter","Sarabun",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans Thai",sans-serif;
 }
 
-/* ---------- Theme Vars ---------- */
-:root {
-  --pv-bg: var(--bg, #f6f8fb);
-  --pv-surface: var(--card, #ffffff);
-  --pv-text: var(--text, #1f2937);
-  --pv-muted: var(--muted, #6b7280);
-  --pv-border: var(--border, #e5e7eb);
-  --pv-brand: var(--brand, #2563eb);
-  --pv-brand-600: #1d4ed8;
-  --pv-accent: #16a34a;
-  --pv-warn: #f59e0b;
-  --pv-danger: #ef4444;
-  --pv-shadow: 0 8px 24px rgba(2, 6, 23, .06);
-  --pv-radius: var(--radius, 14px);
-  --pv-radius-lg: 16px;
-  --pv-radius-xl: 20px;
-  --pv-focus: 0 0 0 3px rgba(37, 99, 235, .25);
-  --pv-font: "Inter", "Sarabun", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans Thai", sans-serif;
-}
-
-/* ---------- Dark mode ---------- */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --pv-bg: #ffffff;
-    --pv-surface: #0f172a;
-    --pv-text: #e5e7eb;
-    --pv-muted: #94a3b8;
-    --pv-border: #1f2a44;
-    --pv-brand: #60a5fa;
-    --pv-brand-600: #3b82f6;
-    --pv-shadow: 0 10px 28px rgba(0, 0, 0, .45);
-  }
-}
-
-/* ---------- Page ---------- */
-.pv-body{ background:var(--pv-bg); color:var(--pv-text); font-family:var(--pv-font); }
-.pv-shell{ display:flex; flex-direction:column; height:100dvh; max-height:100dvh; }
+/* ---------- Page Shell ---------- */
+.pv-body{background:var(--bg);color:var(--text);font-family:var(--font);}
+.pv-shell{display:flex;flex-direction:column;height:100dvh;}
 
 /* ---------- Toolbar ---------- */
 .pv-topbar{
-  position: sticky; top: 0; z-index: 30;
-  background: var(--pv-surface);
-  border-bottom: 1px solid var(--pv-border);
-  padding: 10px 14px;
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.02);
+  position:sticky;top:0;z-index:30;
+  background:var(--card);
+  border-bottom:1px solid var(--border);
+  padding:10px 14px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  box-shadow:0 2px 0 rgba(0,0,0,0.02);
 }
-.pv-left,.pv-right{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-
+.pv-left,.pv-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .pv-toolbar .btn{
-  -webkit-tap-highlight-color: transparent;
-  appearance:none;
-  border:1px solid var(--pv-border);
-  background:var(--pv-surface);
-  color:var(--pv-text);
+  border:1px solid var(--border);
+  background:var(--card);
+  color:var(--text);
   border-radius:10px;
   padding:8px 10px;
-  font:500 14px/1 var(--pv-font);
   cursor:pointer;
-  transition:transform .12s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease, color .15s ease;
-  display:inline-flex; align-items:center; gap:8px; text-decoration:none;
+  display:inline-flex;align-items:center;gap:8px;
+  font:500 14px/1 var(--font);
+  transition:.15s;
 }
-.pv-toolbar .btn:hover{ background:#f8fafc; }
-.pv-toolbar .btn:active{ transform:translateY(1px); }
-.pv-toolbar .btn:focus-visible{ outline:none; box-shadow:var(--pv-focus); }
-.pv-toolbar .btn i{ font-size:14px; }
-.pv-toolbar .btn{ transition:.15s; } /* keep quick hover/active styles */
-
+.pv-toolbar .btn:hover{background:#f8faff;border-color:#dbeafe;}
+.pv-toolbar .btn:active{transform:translateY(1px);}
+.pv-toolbar .btn:focus-visible{outline:none;box-shadow:var(--focus);}
+.pv-toolbar .btn i{font-size:14px;}
 .pill{
-  display:inline-flex; align-items:center; gap:8px;
-  border:1px solid var(--pv-border); border-radius:999px;
+  display:inline-flex;align-items:center;gap:8px;
+  border:1px solid var(--border);
+  border-radius:999px;
   padding:6px 10px;
-  background: color-mix(in srgb, var(--pv-surface) 92%, var(--pv-bg) 8%);
-  color:var(--pv-muted);
-  font:600 13px/1 var(--pv-font); white-space:nowrap;
+  background:#f1f5ff;
+  color:var(--muted);
+  font:600 13px/1 var(--font);
+  white-space:nowrap;
 }
 
 /* ---------- Main ---------- */
-.pv-main{ display:flex; gap:14px; padding:12px; min-height:0; flex:1; }
+.pv-main{display:flex;gap:14px;padding:12px;min-height:0;flex:1;}
 .pv-view{
-  flex:1; min-width:0; background:var(--pv-surface); border:1px solid var(--pv-border);
-  border-radius:var(--pv-radius); box-shadow:var(--pv-shadow);
-  display:flex; flex-direction:column;
+  flex:1;min-width:0;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:0 8px 24px rgba(2,6,23,.06);
+  display:flex;flex-direction:column;
 }
 
 /* ---------- Canvas area ---------- */
 .pv-canvas-wrap{
-  position:relative; overflow:auto; flex:1; padding:16px;
-  background: color-mix(in srgb, var(--pv-bg) 80%, #fff 20%);
-  border-bottom-left-radius:var(--pv-radius); border-bottom-right-radius:var(--pv-radius);
-  scrollbar-width:thin; scrollbar-color: color-mix(in srgb, var(--pv-border) 70%, var(--pv-text) 30%) transparent;
+  position:relative;overflow:auto;flex:1;
+  padding:16px;
+  background:#f6f8ff;
+  border-bottom-left-radius:var(--radius);
+  border-bottom-right-radius:var(--radius);
 }
-.pv-canvas-wrap::-webkit-scrollbar{ width:10px; height:10px; }
-.pv-canvas-wrap::-webkit-scrollbar-thumb{
-  background: color-mix(in srgb, var(--pv-border) 60%, var(--pv-text) 40%);
-  border-radius:999px; border:2px solid transparent; background-clip:content-box;
-}
-.pv-canvas-wrap::-webkit-scrollbar-track{ background:transparent; }
+.pv-canvas{display:block;margin:0 auto;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.06);border-radius:6px;}
 
-.pv-canvas{ display:block; margin:0 auto; box-shadow:0 4px 18px rgba(0,0,0,.06); background:#fff; border-radius:6px; }
-
-/* ---------- Text layer (pdf.js v3) ---------- */
+/* ---------- pdf.js textLayer ---------- */
 .textLayer{
   position:absolute;
-  left:0; top:0;
-  width:0; height:0;              /* size will be set via JS */
+  left:0;top:0;width:0;height:0;
   pointer-events:none;
   contain:strict;
   mix-blend-mode:multiply;
-  --scale-factor: 1;              /* updated via JS to viewport.scale */
+  --scale-factor:1;
 }
-/* Hide paint of text but keep spans as boxes for highlight */
-.textLayer span{ color:transparent !important; text-shadow:none !important; }
+.textLayer span{color:transparent!important;text-shadow:none!important;}
 
-/* ---------- TTS highlight ---------- */
-.tts-highlight{ background:rgba(37, 100, 235, 0.747) !important; border-radius:4px; box-shadow:0 0 0 2px rgba(37, 100, 235, 0.753); }
+/* ---------- Highlight while reading ---------- */
+.tts-highlight{
+  background:rgba(255,225,67,.45)!important; /* yellow pen style */
+  border-radius:4px;
+  box-shadow:0 0 0 2px rgba(255,225,67,.2);
+}
 
 /* ---------- Bottom controls ---------- */
 .pv-ctrls{
-  display:flex; align-items:center; gap:10px; padding:10px 12px;
-  border-top:1px solid var(--pv-border); background:var(--pv-surface);
-  border-bottom-left-radius:var(--pv-radius); border-bottom-right-radius:var(--pv-radius);
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;
+  border-top:1px solid var(--border);
+  background:var(--card);
+  border-bottom-left-radius:var(--radius);
+  border-bottom-right-radius:var(--radius);
 }
 .pv-ctrls .btn{
-  border:1px solid var(--pv-border); background:var(--pv-surface);
-  border-radius:10px; padding:8px 10px; font:600 14px/1 var(--pv-font);
-  cursor:pointer; transition:transform .12s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
-  display:inline-flex; align-items:center; gap:8px;
+  border:1px solid var(--border);
+  background:var(--card);
+  border-radius:10px;
+  padding:8px 10px;
+  font:600 14px/1 var(--font);
+  cursor:pointer;
+  display:inline-flex;align-items:center;gap:8px;
+  transition:.15s;
 }
-.pv-ctrls .btn:hover{ background:#f8fafc; }
-.pv-ctrls .btn i{ font-size:14px; }
-
-/* Inline range & select */
+.pv-ctrls .btn:hover{background:#f1f5ff;border-color:#dbeafe;}
+.pv-ctrls .btn i{font-size:14px;}
 .pv-ctrls .pill input[type="range"]{
-  appearance:none; height:6px; width:140px; border-radius:999px;
-  background: linear-gradient(90deg, var(--pv-brand), var(--pv-brand-600));
-  outline:none; opacity:.9;
+  appearance:none;height:6px;width:140px;border-radius:999px;
+  background:linear-gradient(90deg,var(--brand),var(--brand-600));
+  outline:none;opacity:.9;
 }
 .pv-ctrls .pill input[type="range"]::-webkit-slider-thumb{
-  appearance:none; width:16px; height:16px; border-radius:50%;
-  background:var(--pv-surface); border:2px solid var(--pv-brand-600);
-  box-shadow:0 1px 3px rgba(0,0,0,.15); cursor:pointer;
+  appearance:none;width:16px;height:16px;border-radius:50%;
+  background:var(--card);border:2px solid var(--brand-600);
+  box-shadow:0 1px 3px rgba(0,0,0,.15);cursor:pointer;
 }
 .pv-ctrls .pill select{
-  appearance:none; border:none; background:transparent; color:inherit; font:600 13px/1 var(--pv-font); outline:none;
+  appearance:none;border:none;background:transparent;color:inherit;
+  font:600 13px/1 var(--font);outline:none;
 }
-
-/* ---------- States ---------- */
-.is-hidden{ display:none !important; }
-.center{ display:grid; place-items:center; }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 900px){
-  .pv-topbar{ gap:10px; }
-  .pv-right{ gap:6px; }
-  .pill{ padding:6px 8px; }
+@media (max-width:720px){
+  .pv-main{padding:8px;gap:10px;}
+  .pv-ctrls{flex-wrap:wrap;gap:8px;}
+  .pv-ctrls .pill input[type="range"]{width:120px;}
+  .pv-toolbar .btn span{display:none;}
 }
-@media (max-width: 720px){
-  .pv-topbar{ padding:8px 10px; }
-  .pv-main{ padding:8px; gap:10px; }
-  .pv-ctrls{ flex-wrap:wrap; gap:8px; }
-  .pv-ctrls .pill input[type="range"]{ width:120px; }
-  .pv-toolbar .btn span{ display:none; }
+@media (max-width:420px){
+  .pv-ctrls .pill input[type="range"]{width:100px;}
 }
-@media (max-width: 420px){
-  .pv-ctrls .pill input[type="range"]{ width:100px; }
-}
-
-/* ---------- Fullscreen ---------- */
-:fullscreen .pv-main{ padding:8px; }
-:fullscreen .pv-canvas-wrap{ padding:10px; }
-
-/* === THEME: NU Blue === */
-:root{
-  --bg:#eef2ff;         /* พื้นหลัง */
-  --card:#ffffff;       /* กล่อง/พื้นผิว */
-  --border:#e5e7eb;
-  --text:#0f172a;       /* ตัวอักษร */
-  --brand:#2563eb;      /* น้ำเงิน NU */
-  --muted:#64748b;
-}
-/* ปุ่ม/ไฮไลท์ */
-.pv-toolbar .btn:hover,
-.pv-ctrls .btn:hover{ background:#f1f5ff; border-color:#dbeafe; }
-.tts-highlight{
-  background: rgba(255,225,67,.42) !important;   /* เหลืองไฮไลท์แบบปากกา */
-  box-shadow: 0 0 0 2px rgba(255,225,67,.18);
-}
-.pv-canvas-wrap{ background: #f3f6ff; } /* เบลอพื้นหลังนิด */
-
-.pv-view{ box-shadow: 0 10px 30px rgba(2,6,23,.06); }
-.pill{ background: color-mix(in srgb, var(--card) 92%, var(--bg) 8%); }
-#zoomLabel, #pageInfo{ color: var(--text); }
