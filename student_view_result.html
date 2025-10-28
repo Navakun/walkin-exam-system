@@ -36,6 +36,24 @@
       background: #fff;
     }
 
+    /* เพิ่ม styles สำหรับแก้ inline styles */
+    #errorBox {
+      display: none;
+    }
+
+    #detailMeta {
+      margin-bottom: 10px;
+    }
+
+    .kpi-value {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .wrong-list h4 {
+      margin: 14px 0 6px;
+    }
+
     .logo-text {
       display: flex;
       gap: 12px;
@@ -146,7 +164,7 @@
 
   <main class="result-main">
     <!-- แบนเนอร์แจ้งเตือน -->
-    <div id="bannerArea"></div>
+    <div id="bannerArea" class="mb-3"></div>
 
     <!-- สรุปผลสอบ (แทนป้าย % และ ไม่ผ่าน เดิม) -->
     <div class="mini-metrics" id="examSummary">
@@ -192,12 +210,12 @@
         </thead>
         <tbody>
           <tr>
-            <td><span class="stat-badge stat-total" id="totalValue">—</span></td>
-            <td><span class="stat-badge stat-correct" id="correctValue">—</span></td>
-            <td><span class="stat-badge stat-wrong" id="wrongValue">—</span></td>
-            <td><span class="stat-badge stat-time" id="startTime">—</span></td>
-            <td><span class="stat-badge stat-time" id="endTime">—</span></td>
-            <td><span class="stat-badge stat-time" id="duration">—</span></td>
+            <td><span class="stat-badge stat-total kpi-value" id="totalValue">—</span></td>
+            <td><span class="stat-badge stat-correct kpi-value" id="correctValue">—</span></td>
+            <td><span class="stat-badge stat-wrong kpi-value" id="wrongValue">—</span></td>
+            <td><span class="stat-badge stat-time kpi-value" id="startTime">—</span></td>
+            <td><span class="stat-badge stat-time kpi-value" id="endTime">—</span></td>
+            <td><span class="stat-badge stat-time kpi-value" id="duration">—</span></td>
           </tr>
         </tbody>
       </table>
