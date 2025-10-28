@@ -202,6 +202,10 @@
         </tbody>
       </table>
     </div>
+
+    <!-- แจ้งเตือนกรณีไม่ผ่าน (แสดงใต้ตาราง) -->
+    <div id="failureNoticeArea" class="mt-4"></div>
+
   </main>
 
   <script>
@@ -209,10 +213,10 @@
       /** ---------------- Utils ---------------- */
       const $ = (id) => document.getElementById(id);
 
-      const showBanner = (msg = '', type = 'danger') => {
-        const el = $('bannerArea');
+      const showNotice = (msg = '', type = 'danger') => {
+        const el = $('failureNoticeArea');
         if (!el) return;
-        el.innerHTML = msg ? `<div class="alert alert-${type}" role="alert">${msg}</div>` : '';
+        el.innerHTML = msg ? `<div class="alert alert-${type} mb-0" role="alert">${msg}</div>` : '';
       };
 
       const parseJwt = (token) => {
@@ -330,6 +334,17 @@
             $('summaryStatus').className = `badge rounded-pill ${isPass ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'
               }`;
             $('summaryStatus').title = `เกณฑ์ผ่าน ${PASS_THRESHOLD}%`; // tooltip เล็กๆ
+
+            // แสดงแจ้งเตือนสำหรับคนที่สอบไม่ผ่าน
+            if (!isPass) {
+              showNotice(
+                `<strong><i class="fas fa-exclamation-triangle me-2"></i>คุณสอบไม่ผ่านเกณฑ์ ${PASS_THRESHOLD}%</strong><br>` +
+                'กรุณาติดต่ออาจารย์ผู้สอนเพื่อขอสอบใหม่อีกครั้ง หรือศึกษาเนื้อหาเพิ่มเติมจากเอกสารประกอบการสอน',
+                'danger'
+              );
+            } else {
+              showNotice(''); // ล้างการแจ้งเตือนถ้าสอบผ่าน
+            }
           }
 
           // 3) เวลาเฉลี่ย/ข้อ

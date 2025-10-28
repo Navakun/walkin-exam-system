@@ -1,127 +1,489 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PDF Viewer + อ่านออกเสียง</title>
-  <link rel="icon" href="favicon.ico" type="image/x-icon">
-  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
-  <style>
-    #canvasContainer { position: relative; width: 100%; height: 80vh; overflow: auto; background: #ccc; }
-    canvas { display: block; margin: 10px auto; border: 1px solid #000; }
-    .toolbar { padding: 10px; text-align: center; }
-    .tts-controls { margin-top: 10px; display: flex; justify-content: center; gap: 10px; }
-  </style>
-</head>
-<body>
-  <div class="toolbar">
-    <button onclick="window.location.href='teacher_open_materials.html'">← กลับ</button>
-    <div class="tts-controls">
-      <button id="speakBtn">อ่านออกเสียง</button>
-      <button id="pauseBtn">หยุดชั่วคราว</button>
-      <button id="resumeBtn">อ่านต่อ</button>
-      <button id="stopBtn">หยุด</button>
-      <label>ความเร็ว: <input type="range" id="rateSlider" min="0.5" max="2" step="0.1" value="1"></label>
-    </div>
-  </div>
-  <div id="canvasContainer"></div>
 
-  <!-- PDF.js & Tesseract.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PDF Viewer + อ่านออกเสียง</title>
+  <link rel="icon" href="favicon.ico" />
+  <!-- Base styles (ถ้าต้องการให้เข้ากับธีมระบบ) -->
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <link rel="stylesheet" href="assets/css/teacher.css" />
+  <!-- ✅ ใช้สไตล์ที่คุณสร้าง -->
+  <link rel="stylesheet" href="assets/css/pdf-viewer.css" />
+
+  <!-- Icons (ถ้าใช้) -->
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet">
+
+  <!-- SweetAlert2 -->
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.worker.min.js';
+  <!-- pdf.js v3 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- สำหรับ textLayer -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css" />
 
-    const query = new URLSearchParams(window.location.search);
-    const filename = query.get('file');
+  <!-- Tesseract OCR (fallback เมื่อเป็นภาพสแกน) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+
+  <style>
+    /* เฉพาะส่วนน้อยที่จำเป็นถ้า pdf-viewer.css ไม่มี */
+    .pv-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      background: var(--bg, #f6f8fb)
+    }
+
+    .pv-topbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      position: sticky;
+      top: 0;
+      z-index: 10
+    }
+
+    .pv-left,
+    .pv-right {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap
+    }
+
+    .pv-toolbar .btn {
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer
+    }
+
+    .pv-main {
+      display: flex;
+      gap: 14px;
+      flex: 1;
+      min-height: 0;
+      padding: 12px
+    }
+
+    .pv-view {
+      flex: 1;
+      min-width: 0;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(2, 6, 23, .04);
+      display: flex;
+      flex-direction: column
+    }
+
+    .pv-canvas-wrap {
+      position: relative;
+      overflow: auto;
+      flex: 1;
+      padding: 14px;
+      background: #f3f4f6;
+      border-bottom-left-radius: 14px;
+      border-bottom-right-radius: 14px
+    }
+
+    .pv-canvas {
+      display: block;
+      margin: 0 auto;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, .06);
+      background: #fff
+    }
+
+    .textLayer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      margin: auto;
+      pointer-events: none
+    }
+
+    .tts-highlight {
+      background: rgba(245, 158, 11, .35)
+    }
+
+    .pv-ctrls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 12px;
+      border-top: 1px solid #e5e7eb;
+      background: #fff;
+      border-bottom-left-radius: 14px;
+      border-bottom-right-radius: 14px
+    }
+
+    .pill {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #f8fafc;
+      color: #334155
+    }
+  </style>
+</head>
+
+<body class="pv-body">
+  <div class="pv-shell">
+    <!-- Top bar -->
+    <div class="pv-topbar pv-toolbar">
+      <div class="pv-left">
+        <button class="btn" id="backBtn" title="กลับ"><i class="fa-solid fa-arrow-left-long"></i>
+          <span>กลับ</span></button>
+        <span class="pill"><i class="fa-regular fa-file-pdf"></i> <span id="fileLabel">กำลังโหลด…</span></span>
+      </div>
+      <div class="pv-right">
+        <button class="btn" id="prevPage" title="หน้าก่อนหน้า (←)"><i class="fa-solid fa-chevron-left"></i></button>
+        <span id="pageInfo" class="pill">หน้า — / —</span>
+        <button class="btn" id="nextPage" title="หน้าถัดไป (→)"><i class="fa-solid fa-chevron-right"></i></button>
+
+        <button class="btn" id="zoomOut" title="ซูมออก (-)"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+        <span id="zoomLabel" class="pill">100%</span>
+        <button class="btn" id="zoomIn" title="ซูมเข้า (+)"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+        <button class="btn" id="fitWidth" title="พอดีกว้าง"><i
+            class="fa-solid fa-arrows-left-right-to-line"></i></button>
+        <button class="btn" id="resetZoom" title="ซูม 100%"><i class="fa-solid fa-rotate-left"></i></button>
+
+        <button class="btn" id="rotateBtn" title="หมุน (R)"><i class="fa-solid fa-rotate"></i></button>
+        <a class="btn" id="downloadBtn" title="ดาวน์โหลด" download><i class="fa-solid fa-download"></i></a>
+        <button class="btn" id="fullscreenBtn" title="โหมดเต็มหน้า (F)"><i class="fa-solid fa-expand"></i></button>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div class="pv-main">
+      <section class="pv-view" aria-label="ตัวแสดงเอกสาร PDF">
+        <div class="pv-canvas-wrap" id="canvasWrap">
+          <canvas id="pdfCanvas" class="pv-canvas" aria-label="หน้า PDF"></canvas>
+          <!-- text layer สำหรับไฮไลท์ขณะอ่าน -->
+          <div id="textLayer" class="textLayer" aria-hidden="true"></div>
+        </div>
+
+        <!-- Controls (TTS) -->
+        <div class="pv-ctrls">
+          <div class="pill"><i class="fa-solid fa-message"></i> อ่านออกเสียง</div>
+          <button class="btn" id="ttsPage"><i class="fa-solid fa-play"></i> หน้านี้</button>
+          <button class="btn" id="ttsAll"><i class="fa-solid fa-list-ol"></i> ทั้งเอกสาร</button>
+          <button class="btn" id="ttsPause"><i class="fa-solid fa-pause"></i> พัก</button>
+          <button class="btn" id="ttsResume"><i class="fa-solid fa-play"></i> ต่อ</button>
+          <button class="btn" id="ttsStop"><i class="fa-solid fa-stop"></i> หยุด</button>
+
+          <label class="pill" for="voiceSelect">เสียง
+            <select id="voiceSelect" style="border:none;background:transparent;outline:none"></select>
+          </label>
+
+          <label class="pill" for="rateRange">ความเร็ว
+            <input type="range" id="rateRange" min="0.6" max="1.6" step="0.1" value="1.0" />
+            <span id="rateVal">1.0x</span>
+          </label>
+
+          <label class="pill" for="pitchRange">โทน
+            <input type="range" id="pitchRange" min="0.7" max="1.4" step="0.1" value="1.0" />
+            <span id="pitchVal">1.0</span>
+          </label>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // ========== PDF Setup ==========
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const qs = new URLSearchParams(location.search);
+    const filename = qs.get('file');
     if (!filename) {
-      alert('ไม่พบไฟล์ที่ต้องการเปิด');
-      window.location.href = 'teacher_open_materials.html';
+      Swal.fire({ icon: 'error', title: 'ไม่พบไฟล์', text: 'กลับไปเลือกไฟล์อีกครั้ง' })
+        .then(() => location.href = 'teacher_open_materials.html');
+      throw new Error('no file param');
     }
     const pdfUrl = `uploads/materials/${filename}`;
-    const container = document.getElementById('canvasContainer');
+    document.getElementById('fileLabel').textContent = filename;
+    document.getElementById('downloadBtn').href = pdfUrl;
 
-    let fullText = '';
-    let utterance;
+    const canvas = document.getElementById('pdfCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const textLayerDiv = document.getElementById('textLayer');
+    const wrap = document.getElementById('canvasWrap');
 
+    let pdfDoc = null, pageNum = 1, rotation = 0;
+    let scale = 1, baseScale = 1;
+
+    // ========== TTS Setup ==========
     const synth = window.speechSynthesis;
-    let voices = [];
+    let utterance = null;
+    let VOICES = [];
+    let READING_MODE = 'page'; // 'page' | 'all'
+    let currentTextSpans = []; // สำหรับไฮไลท์
 
-    function getThaiVoice() {
-      voices = synth.getVoices();
-      return voices.find(v => v.lang.startsWith('th')) || null;
+    function loadVoices() {
+      VOICES = synth.getVoices();
+      const sel = document.getElementById('voiceSelect');
+      const keep = sel.value;
+      sel.innerHTML = '';
+      VOICES.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.name;
+        opt.textContent = `${v.name} (${v.lang})`;
+        sel.appendChild(opt);
+      });
+      // เลือก th-TH ถ้ามี
+      const thai = VOICES.find(v => /^th(-|_)/i.test(v.lang));
+      sel.value = keep || (thai ? thai.name : (VOICES[0]?.name || ''));
     }
-
-    async function extractTextWithFallback(page, canvas) {
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map(item => item.str).join(' ');
-      if (pageText.trim()) return pageText;
-
-      console.warn('ใช้ OCR เพราะไม่พบข้อความในหน้า PDF');
-      const dataUrl = canvas.toDataURL('image/png');
-      const result = await Tesseract.recognize(dataUrl, 'tha+eng');
-      return result.data.text || '';
-    }
-
-    (async () => {
-      const loadingTask = pdfjsLib.getDocument(pdfUrl);
-      const pdf = await loadingTask.promise;
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 1.5 });
-
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        container.appendChild(canvas);
-        await page.render({ canvasContext: context, viewport }).promise;
-
-        const text = await extractTextWithFallback(page, canvas);
-        fullText += text + '\n\n';
-      }
-    })();
-
-    document.getElementById('speakBtn').addEventListener('click', () => {
-      const thaiVoice = getThaiVoice();
-      if (!thaiVoice) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'ไม่พบเสียงภาษาไทย',
-          text: 'กรุณาติดตั้งเสียงพูดภาษาไทยในระบบก่อนใช้งานฟีเจอร์นี้',
-          confirmButtonText: 'OK'
-        });
-        return;
-      }
-      if (!fullText.trim()) {
-        Swal.fire('กรุณารอสักครู่', 'กำลังเตรียมข้อความจาก PDF', 'info');
-        return;
-      }
-      if (synth.speaking) synth.cancel();
-      utterance = new SpeechSynthesisUtterance(fullText);
-      utterance.voice = thaiVoice;
-      utterance.lang = 'th-TH';
-      utterance.rate = parseFloat(document.getElementById('rateSlider').value);
-      synth.speak(utterance);
-    });
-
-    document.getElementById('pauseBtn').onclick = () => synth.pause();
-    document.getElementById('resumeBtn').onclick = () => synth.resume();
-    document.getElementById('stopBtn').onclick = () => synth.cancel();
-
-    document.getElementById('rateSlider').addEventListener('input', () => {
-      if (utterance && synth.speaking) {
-        synth.cancel();
-      }
-    });
-
-    // Preload voices
+    loadVoices();
     if (speechSynthesis.onvoiceschanged !== undefined) {
-      speechSynthesis.onvoiceschanged = getThaiVoice;
+      speechSynthesis.onvoiceschanged = loadVoices;
     }
+
+    const rateRange = document.getElementById('rateRange');
+    const pitchRange = document.getElementById('pitchRange');
+    const rateVal = document.getElementById('rateVal');
+    const pitchVal = document.getElementById('pitchVal');
+    rateRange.addEventListener('input', () => rateVal.textContent = rateRange.value + 'x');
+    pitchRange.addEventListener('input', () => pitchVal.textContent = pitchRange.value);
+
+    function pickVoice() {
+      const sel = document.getElementById('voiceSelect');
+      return VOICES.find(v => v.name === sel.value) || VOICES[0] || null;
+    }
+
+    function speakText(text, onBoundary) {
+      if (!text?.trim()) return;
+      if (synth.speaking) synth.cancel();
+      utterance = new SpeechSynthesisUtterance(text);
+      const v = pickVoice();
+      if (v) utterance.voice = v;
+      utterance.lang = v?.lang || 'th-TH';
+      utterance.rate = parseFloat(rateRange.value);
+      utterance.pitch = parseFloat(pitchRange.value);
+
+      // boundary event → ไฮไลท์ textSpan ทีละชิ้น
+      if (typeof onBoundary === 'function') {
+        utterance.onboundary = (ev) => onBoundary(ev.charIndex, ev.charLength);
+      }
+      utterance.onend = () => clearHighlights();
+
+      synth.speak(utterance);
+    }
+
+    function pauseTTS() { if (synth.speaking && !synth.paused) synth.pause(); }
+    function resumeTTS() { if (synth.paused) synth.resume(); }
+    function stopTTS() { if (synth.speaking) synth.cancel(); clearHighlights(); }
+
+    // ========== Helpers ==========
+    const $ = (s, r = document) => r.querySelector(s);
+    function setZoomLabel() { $('#zoomLabel').textContent = Math.round(scale * 100) + '%'; }
+    function updatePageInfo() { $('#pageInfo').textContent = `หน้า ${pageNum} / ${pdfDoc?.numPages || '—'}`; }
+
+    function fitWidthScale(viewportWidth) {
+      // ให้ความกว้าง canvas พอดีกล่อง
+      const area = wrap.clientWidth - 28 /*paddingประมาณ*/;
+      if (!viewportWidth) return 1;
+      return Math.max(0.25, Math.min(3, area / viewportWidth));
+    }
+
+    function clearTextLayer() {
+      textLayerDiv.innerHTML = '';
+      currentTextSpans = [];
+    }
+    function clearHighlights() {
+      currentTextSpans.forEach(s => s.classList.remove('tts-highlight'));
+    }
+
+    function buildTextLayer(page, viewport) {
+      clearTextLayer();
+      return page.getTextContent({ normalizeWhitespace: true }).then(textContent => {
+        const textLayer = new pdfjsViewer.TextLayerBuilder({
+          textLayerDiv,
+          pageIndex: page._pageIndex,
+          viewport,
+        });
+        textLayer.setTextContent(textContent);
+        textLayer.render();
+        // เก็บ spans ไว้เรียงต่อกันเพื่อไฮไลท์ง่าย ๆ
+        currentTextSpans = Array.from(textLayerDiv.querySelectorAll('span'));
+      });
+    }
+
+    function pageVisibleText() {
+      // รวมข้อความจาก textLayer (ถ้าไม่มีจะว่าง แล้วค่อย OCR)
+      const txt = currentTextSpans.map(s => s.textContent).join(' ').replace(/\s+/g, ' ').trim();
+      return txt;
+    }
+
+    async function ocrFromCanvas() {
+      try {
+        const dataUrl = canvas.toDataURL('image/png');
+        const res = await Tesseract.recognize(dataUrl, 'tha+eng');
+        return (res?.data?.text || '').replace(/\s+/g, ' ').trim();
+      } catch {
+        return '';
+      }
+    }
+
+    // ไฮไลท์แบบง่าย ๆ ตามช่วงอักขระ
+    function highlightByCharIndex(charIndex, charLength) {
+      if (!currentTextSpans.length) return;
+      // รวมความยาวสะสมเพื่อทราบ span ไหนครอบช่วง charIndex
+      let acc = 0, startSpan = null, endSpan = null, startOffset = 0, endOffset = 0;
+
+      for (const span of currentTextSpans) {
+        const s = span.textContent || '';
+        const next = acc + s.length;
+        if (startSpan === null && charIndex < next) {
+          startSpan = span; startOffset = charIndex - acc;
+        }
+        if (startSpan && (charIndex + charLength) <= next) {
+          endSpan = span; endOffset = (charIndex + charLength) - acc;
+          break;
+        }
+        acc = next;
+      }
+
+      clearHighlights();
+      if (!startSpan) return;
+      // ทำง่าย ๆ: ไฮไลท์ทั้ง span ที่ครอบ
+      startSpan.classList.add('tts-highlight');
+      if (endSpan && endSpan !== startSpan) endSpan.classList.add('tts-highlight');
+
+      // ถ้า span โผล่นอก viewport → scroll ตาม
+      const target = endSpan || startSpan;
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        const pRect = wrap.getBoundingClientRect();
+        if (rect.top < pRect.top || rect.bottom > pRect.bottom) {
+          target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+      }
+    }
+
+    // ========== Render ==========
+    async function renderPage() {
+      const page = await pdfDoc.getPage(pageNum);
+      // คำนวณสเกลฐานจากความกว้างกล่อง
+      const vp0 = page.getViewport({ scale: 1, rotation });
+      if (baseScale === 1) baseScale = fitWidthScale(vp0.width);
+      const viewport = page.getViewport({ scale: baseScale * scale, rotation });
+
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      canvas.style.width = canvas.width + 'px';
+      canvas.style.height = canvas.height + 'px';
+
+      // sync textLayer ติดตาม canvas
+      textLayerDiv.style.width = canvas.style.width;
+      textLayerDiv.style.height = canvas.style.height;
+
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      await buildTextLayer(page, viewport);
+      updatePageInfo();
+      setZoomLabel();
+    }
+
+    async function loadPDF() {
+      try {
+        const task = pdfjsLib.getDocument(pdfUrl);
+        pdfDoc = await task.promise;
+        pageNum = 1; rotation = 0; scale = 1; baseScale = 1;
+        await renderPage();
+      } catch (err) {
+        console.error(err);
+        Swal.fire({ icon: 'error', title: 'เปิดไฟล์ไม่ได้', text: String(err.message || err) });
+      }
+    }
+
+    // ========== Events ==========
+    document.getElementById('backBtn').addEventListener('click', () => history.length > 1 ? history.back() : location.href = 'teacher_open_materials.html');
+
+    document.getElementById('prevPage').addEventListener('click', () => { if (pageNum > 1) { pageNum--; renderPage(); } });
+    document.getElementById('nextPage').addEventListener('click', () => { if (pageNum < (pdfDoc?.numPages || 1)) { pageNum++; renderPage(); } });
+
+    document.getElementById('zoomIn').addEventListener('click', () => { scale = Math.min(3, scale + 0.1); renderPage(); });
+    document.getElementById('zoomOut').addEventListener('click', () => { scale = Math.max(0.25, scale - 0.1); renderPage(); });
+    document.getElementById('resetZoom').addEventListener('click', () => { scale = 1; renderPage(); });
+    document.getElementById('fitWidth').addEventListener('click', () => { baseScale = fitWidthScale(canvas.width / (baseScale * scale)); scale = 1; renderPage(); });
+
+    document.getElementById('rotateBtn').addEventListener('click', () => { rotation = (rotation + 90) % 360; renderPage(); });
+
+    document.getElementById('fullscreenBtn').addEventListener('click', () => {
+      const el = document.documentElement;
+      if (!document.fullscreenElement) el.requestFullscreen?.(); else document.exitFullscreen?.();
+    });
+
+    // คีย์ลัด
+    window.addEventListener('keydown', (e) => {
+      if (e.target && ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if (e.key === 'ArrowLeft') { e.preventDefault(); $('#prevPage').click(); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); $('#nextPage').click(); }
+      if (e.key === '+' || e.key === '=') { e.preventDefault(); $('#zoomIn').click(); }
+      if (e.key === '-') { e.preventDefault(); $('#zoomOut').click(); }
+      if (e.key.toLowerCase() === 'f') { e.preventDefault(); $('#fullscreenBtn').click(); }
+      if (e.key.toLowerCase() === 'r') { e.preventDefault(); $('#rotateBtn').click(); }
+      if (e.code === 'Space') { e.preventDefault(); if (synth.speaking && !synth.paused) pauseTTS(); else resumeTTS(); }
+    });
+
+    // TTS buttons
+    document.getElementById('ttsPage').addEventListener('click', async () => {
+      READING_MODE = 'page';
+      let text = pageVisibleText();
+      if (!text) { // OCR fallback
+        Swal.fire({ icon: 'info', title: 'กำลังสแกนข้อความ (OCR)', text: 'ไฟล์อาจเป็นภาพสแกน โปรดรอ…', timer: 1200, showConfirmButton: false });
+        text = await ocrFromCanvas();
+      }
+      if (!text) return Swal.fire({ icon: 'warning', title: 'ไม่พบข้อความ', text: 'หน้านี้ไม่มีข้อความให้อ่าน' });
+      speakText(text, highlightByCharIndex);
+    });
+    document.getElementById('ttsAll').addEventListener('click', async () => {
+      READING_MODE = 'all';
+      stopTTS();
+      let all = '';
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        const p = await pdfDoc.getPage(i);
+        const vp = p.getViewport({ scale: 1 });
+        // ไม่เรนเดอร์ภาพทุกหน้า (ประหยัด) — ดึงเฉพาะ text
+        try {
+          const tc = await p.getTextContent({ normalizeWhitespace: true });
+          const txt = tc.items.map(it => it.str).join(' ');
+          all += (txt.replace(/\s+/g, ' ').trim() + '\n\n');
+        } catch {
+          // บางหน้าถ้าไม่มี text → ข้าม (หรือจะ OCR เฉพาะหน้านั้นก็ได้ แต่จะช้า)
+        }
+      }
+      if (!all.trim()) {
+        Swal.fire({ icon: 'info', title: 'ไม่พบข้อความในเอกสาร', text: 'ไฟล์อาจเป็นภาพสแกนทั้งหมด ลองอ่านแบบ “หน้านี้” เพื่อให้ OCR ทำงานเป็นหน้า ๆ' });
+        return;
+      }
+      speakText(all);
+    });
+    document.getElementById('ttsPause').addEventListener('click', pauseTTS);
+    document.getElementById('ttsResume').addEventListener('click', resumeTTS);
+    document.getElementById('ttsStop').addEventListener('click', stopTTS);
+
+    // ถ้าปรับความเร็ว/โทนระหว่างอ่าน → ยกเลิกก่อนเพื่อให้ค่ามีผลกับการเล่นครั้งถัดไป
+    rateRange.addEventListener('input', () => { if (synth.speaking) stopTTS(); });
+    pitchRange.addEventListener('input', () => { if (synth.speaking) stopTTS(); });
+
+    // โหลด!
+    loadPDF();
   </script>
 </body>
+
 </html>
