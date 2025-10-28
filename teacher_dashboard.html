@@ -12,6 +12,119 @@
     <link rel="icon" href="favicon.ico">
     <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script> -->
     <link rel="stylesheet" href="/assets/css/teacher-dashboard.css">
+    <style>
+        /* Utility */
+        .mt-12 {
+            margin-top: 12px;
+        }
+
+        .visually-hidden {
+            position: absolute !important;
+            height: 1px;
+            width: 1px;
+            overflow: hidden;
+            clip: rect(1px, 1px, 1px, 1px);
+            white-space: nowrap;
+            border: 0;
+            padding: 0;
+            margin: -1px;
+        }
+
+        /* Header bar for registrations section */
+        .reg-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .reg-head .reg-title {
+            margin: 0;
+        }
+
+        .reg-head .reg-sub {
+            margin: 4px 0 0;
+        }
+
+        .reg-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .form-field {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .input,
+        .select {
+            padding: 8px 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            background: #fff;
+            color: #0f172a;
+            font: 500 14px/1.2 "Prompt", system-ui, -apple-system, "Segoe UI", Roboto;
+            min-width: 220px;
+        }
+
+        .select {
+            min-width: 140px;
+        }
+
+        /* Buttons (re-use theme if you already have) */
+        .btn {
+            appearance: none;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            background: #fff;
+            color: #0f172a;
+            padding: 8px 12px;
+            font: 600 14px/1.2 "Prompt", system-ui, -apple-system, "Segoe UI", Roboto;
+            cursor: pointer;
+            transition: background .15s ease, border-color .15s ease, transform .12s ease;
+        }
+
+        .btn:hover {
+            background: #f8faff;
+            border-color: #dbeafe;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            border-color: #1d4ed8;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-ghost {
+            background: #f8fafc;
+            border-color: #e5e7eb;
+        }
+
+        /* Canvas shell */
+        .canvas-holder {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            overflow: auto;
+            max-height: 520px;
+            background: #fff;
+        }
+
+        #regCanvas {
+            display: block;
+        }
+    </style>
 </head>
 
 <body>
@@ -83,36 +196,46 @@
             </div>
 
             <!-- รายชื่อผู้ลงทะเบียนแบบรายวัน -->
-            <div class="grid" style="margin-top:12px;">
+            <div class="grid mt-12">
                 <section class="card full">
-                    <div
-                        style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
-                        <div>
-                            <h3 style="margin:0;">รายชื่อผู้ลงทะเบียน (แยกตามวัน)</h3>
-                            <p class="muted" style="margin:4px 0 0;">ดึงข้อมูลช่วงล่าสุดตามตัวเลือกด้านขวา</p>
+                    <div class="reg-toolbar">
+                        <div class="reg-head">
+                            <h3 class="reg-title">รายชื่อผู้ลงทะเบียน (แยกตามวัน)</h3>
+                            <p class="muted reg-sub">ดึงข้อมูลช่วงล่าสุดตามตัวเลือกด้านขวา</p>
                         </div>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                            <input id="rgSearch" type="search" placeholder="ค้นหาชื่อ/รหัสนิสิต"
-                                style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;min-width:220px;">
-                            <select id="rgRange" style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;">
-                                <option value="7d">7 วัน</option>
-                                <option value="30d" selected>30 วัน</option>
-                                <option value="90d">90 วัน</option>
-                            </select>
-                            <button id="rgReload" class="btn-primary"
-                                style="padding:8px 12px;border-radius:10px;">รีเฟรช</button>
-                            <button id="rgSavePng" class="btn-ghost"
-                                style="padding:8px 12px;border-radius:10px;">บันทึกเป็นภาพ</button>
+
+                        <div class="reg-actions" role="group" aria-label="ตัวกรองและการทำงาน">
+                            <div class="form-field">
+                                <label class="visually-hidden" for="rgSearch">ค้นหาชื่อ/รหัสนิสิต</label>
+                                <input id="rgSearch" type="search" class="input" placeholder="ค้นหาชื่อ/รหัสนิสิต"
+                                    autocomplete="off" />
+                            </div>
+
+                            <div class="form-field">
+                                <label class="visually-hidden" id="rgRangeLabel" for="rgRange">ช่วงเวลา</label>
+                                <select id="rgRange" class="select" aria-labelledby="rgRangeLabel"
+                                    title="เลือกช่วงเวลา">
+                                    <option value="7d">7 วัน</option>
+                                    <option value="30d" selected>30 วัน</option>
+                                    <option value="90d">90 วัน</option>
+                                </select>
+                            </div>
+
+                            <button id="rgReload" class="btn btn-primary" type="button">
+                                รีเฟรช
+                            </button>
+
+                            <button id="rgSavePng" class="btn btn-ghost" type="button">
+                                บันทึกเป็นภาพ
+                            </button>
                         </div>
                     </div>
 
-                    <div class="canvas-holder"
-                        style="border:1px solid #e5e7eb;border-radius:12px;overflow:auto;max-height:520px;background:#fff;">
-                        <canvas id="regCanvas" style="display:block;"></canvas>
+                    <div class="canvas-holder">
+                        <canvas id="regCanvas"></canvas>
                     </div>
                 </section>
             </div>
-
 
             <!-- Edit Profile Modal -->
             <div id="editProfileModal" class="modal-backdrop" hidden>
@@ -145,6 +268,13 @@
     </div>
 
     <script>
+        /* =======================
+           Teacher Dashboard JS
+           - KPI: "จำนวนนิสิต" = จำนวนลงทะเบียน "วันนี้"
+           - รายชื่อผู้ลงทะเบียนแบบรายวัน (วาดบน <canvas>)
+           - ไม่ใช้ Chart.js อีกต่อไป
+           ======================= */
+
         // ---------- helpers ----------
         const ROOT = location.pathname.includes('/walkin-exam-system/') ? '/walkin-exam-system' : '';
         const API = `${ROOT}/api`;
@@ -192,51 +322,24 @@
         }
         function goLogin() { location.replace('teacher_login.html'); setTimeout(() => location.href = 'teacher_login.html', 150); }
 
-        // ---------- boot ----------
-        document.addEventListener('DOMContentLoaded', async () => {
-            const token = localStorage.getItem('teacherToken');
-            if (!token) { goLogin(); return; }
-
-            // แสดงชื่อบนชิป
-            const storedName = localStorage.getItem('instructor_name');
-            const fromJWT = parseJwt(token);
-            const name = storedName || fromJWT?.name || fromJWT?.teacher_name || '';
-            if (name) document.getElementById('teacherName').textContent = name;
-
-            // ปุ่ม Logout
-            document.getElementById('logoutBtn')?.addEventListener('click', () => {
-                clearAuthStores(); goLogin();
-            });
-
-            // ปุ่มเปิด/ปิด/บันทึกโปรไฟล์
-            document.getElementById('editProfileBtn')?.addEventListener('click', openEditProfile);
-            document.getElementById('btnCancelProfile')?.addEventListener('click', () => showModal('editProfileModal', false));
-            document.getElementById('btnSaveProfile')?.addEventListener('click', saveProfile);
-
-            // โหลด KPI (เอาเฉพาะตัวเลข ไม่เรียก/วาดกราฟ)
+        // ---------- KPI วันนี้ ----------
+        async function loadTodayKPI(token) {
             try {
-                const resp = await fetch(`${API}/teacher_dashboard_metrics.php`, {
+                const r = await fetch(`${API}/teacher_kpis_today.php`, {
                     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
                     cache: 'no-store'
                 });
-                const raw = await resp.text(); let metrics = null; try { metrics = JSON.parse(raw); } catch { }
-
-                const qTotal = metrics?.questions?.total ?? null;
-                const studentCnt = metrics?.students?.registered ?? null;
-                const completed = metrics?.exams?.completed ?? null;
-                const avgScore = (metrics?.scores?.avg != null) ? Number(metrics.scores.avg).toFixed(2) : null;
-
-                setText('kpiQuestions', qTotal);
-                setText('kpiStudents', studentCnt);
-                setText('kpiCompleted', completed);
-                setText('kpiAvgScore', avgScore != null ? `${avgScore}` : null);
-            } catch { }
-
-            // กันย้อนกลับจาก BFCache แล้ว auth หลุด
-            const guardAuth = () => { if (!localStorage.getItem('teacherToken')) goLogin(); };
-            window.addEventListener('pageshow', e => { if (e.persisted) guardAuth(); });
-            document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') guardAuth(); });
-        });
+                const raw = await r.text(); let d = null; try { d = JSON.parse(raw); } catch { }
+                if (r.ok && d?.status === 'success') {
+                    const today = d?.data?.registered_today ?? 0;
+                    setText('kpiStudents', today); // ใช้ “จำนวนลงทะเบียนวันนี้”
+                } else {
+                    setText('kpiStudents', 0);
+                }
+            } catch {
+                setText('kpiStudents', 0);
+            }
+        }
 
         // ---------- profile modal handlers ----------
         async function openEditProfile() {
@@ -297,13 +400,17 @@
             const holder = canvas.parentElement;
             const ctx = canvas.getContext('2d');
 
+            // สไตล์
             const COLORS = {
                 bgDay: '#f8fafc',
                 text: '#0f172a',
                 sub: '#64748b',
-                line: '#e5e7eb'
+                line: '#e5e7eb',
+                badge: '#2563eb',
+                badgeTx: '#ffffff'
             };
 
+            // ปรับ DPI ให้คมชัด
             function fitCanvasToHolder() {
                 const dpr = Math.max(1, window.devicePixelRatio || 1);
                 const w = Math.max(640, holder.clientWidth);
@@ -317,6 +424,7 @@
 
             window.addEventListener('resize', throttle(() => { fitCanvasToHolder(); render(); }, 150));
 
+            // ยูทิล
             function throttle(fn, wait) { let t = 0; return (...a) => { const now = Date.now(); if (now - t > wait) { t = now; fn(...a); } }; }
             function formatDateThai(iso) {
                 const d = new Date(iso);
@@ -329,30 +437,32 @@
             }
             function formatTime(iso) { const d = new Date(iso); if (isNaN(d)) return ''; return d.toTimeString().slice(0, 5); }
 
-            // --- แทนที่ฟังก์ชัน fetchRegistrations เดิมทั้งหมด ---
+            // ดึงข้อมูลจาก endpoint หลัก (ที่ทำไว้ให้ทนทานแล้ว)
             async function fetchRegistrations(range = '30d') {
                 const token = localStorage.getItem('teacherToken') || '';
                 const url = `${API}/teacher_registrations_feed.php?range=${encodeURIComponent(range)}`;
                 try {
-                    const r = await fetch(url, {
-                        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-                        cache: 'no-store'
-                    });
-                    const raw = await r.text();
-                    let d = null; try { d = JSON.parse(raw); } catch { }
-                    if (!d || (d.status !== 'success')) return [];
-                    const arr = Array.isArray(d.data) ? d.data : [];
+                    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store' });
+                    const raw = await r.text(); let d = null; try { d = JSON.parse(raw); } catch { }
+                    if (!r.ok) {
+                        console.error('[registrations_feed] HTTP', r.status, raw);
+                        return [];
+                    }
+                    const arr = Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
+                    // map ให้อยู่ในรูปเดียวกัน
                     return arr.map(it => ({
                         student_id: it.student_id || '',
                         name: it.name || '',
                         booked_at: it.booked_at || '',
                         slot_title: it.slot_title || ''
-                    }));
-                } catch {
+                    })).filter(x => x.booked_at);
+                } catch (e) {
+                    console.error('[registrations_feed] error', e);
                     return [];
                 }
             }
 
+            // จัดกลุ่มตามวันที่ (YYYY-MM-DD)
             function groupByDay(items, keyword = '') {
                 const kw = (keyword || '').trim().toLowerCase();
                 const filtered = kw ? items.filter(it => (
@@ -365,55 +475,57 @@
                     if (!map.has(day)) map.set(day, []);
                     map.get(day).push(it);
                 }
-                const days = Array.from(map.keys()).sort((a, b) => (a < b ? 1 : -1));
+                const days = Array.from(map.keys()).sort((a, b) => (a < b ? 1 : -1)); // ล่าสุดมาก่อน
                 return days.map(day => ({
                     day,
                     items: map.get(day).sort((a, b) => (a.booked_at < b.booked_at ? -1 : 1))
                 }));
             }
 
+            // วาด
             let DATA_RAW = [];
             let grouped = [];
             let currentRange = '30d';
             let currentSearch = '';
 
             function render() {
-                const rowH = 28, headerH = 36, gapDay = 14;
+                const rowH = 28;
+                const headerH = 36;
+                const gapDay = 14;
                 const width = parseInt(canvas.style.width, 10) || 800;
                 const height = parseInt(canvas.style.height, 10) || 600;
 
+                // เคลียร์
                 ctx.clearRect(0, 0, width, height);
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, width, height);
 
-                ctx.font = '600 14px "Prompt", system-ui, -apple-system, "Segoe UI"';
-                ctx.fillStyle = COLORS.text;
-
                 let y = 12;
 
                 for (const g of grouped) {
-                    // header day
+                    // แถบวันที่
                     ctx.fillStyle = COLORS.bgDay;
                     roundRect(ctx, 12, y, width - 24, headerH, 8, true, false);
                     ctx.fillStyle = COLORS.text;
+                    ctx.font = '600 14px "Prompt", system-ui, -apple-system, "Segoe UI"';
                     ctx.fillText(`📅  ${formatDateThai(g.day)}  •  ${g.items.length} คน`, 20, y + 22);
 
                     y += headerH + 8;
 
-                    // columns
+                    // หัวตาราง
                     ctx.fillStyle = COLORS.sub;
                     ctx.font = '600 12px "Prompt", system-ui';
                     ctx.fillText('เวลา', 24, y);
                     ctx.fillText('รหัสนิสิต', 110, y);
                     ctx.fillText('ชื่อ-สกุล', 220, y);
                     ctx.fillText('รอบ/ชุดข้อสอบ', 520, y);
-                    y += 6;
 
+                    y += 6;
                     ctx.strokeStyle = COLORS.line; ctx.lineWidth = 1;
                     line(ctx, 16, y, width - 16, y);
                     y += 10;
 
-                    // rows
+                    // รายการ
                     ctx.font = '500 13px "Prompt", system-ui';
                     ctx.fillStyle = COLORS.text;
 
@@ -425,8 +537,8 @@
 
                         ctx.strokeStyle = '#eef2f7';
                         line(ctx, 16, y + rowH, width - 16, y + rowH);
-                        y += rowH;
 
+                        y += rowH;
                         if (y > height - 16) break;
                     }
 
@@ -442,14 +554,15 @@
             }
 
             function drawEllipsisText(ctx, text, x, y, maxWidth) {
-                if (ctx.measureText(text).width <= maxWidth) { ctx.fillText(text, x, y); return; }
+                if (ctx.measureText(text).width <= maxWidth) {
+                    ctx.fillText(text, x, y); return;
+                }
                 let truncated = text;
                 while (truncated.length > 0 && ctx.measureText(truncated + '…').width > maxWidth) {
                     truncated = truncated.slice(0, -1);
                 }
                 ctx.fillText(truncated + '…', x, y);
             }
-
             function line(ctx, x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
             function roundRect(ctx, x, y, w, h, r, fill, stroke) {
                 if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2;
@@ -477,7 +590,7 @@
                 }
             }
 
-            // UI handlers
+            // ค้นหา/ช่วงเวลา/บันทึกภาพ
             document.getElementById('rgSearch')?.addEventListener('input', throttle(e => {
                 currentSearch = e.target.value || '';
                 grouped = groupByDay(DATA_RAW, currentSearch);
@@ -498,6 +611,7 @@
                     const tmp = document.createElement('canvas');
                     const tctx = tmp.getContext('2d');
                     tmp.width = w; tmp.height = h;
+                    // วาดจากสิ่งที่เห็น (anti-DPR) เพื่อให้ไฟล์ขนาดพอดี
                     tctx.drawImage(canvas, 0, 0, w, h);
                     const url = tmp.toDataURL('image/png');
                     const a = document.createElement('a');
@@ -506,9 +620,53 @@
                 } catch { }
             });
 
-            // start
+            // เริ่มโหลด
             reload();
         })();
+
+        // ---------- boot ----------
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('teacherToken');
+            if (!token) { goLogin(); return; }
+
+            // ชื่อบนชิป
+            const storedName = localStorage.getItem('instructor_name');
+            const fromJWT = parseJwt(token);
+            const name = storedName || fromJWT?.name || fromJWT?.teacher_name || '';
+            if (name) document.getElementById('teacherName').textContent = name;
+
+            // ปุ่ม Logout
+            document.getElementById('logoutBtn')?.addEventListener('click', () => {
+                clearAuthStores(); goLogin();
+            });
+
+            // โมดัลโปรไฟล์
+            document.getElementById('editProfileBtn')?.addEventListener('click', openEditProfile);
+            document.getElementById('btnCancelProfile')?.addEventListener('click', () => showModal('editProfileModal', false));
+            document.getElementById('btnSaveProfile')?.addEventListener('click', saveProfile);
+
+            // KPI วันนี้ (นิสิตที่ลงทะเบียนวันนี้)
+            await loadTodayKPI(token);
+
+            // โหลด metrics สำหรับ KPI อื่น ๆ
+            try {
+                const resp = await fetch(`${API}/teacher_dashboard_metrics.php`, {
+                    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store'
+                });
+                const raw = await resp.text(); let metrics = null; try { metrics = JSON.parse(raw); } catch { }
+
+                const qTotal = metrics?.questions?.total ?? null;
+                const completed = metrics?.exams?.completed ?? null;
+
+                setText('kpiQuestions', qTotal);
+                setText('kpiCompleted', completed);
+            } catch { }
+
+            // กันย้อนกลับจาก BFCache แล้ว auth หลุด
+            const guardAuth = () => { if (!localStorage.getItem('teacherToken')) goLogin(); };
+            window.addEventListener('pageshow', e => { if (e.persisted) guardAuth(); });
+            document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') guardAuth(); });
+        });
     </script>
 
 </body>
