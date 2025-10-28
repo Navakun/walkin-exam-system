@@ -10,7 +10,7 @@
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" href="favicon.ico">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script> -->
     <link rel="stylesheet" href="/assets/css/teacher-dashboard.css">
 </head>
 
@@ -82,27 +82,37 @@
                 </div> -->
             </div>
 
-            <div class="grid">
-                <!-- <section class="card half">
-                    <h3 style="margin:0 0 8px;">การกระจายระดับความยาก</h3>
-                    <p class="muted" style="margin:0 0 12px;">สัดส่วนข้อสอบ ง่าย/ปานกลาง/ยาก</p>
-                    <canvas id="difficultyChart" height="220"></canvas>
-                </section>
+            <!-- รายชื่อผู้ลงทะเบียนแบบรายวัน -->
+            <div class="grid" style="margin-top:12px;">
+                <section class="card full">
+                    <div
+                        style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+                        <div>
+                            <h3 style="margin:0;">รายชื่อผู้ลงทะเบียน (แยกตามวัน)</h3>
+                            <p class="muted" style="margin:4px 0 0;">ดึงข้อมูลช่วงล่าสุดตามตัวเลือกด้านขวา</p>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                            <input id="rgSearch" type="search" placeholder="ค้นหาชื่อ/รหัสนิสิต"
+                                style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;min-width:220px;">
+                            <select id="rgRange" style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;">
+                                <option value="7d">7 วัน</option>
+                                <option value="30d" selected>30 วัน</option>
+                                <option value="90d">90 วัน</option>
+                            </select>
+                            <button id="rgReload" class="btn-primary"
+                                style="padding:8px 12px;border-radius:10px;">รีเฟรช</button>
+                            <button id="rgSavePng" class="btn-ghost"
+                                style="padding:8px 12px;border-radius:10px;">บันทึกเป็นภาพ</button>
+                        </div>
+                    </div>
 
-                <section class="card half">
-                    <h3 style="margin:0 0 8px;">อัตราสอบผ่าน</h3>
-                    <p class="muted" style="margin:0 0 12px;">สัดส่วน ผ่าน/ไม่ผ่าน จากการสอบที่เสร็จสมบูรณ์</p>
-                    <canvas id="passChart" height="220"></canvas>
-                </section> -->
+                    <div class="canvas-holder"
+                        style="border:1px solid #e5e7eb;border-radius:12px;overflow:auto;max-height:520px;background:#fff;">
+                        <canvas id="regCanvas" style="display:block;"></canvas>
+                    </div>
+                </section>
             </div>
 
-            <!-- <div class="grid" style="margin-top:12px;">
-                <section class="card full">
-                    <h3 style="margin:0 0 8px;">จำนวนผู้เข้าสอบรายวัน (30 วันหลัง)</h3>
-                    <p class="muted" style="margin:0 0 12px;">แนวโน้มปริมาณการเข้าสอบ</p>
-                    <canvas id="timelineChart" height="260"></canvas>
-                </section>
-            </div> -->
 
             <!-- Edit Profile Modal -->
             <div id="editProfileModal" class="modal-backdrop" hidden>
@@ -182,71 +192,6 @@
         }
         function goLogin() { location.replace('teacher_login.html'); setTimeout(() => location.href = 'teacher_login.html', 150); }
 
-        // พยายามดึง pass/fail จาก API โดยตรง ถ้าไม่มีจะ fallback จาก metrics
-        async function loadPassFail({ token, metrics }) {
-            const ENDPOINT_PASS_FAIL = `${API}/teacher_pass_fail.php?range=30d`; // แก้ชื่อ endpoint/พารามิเตอร์ได้
-
-            // 2.1 ลองเรียก API โดยตรง (คาดหวังรูปแบบ {status:'success', data:{pass:..., fail:...}})
-            try {
-                const r = await fetch(ENDPOINT_PASS_FAIL, {
-                    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-                    cache: 'no-store'
-                });
-                const raw = await r.text();
-                let d = null; try { d = JSON.parse(raw); } catch { }
-                if (r.ok && d && d.status === 'success' && d.data) {
-                    const pass = Number(d.data.pass || d.data.pass_count || 0);
-                    const fail = Number(d.data.fail || d.data.fail_count || 0);
-                    if (pass + fail >= 0) return { passCount: pass, failCount: fail };
-                }
-            } catch { /* เงียบไว้ ไป fallback */ }
-
-            // 2.2 Fallback: ใช้ completed + passRate จาก metrics เดิม
-            const completed = Number(metrics?.exams?.completed || 0);
-            const passRate = Number(metrics?.scores?.passRate || 0); // 0..1
-            const passCount = Math.round(completed * passRate);
-            const failCount = Math.max(0, completed - passCount);
-            return { passCount, failCount };
-        }
-
-        // ---------- charts ----------
-        let _diffChart, _passChart, _timeChart; const kill = c => { if (c) c.destroy(); };
-        function drawDifficulty({ easy = 0, mid = 0, hard = 0 } = {}) {
-            kill(_diffChart);
-            _diffChart = new Chart(document.getElementById('difficultyChart'), {
-                type: 'bar',
-                data: { labels: ['ง่าย', 'ปานกลาง', 'ยาก'], datasets: [{ label: 'จำนวนข้อ', data: [easy, mid, hard] }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
-            });
-        }
-        function drawPassRate({ passCount = 0, failCount = 0 } = {}) {
-            const total = Math.max(0, Number(passCount) + Number(failCount));
-            const passPct = total ? Math.round((passCount / total) * 100) : 0;
-            const failPct = total ? 100 - passPct : 0;
-
-            kill(_passChart);
-            _passChart = new Chart(document.getElementById('passChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: [`ผ่าน (${passPct}%)`, `ไม่ผ่าน (${failPct}%)`],
-                    datasets: [{ data: [passCount, failCount] }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { position: 'bottom' } },
-                    cutout: '60%'
-                }
-            });
-        }
-        function drawTimeline({ labels = [], values = [] } = {}) {
-            kill(_timeChart);
-            _timeChart = new Chart(document.getElementById('timelineChart'), {
-                type: 'line',
-                data: { labels, datasets: [{ label: 'จำนวนผู้เข้าสอบ', data: values, tension: .25, fill: false }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
-            });
-        }
-
         // ---------- boot ----------
         document.addEventListener('DOMContentLoaded', async () => {
             const token = localStorage.getItem('teacherToken');
@@ -268,38 +213,23 @@
             document.getElementById('btnCancelProfile')?.addEventListener('click', () => showModal('editProfileModal', false));
             document.getElementById('btnSaveProfile')?.addEventListener('click', saveProfile);
 
-            // โหลด metrics
+            // โหลด KPI (เอาเฉพาะตัวเลข ไม่เรียก/วาดกราฟ)
             try {
                 const resp = await fetch(`${API}/teacher_dashboard_metrics.php`, {
-                    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store'
+                    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+                    cache: 'no-store'
                 });
                 const raw = await resp.text(); let metrics = null; try { metrics = JSON.parse(raw); } catch { }
+
                 const qTotal = metrics?.questions?.total ?? null;
-                const diff = metrics?.questions?.difficulty ?? {};
                 const studentCnt = metrics?.students?.registered ?? null;
                 const completed = metrics?.exams?.completed ?? null;
                 const avgScore = (metrics?.scores?.avg != null) ? Number(metrics.scores.avg).toFixed(2) : null;
-                const passRate = metrics?.scores?.passRate;
 
                 setText('kpiQuestions', qTotal);
                 setText('kpiStudents', studentCnt);
                 setText('kpiCompleted', completed);
                 setText('kpiAvgScore', avgScore != null ? `${avgScore}` : null);
-
-                drawDifficulty({ easy: diff?.easy ?? 0, mid: diff?.mid ?? 0, hard: diff?.hard ?? 0 });
-                const pass = (passRate != null) ? Math.round(passRate * 100) : 0;
-                const fail = (passRate != null) ? 100 - pass : 0;
-                try {
-                    // โหลด pass/fail (จะใช้ API หรือคำนวณจาก metrics ก็ได้)
-                    const pf = await loadPassFail({ token, metrics });
-                    drawPassRate(pf);
-                } catch {
-                    // สำรองสุดท้ายถ้าโหลดไม่ได้จริง ๆ แสดง 0/0
-                    drawPassRate({ passCount: 0, failCount: 0 });
-                }
-
-                const byDay = Array.isArray(metrics?.exams?.byDay) ? metrics.exams.byDay : [];
-                drawTimeline({ labels: byDay.map(d => d.date?.slice(5)), values: byDay.map(d => d.count || 0) });
             } catch { }
 
             // กันย้อนกลับจาก BFCache แล้ว auth หลุด
@@ -358,7 +288,234 @@
                 if (msgEl) msgEl.textContent = e.message || 'บันทึกไม่สำเร็จ';
             }
         }
+
+        // ====================== Registrations Canvas (by day) ======================
+        (function () {
+            const canvas = document.getElementById('regCanvas');
+            if (!canvas) return;
+
+            const holder = canvas.parentElement;
+            const ctx = canvas.getContext('2d');
+
+            const COLORS = {
+                bgDay: '#f8fafc',
+                text: '#0f172a',
+                sub: '#64748b',
+                line: '#e5e7eb'
+            };
+
+            function fitCanvasToHolder() {
+                const dpr = Math.max(1, window.devicePixelRatio || 1);
+                const w = Math.max(640, holder.clientWidth);
+                const h = Math.max(480, Math.min(1200, holder.clientHeight));
+                canvas.style.width = w + 'px';
+                canvas.style.height = h + 'px';
+                canvas.width = Math.floor(w * dpr);
+                canvas.height = Math.floor(h * dpr);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            }
+
+            window.addEventListener('resize', throttle(() => { fitCanvasToHolder(); render(); }, 150));
+
+            function throttle(fn, wait) { let t = 0; return (...a) => { const now = Date.now(); if (now - t > wait) { t = now; fn(...a); } }; }
+            function formatDateThai(iso) {
+                const d = new Date(iso);
+                if (isNaN(d)) return iso;
+                const thMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+                const dd = d.getDate();
+                const mm = thMonths[d.getMonth()];
+                const yyyy = d.getFullYear() + 543;
+                return `${dd} ${mm} ${yyyy}`;
+            }
+            function formatTime(iso) { const d = new Date(iso); if (isNaN(d)) return ''; return d.toTimeString().slice(0, 5); }
+
+            async function fetchRegistrations(range = '30d') {
+                const token = localStorage.getItem('teacherToken') || '';
+                const endpoints = [
+                    `${API}/teacher_registrations_by_day.php?range=${range}`,
+                    `${API}/exam_users.php?range=${range}`,
+                    `${API}/get_exam_users.php?range=${range}`,
+                ];
+                for (const url of endpoints) {
+                    try {
+                        const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store' });
+                        const raw = await r.text();
+                        let d = null; try { d = JSON.parse(raw); } catch { }
+                        if (!d) continue;
+                        const arr = Array.isArray(d) ? d : Array.isArray(d.data) ? d.data : [];
+                        if (!arr.length) continue;
+
+                        const mapped = arr.map(it => ({
+                            student_id: it.student_id || it.sid || it.studentCode || it.code || '',
+                            name: it.name || it.fullname || `${it.first_name || ''} ${it.last_name || ''}`.trim(),
+                            booked_at: it.booked_at || it.registered_at || it.created_at || it.booking_time || it.timestamp || it.time || it.date || '',
+                            slot_title: it.slot_title || it.exam_title || it.examset_title || it.title || '',
+                        })).filter(x => x.student_id || x.name || x.booked_at);
+
+                        return mapped;
+                    } catch { /* ลองตัวถัดไป */ }
+                }
+                return [];
+            }
+
+            function groupByDay(items, keyword = '') {
+                const kw = (keyword || '').trim().toLowerCase();
+                const filtered = kw ? items.filter(it => (
+                    (it.name || '').toLowerCase().includes(kw) || (it.student_id || '').toLowerCase().includes(kw)
+                )) : items;
+
+                const map = new Map();
+                for (const it of filtered) {
+                    const day = (it.booked_at || '').slice(0, 10);
+                    if (!map.has(day)) map.set(day, []);
+                    map.get(day).push(it);
+                }
+                const days = Array.from(map.keys()).sort((a, b) => (a < b ? 1 : -1));
+                return days.map(day => ({
+                    day,
+                    items: map.get(day).sort((a, b) => (a.booked_at < b.booked_at ? -1 : 1))
+                }));
+            }
+
+            let DATA_RAW = [];
+            let grouped = [];
+            let currentRange = '30d';
+            let currentSearch = '';
+
+            function render() {
+                const rowH = 28, headerH = 36, gapDay = 14;
+                const width = parseInt(canvas.style.width, 10) || 800;
+                const height = parseInt(canvas.style.height, 10) || 600;
+
+                ctx.clearRect(0, 0, width, height);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+
+                ctx.font = '600 14px "Prompt", system-ui, -apple-system, "Segoe UI"';
+                ctx.fillStyle = COLORS.text;
+
+                let y = 12;
+
+                for (const g of grouped) {
+                    // header day
+                    ctx.fillStyle = COLORS.bgDay;
+                    roundRect(ctx, 12, y, width - 24, headerH, 8, true, false);
+                    ctx.fillStyle = COLORS.text;
+                    ctx.fillText(`📅  ${formatDateThai(g.day)}  •  ${g.items.length} คน`, 20, y + 22);
+
+                    y += headerH + 8;
+
+                    // columns
+                    ctx.fillStyle = COLORS.sub;
+                    ctx.font = '600 12px "Prompt", system-ui';
+                    ctx.fillText('เวลา', 24, y);
+                    ctx.fillText('รหัสนิสิต', 110, y);
+                    ctx.fillText('ชื่อ-สกุล', 220, y);
+                    ctx.fillText('รอบ/ชุดข้อสอบ', 520, y);
+                    y += 6;
+
+                    ctx.strokeStyle = COLORS.line; ctx.lineWidth = 1;
+                    line(ctx, 16, y, width - 16, y);
+                    y += 10;
+
+                    // rows
+                    ctx.font = '500 13px "Prompt", system-ui';
+                    ctx.fillStyle = COLORS.text;
+
+                    for (const it of g.items) {
+                        ctx.fillText(formatTime(it.booked_at) || '-', 24, y + 18);
+                        ctx.fillText((it.student_id || '-').toString(), 110, y + 18);
+                        drawEllipsisText(ctx, it.name || '-', 220, y + 18, 280);
+                        drawEllipsisText(ctx, it.slot_title || '-', 520, y + 18, width - 540);
+
+                        ctx.strokeStyle = '#eef2f7';
+                        line(ctx, 16, y + rowH, width - 16, y + rowH);
+                        y += rowH;
+
+                        if (y > height - 16) break;
+                    }
+
+                    y += gapDay;
+                    if (y > height - 16) break;
+                }
+
+                if (!grouped.length) {
+                    ctx.fillStyle = COLORS.sub;
+                    ctx.font = '500 14px "Prompt", system-ui';
+                    ctx.fillText('ไม่พบข้อมูลการลงทะเบียนตามเงื่อนไข', 20, 40);
+                }
+            }
+
+            function drawEllipsisText(ctx, text, x, y, maxWidth) {
+                if (ctx.measureText(text).width <= maxWidth) { ctx.fillText(text, x, y); return; }
+                let truncated = text;
+                while (truncated.length > 0 && ctx.measureText(truncated + '…').width > maxWidth) {
+                    truncated = truncated.slice(0, -1);
+                }
+                ctx.fillText(truncated + '…', x, y);
+            }
+
+            function line(ctx, x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+            function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+                if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2;
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.arcTo(x + w, y, x + w, y + h, r);
+                ctx.arcTo(x + w, y + h, x, y + h, r);
+                ctx.arcTo(x, y + h, x, y, r);
+                ctx.arcTo(x, y, x + w, y, r);
+                ctx.closePath();
+                if (fill) ctx.fill();
+                if (stroke) ctx.stroke();
+            }
+
+            async function reload() {
+                document.getElementById('rgReload')?.setAttribute('disabled', '');
+                try {
+                    const list = await fetchRegistrations(currentRange);
+                    DATA_RAW = Array.isArray(list) ? list : [];
+                    grouped = groupByDay(DATA_RAW, currentSearch);
+                    fitCanvasToHolder();
+                    render();
+                } finally {
+                    document.getElementById('rgReload')?.removeAttribute('disabled');
+                }
+            }
+
+            // UI handlers
+            document.getElementById('rgSearch')?.addEventListener('input', throttle(e => {
+                currentSearch = e.target.value || '';
+                grouped = groupByDay(DATA_RAW, currentSearch);
+                render();
+            }, 200));
+
+            document.getElementById('rgRange')?.addEventListener('change', async e => {
+                currentRange = e.target.value || '30d';
+                await reload();
+            });
+
+            document.getElementById('rgReload')?.addEventListener('click', reload);
+
+            document.getElementById('rgSavePng')?.addEventListener('click', () => {
+                try {
+                    const w = parseInt(canvas.style.width, 10) || 800;
+                    const h = parseInt(canvas.style.height, 10) || 600;
+                    const tmp = document.createElement('canvas');
+                    const tctx = tmp.getContext('2d');
+                    tmp.width = w; tmp.height = h;
+                    tctx.drawImage(canvas, 0, 0, w, h);
+                    const url = tmp.toDataURL('image/png');
+                    const a = document.createElement('a');
+                    a.href = url; a.download = `registrations_${currentRange}.png`;
+                    a.click();
+                } catch { }
+            });
+
+            // start
+            reload();
+        })();
     </script>
+
 </body>
 
 </html>
