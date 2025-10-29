@@ -24,7 +24,7 @@ function json_error(string $msg, int $code = 500): void
 try {
     // --- bootstrap (จับ error ตั้งแต่ require) ---
     try {
-        require_once __DIR__ . '/db.php';
+        require_once __DIR__ . '/../walkin-exam-system/config/db.php';
     } catch (Throwable $e) {
         json_error('bootstrap db.php: ' . $e->getMessage(), 500);
     }
