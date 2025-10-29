@@ -1,13 +1,11 @@
 <?php
-// api/teacher_kpis_today.php
+
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
-
-// preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
@@ -29,16 +27,11 @@ function json_error(string $msg, int $code = 500): void
     exit;
 }
 
-/* ---------- Bootstrap DB (global scope) ---------- */
+/* Bootstrap db.php */
 try {
-    $candidates = [
-        __DIR__ . '/db.php',
-        __DIR__ . '/../db.php',
-        __DIR__ . '/../config/db.php',
-        __DIR__ . '/../walkin-exam-system/config/db.php', // path โปรเจกต์ของ Jisoo
-    ];
+    $c = [__DIR__ . '/db.php', __DIR__ . '/../db.php', __DIR__ . '/../config/db.php', __DIR__ . '/../walkin-exam-system/config/db.php'];
     $found = false;
-    foreach ($candidates as $p) {
+    foreach ($c as $p) {
         if (is_file($p)) {
             require_once $p;
             $found = true;
@@ -51,39 +44,30 @@ try {
 }
 
 try {
-    require_once __DIR__ . '/verify_token.php'; // ต้องมี requireAuth()
+    require_once __DIR__ . '/verify_token.php';
 } catch (Throwable $e) {
     json_error('bootstrap verify_token.php: ' . $e->getMessage(), 500);
 }
 
-if (!isset($pdo) || !($pdo instanceof PDO)) {
-    json_error('bootstrap: $pdo not available', 500);
-}
+if (!isset($pdo) || !($pdo instanceof PDO)) json_error('bootstrap: $pdo not available', 500);
 
-/* ---------- Main ---------- */
 try {
-    // Auth เฉพาะครู
     $payload = requireAuth('teacher');
 
-    // ตั้ง timezone (ถ้าทำไม่ได้ก็ข้าม)
     try {
         $pdo->query("SET time_zone = '+07:00'");
     } catch (Throwable $e) {
     }
 
-    $out = [
-        'registered_today' => 0,
-        'completed_today'  => 0,
-        'questions_total'  => 0,
-    ];
+    $out = ['registered_today' => 0, 'completed_today' => 0, 'questions_total' => 0];
 
-    // 1) จำนวนลงทะเบียนวันนี้ (ตารางใหม่ -> fallback ตารางเดิม)
+    // ลงทะเบียนวันนี้: ใช้ created_at (ไม่มี booking_time)
     $ok = false;
     $last = null;
     foreach (
         [
             "SELECT COUNT(*) FROM exam_slot_registrations WHERE DATE(registered_at)=CURDATE()",
-            "SELECT COUNT(*) FROM exam_booking WHERE DATE(COALESCE(created_at,booking_time))=CURDATE() AND (status IS NULL OR status='booked')",
+            "SELECT COUNT(*) FROM exam_booking WHERE DATE(created_at)=CURDATE() AND (status IS NULL OR status='booked')",
         ] as $sql
     ) {
         try {
@@ -96,19 +80,16 @@ try {
     }
     if (!$ok && $last) throw $last;
 
-    // 2) จำนวน “สอบเสร็จวันนี้”
     try {
         $out['completed_today'] = (int)$pdo->query(
-            "SELECT COUNT(*) FROM examsession
-             WHERE end_time IS NOT NULL AND DATE(end_time)=CURDATE()"
+            "SELECT COUNT(*) FROM examsession WHERE end_time IS NOT NULL AND DATE(end_time)=CURDATE()"
         )->fetchColumn();
-    } catch (Throwable $e) { /* ปล่อยเป็น 0 */
+    } catch (Throwable $e) {
     }
 
-    // 3) จำนวนคำถามทั้งหมด
     try {
         $out['questions_total'] = (int)$pdo->query("SELECT COUNT(*) FROM question")->fetchColumn();
-    } catch (Throwable $e) { /* ปล่อยเป็น 0 */
+    } catch (Throwable $e) {
     }
 
     echo json_encode(['status' => 'success', 'data' => $out], JSON_UNESCAPED_UNICODE);
