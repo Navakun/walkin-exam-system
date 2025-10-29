@@ -14,7 +14,7 @@ function json_error($msg, $code = 400)
 }
 
 try {
-    // ----- AUTH -----
+    // AUTH
     $token = getBearerToken();
     if (!$token) json_error('No token', 401);
     $payload = decodeToken($token);
@@ -23,79 +23,57 @@ try {
     $teacherId = $payload->teacher_id ?? $payload->instructor_id ?? null;
     if ($role !== 'teacher' && !$teacherId) json_error('Forbidden', 403);
 
-    // ----- INPUT (optional tz) -----
-    // หากต้องการส่ง timezone มา เช่น tz=Asia/Bangkok
-    $tz = $_GET['tz'] ?? null;
-    if ($tz) {
-        try {
-            $pdo->query("SET time_zone = " . $pdo->quote($tz));
-        } catch (Throwable $e) { /* ignore */
-        }
-    }
-
-    // ---------- KPI 1: นิสิตที่ลงทะเบียน "วันนี้" ----------
-    // ใช้ตาราง exam_slot_registrations (ตรงกับ dump ล่าสุด)
-    // ใส่ fallback ให้รองรับชื่อคอลัมน์/ตารางที่ต่างกันได้
-    $todayRegistered = 0;
-    $sqlToday = [
-        // A) exam_slot_registrations.registered_at
-        "SELECT COUNT(*) FROM exam_slot_registrations WHERE DATE(registered_at) = CURDATE()",
-        // B) exam_slot_registrations.created_at
-        "SELECT COUNT(*) FROM exam_slot_registrations WHERE DATE(created_at) = CURDATE()",
-        // C) exambooking.created_at
-        "SELECT COUNT(*) FROM exambooking WHERE DATE(created_at) = CURDATE()",
-        // D) exambooking.booking_time
-        "SELECT COUNT(*) FROM exambooking WHERE DATE(booking_time) = CURDATE()",
-    ];
-    foreach ($sqlToday as $q) {
-        try {
-            $todayRegistered = (int)$pdo->query($q)->fetchColumn();
-            break;
-        } catch (Throwable $e) { /* try next */
-        }
-    }
-
-    // ---------- KPI 2: จำนวนข้อสอบทั้งหมด (ในคลัง) ----------
-    // นับจากตาราง question (ถ้ามีคอลัมน์ active ก็กรอง active=1 หากไม่มีให้ไม่นับ)
-    $totalQuestions = 0;
+    // optional timezone (บางโฮสต์ห้าม SET time_zone)
     try {
-        // ลองมีคอลัมน์ active
-        $totalQuestions = (int)$pdo->query("SELECT COUNT(*) FROM question WHERE COALESCE(active,1)=1")->fetchColumn();
-    } catch (Throwable $e) {
-        try {
-            $totalQuestions = (int)$pdo->query("SELECT COUNT(*) FROM question")->fetchColumn();
-        } catch (Throwable $e2) {
-            $totalQuestions = 0;
-        }
+        $pdo->query("SET time_zone = '+07:00'");
+    } catch (Throwable $e) { /* ignore */
     }
 
-    // ---------- KPI 3: จำนวน session ที่ "จบ" วันนี้ (optional) ----------
-    // ใช้ exam_sessions ถ้ามี; พยายามเดาชื่อคอลัมน์ end_time/finished_at/status
-    $completedToday = 0;
-    $sqlCompleted = [
-        "SELECT COUNT(*) FROM exam_sessions WHERE DATE(end_time)=CURDATE() AND COALESCE(status,'') IN ('completed','finished','done')",
-        "SELECT COUNT(*) FROM exam_sessions WHERE DATE(end_time)=CURDATE()",
-        "SELECT COUNT(*) FROM exam_sessions WHERE DATE(finished_at)=CURDATE()",
+    $out = [
+        'registered_today' => 0,
+        'completed_today'  => 0,
+        'questions_total'  => 0,
     ];
-    foreach ($sqlCompleted as $q) {
+
+    // 1) registered_today — ลองจาก exam_slot_registrations ก่อน แล้วค่อย fallback exambooking
+    $ok = false;
+    $lastErr = null;
+    foreach (
+        [
+            // current structure
+            "SELECT COUNT(*) AS c FROM exam_slot_registrations WHERE DATE(registered_at) = CURDATE()",
+            // legacy booking table
+            "SELECT COUNT(*) AS c FROM exam_booking WHERE DATE(COALESCE(created_at, booking_time)) = CURDATE() AND (status IS NULL OR status='booked')"
+        ] as $sql
+    ) {
         try {
-            $completedToday = (int)$pdo->query($q)->fetchColumn();
+            $c = (int)$pdo->query($sql)->fetchColumn();
+            $out['registered_today'] = $c;
+            $ok = true;
             break;
-        } catch (Throwable $e) { /* try next */
+        } catch (Throwable $e) {
+            $lastErr = $e;
         }
     }
+    if (!$ok && $lastErr) throw $lastErr;
 
-    echo json_encode([
-        'status' => 'success',
-        'data' => [
-            // << ใช้ตัวนี้ไปโชว์ที่ KPI "จำนวนนิสิต" บน dashboard ตามที่ขอ
-            'registered_today' => $todayRegistered,
+    // 2) completed_today — นับจาก examsession ถ้ามี end_time วันนี้
+    try {
+        $out['completed_today'] = (int)$pdo->query(
+            "SELECT COUNT(*) FROM examsession WHERE end_time IS NOT NULL AND DATE(end_time) = CURDATE()"
+        )->fetchColumn();
+    } catch (Throwable $e) {
+        // ไม่มีตาราง/คอลัมน์นี้ก็ปล่อย 0
+    }
 
-            // เพิ่ม KPI ประกอบอื่น ๆ
-            'questions_total'  => $totalQuestions,
-            'completed_today'  => $completedToday,
-        ]
-    ], JSON_UNESCAPED_UNICODE);
+    // 3) questions_total — ทั้งหมดใน bank
+    try {
+        $out['questions_total'] = (int)$pdo->query("SELECT COUNT(*) FROM question")->fetchColumn();
+    } catch (Throwable $e) {
+        // ไม่มีตารางก็ปล่อย 0
+    }
+
+    echo json_encode(['status' => 'success', 'data' => $out], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     json_error($e->getMessage(), 500);
 }
