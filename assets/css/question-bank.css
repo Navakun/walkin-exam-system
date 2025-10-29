@@ -180,7 +180,7 @@ tbody tr:hover{ background:#f6fafe; }
   display:inline-flex; align-items:center; gap:.4rem;
   transition:transform .08s ease, filter .2s ease;
 }
-.btn-edit{ background:#6cc05b; color:#2f7720; }
+.btn-edit{ background:#5aa04c; color:#2f7720; }
 .btn-edit:hover{ filter:brightness(.97); transform:translateY(-1px); }
 .btn-delete{ background:var(--danger); color:#fff; }
 .btn-delete:hover{ filter:brightness(.98); transform:translateY(-1px); }
