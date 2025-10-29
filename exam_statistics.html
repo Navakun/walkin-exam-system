@@ -343,12 +343,6 @@
             } catch { }
             location.href = fallback;
         }
-        $('#backBtn').addEventListener('click', smartBack);
-        window.addEventListener('keydown', (e) => {
-            if ((e.key === 'b' || e.key === 'B') && e.altKey && !e.ctrlKey && !e.metaKey) {
-                e.preventDefault(); smartBack();
-            }
-        });
 
         // ---------- Charts ----------
         let perQuestionChart, histChart;

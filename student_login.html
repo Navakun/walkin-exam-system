@@ -42,6 +42,7 @@
         </form>
         <p class="register-link">
             ยังไม่มีบัญชี? <a href="student_register.html">ลงทะเบียนที่นี่</a>
+        </p>
     </main>
 
     <script>
@@ -103,7 +104,7 @@
                 console.log('Login successful, storing token...', result.token.substring(0, 20) + '...');
                 localStorage.setItem('studentToken', result.token);
                 localStorage.setItem('studentId', result.student.id);
-                
+
                 // ตรวจสอบว่าเก็บ token สำเร็จ
                 const storedToken = localStorage.getItem('studentToken');
                 if (!storedToken) {
