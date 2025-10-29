@@ -341,7 +341,6 @@
             setText('kpiCompleted', k.completed_today ?? 0);
         }
 
-
         // ---------- profile modal handlers ----------
         async function openEditProfile() {
             const token = localStorage.getItem('teacherToken'); if (!token) { goLogin(); return; }

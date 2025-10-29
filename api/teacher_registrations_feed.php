@@ -37,7 +37,7 @@ try {
                 sl.title AS slot_title
             FROM exam_slot_registrations r
             JOIN student s ON s.student_id = r.student_id
-            LEFT JOIN exam_slots sl ON sl.slot_id = r.slot_id
+            LEFT JOIN exam_slots sl ON sl.id = r.slot_id
             WHERE r.registered_at >= (NOW() - INTERVAL ? DAY)
             ORDER BY r.registered_at DESC
             LIMIT 5000";
