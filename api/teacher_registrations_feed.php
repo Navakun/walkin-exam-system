@@ -32,21 +32,23 @@ function json_error(string $msg, int $code = 500): void
 try {
     // ------- Bootstrap DB: ค้นหา db.php หลายตำแหน่งให้ทนการย้ายโฟลเดอร์ -------
     try {
-        (function () {
-            $candidates = [
-                __DIR__ . '/db.php',
-                __DIR__ . '/../db.php',
-                __DIR__ . '/../config/db.php',
-                __DIR__ . '/../walkin-exam-system/config/db.php', // ตำแหน่งที่ใช้อยู่
-            ];
-            foreach ($candidates as $p) {
-                if (is_file($p)) {
-                    require_once $p;
-                    return;
-                }
+        $c = [
+            __DIR__ . '/db.php',
+            __DIR__ . '/../db.php',
+            __DIR__ . '/../config/db.php',
+            __DIR__ . '/../walkin-exam-system/config/db.php',
+        ];
+        $found = false;
+        foreach ($c as $p) {
+            if (is_file($p)) {
+                require_once $p;
+                $found = true;
+                break;
             }
+        }
+        if (!$found) {
             throw new RuntimeException('db.php not found in known locations');
-        })();
+        }
     } catch (Throwable $e) {
         json_error('bootstrap db.php: ' . $e->getMessage(), 500);
     }
