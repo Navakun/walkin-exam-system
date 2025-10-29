@@ -5,10 +5,16 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
-require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/verify_token.php'; // ต้องมี requireAuth()
+$DEBUG = isset($_GET['debug']);
+if ($DEBUG) {
+    ini_set('display_errors', '0');
+    error_reporting(E_ALL);
+    set_error_handler(function ($no, $str, $file, $line) {
+        throw new ErrorException($str, 0, $no, $file, $line);
+    });
+}
 
-function json_error(string $msg, int $code = 400): void
+function json_error(string $msg, int $code = 500): void
 {
     http_response_code($code);
     echo json_encode(['status' => 'error', 'message' => $msg], JSON_UNESCAPED_UNICODE);
@@ -16,36 +22,38 @@ function json_error(string $msg, int $code = 400): void
 }
 
 try {
-    // --- Auth: บังคับเฉพาะครู ---
+    // --- bootstrap (จับ error ตั้งแต่ require) ---
+    try {
+        require_once __DIR__ . '/db.php';
+    } catch (Throwable $e) {
+        json_error('bootstrap db.php: ' . $e->getMessage(), 500);
+    }
+    try {
+        require_once __DIR__ . '/verify_token.php'; // มี requireAuth()
+    } catch (Throwable $e) {
+        json_error('bootstrap verify_token.php: ' . $e->getMessage(), 500);
+    }
+
+    if (!isset($pdo) || !($pdo instanceof PDO)) json_error('bootstrap: $pdo not available', 500);
+
+    // --- Auth ---
     $payload = requireAuth('teacher');
 
-    // --- TZ (บางโฮสต์อาจปฏิเสธได้ ไม่เป็นไร) ---
+    // --- TZ (ignore ถ้าทำไม่ได้) ---
     try {
         $pdo->query("SET time_zone = '+07:00'");
     } catch (Throwable $e) {
     }
 
-    $out = [
-        'registered_today' => 0,
-        'completed_today'  => 0,
-        'questions_total'  => 0,
-    ];
+    $out = ['registered_today' => 0, 'completed_today' => 0, 'questions_total' => 0];
 
-    // --- 1) จำนวนลงทะเบียนวันนี้ ---
-    // ลองจากตารางใหม่ exam_slot_registrations ก่อน → ถ้าไม่ได้ ค่อย fallback exambooking
+    // ลงทะเบียนวันนี้: table ใหม่ → fallback
     $ok = false;
-    $lastErr = null;
-
+    $last = null;
     foreach (
         [
-            "SELECT COUNT(*) AS c
-     FROM exam_slot_registrations
-     WHERE DATE(registered_at) = CURDATE()",
-
-            "SELECT COUNT(*) AS c
-     FROM exam_booking
-     WHERE DATE(COALESCE(created_at, booking_time)) = CURDATE()
-       AND (status IS NULL OR status='booked')",
+            "SELECT COUNT(*) FROM exam_slot_registrations WHERE DATE(registered_at)=CURDATE()",
+            "SELECT COUNT(*) FROM exam_booking WHERE DATE(COALESCE(created_at,booking_time))=CURDATE() AND (status IS NULL OR status='booked')",
         ] as $sql
     ) {
         try {
@@ -53,29 +61,26 @@ try {
             $ok = true;
             break;
         } catch (Throwable $e) {
-            $lastErr = $e;
+            $last = $e;
         }
     }
-    if (!$ok && $lastErr) throw $lastErr;
+    if (!$ok && $last) throw $last;
 
-    // --- 2) จำนวนสอบเสร็จวันนี้ ---
+    // สอบเสร็จวันนี้
     try {
         $out['completed_today'] = (int)$pdo->query(
-            "SELECT COUNT(*) FROM examsession
-       WHERE end_time IS NOT NULL AND DATE(end_time) = CURDATE()"
+            "SELECT COUNT(*) FROM examsession WHERE end_time IS NOT NULL AND DATE(end_time)=CURDATE()"
         )->fetchColumn();
     } catch (Throwable $e) {
-        // ไม่มีตาราง/คอลัมน์ก็ปล่อย 0
     }
 
-    // --- 3) จำนวนคำถามทั้งหมด ---
+    // จำนวนข้อสอบทั้งหมด
     try {
         $out['questions_total'] = (int)$pdo->query("SELECT COUNT(*) FROM question")->fetchColumn();
     } catch (Throwable $e) {
-        // ไม่มีตารางก็ปล่อย 0
     }
 
     echo json_encode(['status' => 'success', 'data' => $out], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
-    json_error($e->getMessage(), 500);
+    json_error(($DEBUG ? '[debug] ' : '') . $e->getMessage(), 500);
 }
