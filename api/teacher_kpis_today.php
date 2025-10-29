@@ -62,12 +62,22 @@ try {
     $out = ['registered_today' => 0, 'completed_today' => 0, 'questions_total' => 0];
 
     // ลงทะเบียนวันนี้: ใช้ created_at (ไม่มี booking_time)
+    // แทนบล็อกเดิมที่นับ registered_today ด้วย 2 query ลองตามนี้
+    $todayStart = "DATE(NOW())";
+    $todayEnd   = "DATE(NOW()) + INTERVAL 1 DAY";
+
     $ok = false;
     $last = null;
     foreach (
         [
-            "SELECT COUNT(*) FROM exam_slot_registrations WHERE DATE(registered_at)=CURDATE()",
-            "SELECT COUNT(*) FROM exam_booking WHERE DATE(created_at)=CURDATE() AND (status IS NULL OR status='booked')",
+            // ตารางใหม่
+            "SELECT COUNT(*) FROM exam_slot_registrations
+     WHERE registered_at >= {$todayStart} AND registered_at < {$todayEnd}",
+
+            // ตารางเดิม
+            "SELECT COUNT(*) FROM exam_booking
+     WHERE created_at >= {$todayStart} AND created_at < {$todayEnd}
+       AND (status IS NULL OR status='booked')",
         ] as $sql
     ) {
         try {

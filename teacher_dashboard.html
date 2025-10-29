@@ -489,55 +489,85 @@
             let currentRange = '30d';
             let currentSearch = '';
 
+            // 1) ปรับ layout constants ให้โปร่งขึ้น
             function render() {
-                const rowH = 28;
-                const headerH = 36;
-                const gapDay = 14;
+                const COL_TIME = 72;    // เวลา
+                const COL_SID = 110;   // รหัสนิสิต
+                const COL_NAME = 280;   // ชื่อ-สกุล
+                const PAD_X = 16;
+
+                const rowH = 30;        // เดิม 28
+                const headerH = 38;     // เดิม 36
+                const gapDay = 16;      // เดิม 14
+
                 const width = parseInt(canvas.style.width, 10) || 800;
                 const height = parseInt(canvas.style.height, 10) || 600;
 
-                // เคลียร์
+                // clear
                 ctx.clearRect(0, 0, width, height);
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = '#fff';
                 ctx.fillRect(0, 0, width, height);
 
                 let y = 12;
 
                 for (const g of grouped) {
-                    // แถบวันที่
+                    // แถบหัววัน
                     ctx.fillStyle = COLORS.bgDay;
-                    roundRect(ctx, 12, y, width - 24, headerH, 8, true, false);
-                    ctx.fillStyle = COLORS.text;
-                    ctx.font = '600 14px "Prompt", system-ui, -apple-system, "Segoe UI"';
-                    ctx.fillText(`📅  ${formatDateThai(g.day)}  •  ${g.items.length} คน`, 20, y + 22);
+                    roundRect(ctx, PAD_X, y, width - PAD_X * 2, headerH, 10, true, false);
 
+                    ctx.fillStyle = COLORS.text;
+                    ctx.font = '600 14px "Prompt", system-ui';
+                    ctx.fillText(`📅  ${formatDateThai(g.day)}  •  ${g.items.length} คน`, PAD_X + 8, y + 24);
                     y += headerH + 8;
 
-                    // หัวตาราง
+                    // หัวคอลัมน์
                     ctx.fillStyle = COLORS.sub;
                     ctx.font = '600 12px "Prompt", system-ui';
-                    ctx.fillText('เวลา', 24, y);
-                    ctx.fillText('รหัสนิสิต', 110, y);
-                    ctx.fillText('ชื่อ-สกุล', 220, y);
-                    ctx.fillText('รอบ/ชุดข้อสอบ', 520, y);
+                    const xTime = PAD_X + 8;
+                    const xSid = xTime + COL_TIME + 16;
+                    const xName = xSid + COL_SID + 16;
+                    const xSlot = xName + COL_NAME + 16;
+
+                    ctx.fillText('เวลา', xTime, y);
+                    ctx.fillText('รหัสนิสิต', xSid, y);
+                    ctx.fillText('ชื่อ-สกุล', xName, y);
+                    ctx.fillText('รอบ/ชุดข้อสอบ', xSlot, y);
 
                     y += 6;
                     ctx.strokeStyle = COLORS.line; ctx.lineWidth = 1;
-                    line(ctx, 16, y, width - 16, y);
+                    line(ctx, PAD_X, y, width - PAD_X, y);
                     y += 10;
 
-                    // รายการ
+                    // แถวข้อมูล + zebra
                     ctx.font = '500 13px "Prompt", system-ui';
-                    ctx.fillStyle = COLORS.text;
+                    for (let i = 0; i < g.items.length; i++) {
+                        const it = g.items[i];
 
-                    for (const it of g.items) {
-                        ctx.fillText(formatTime(it.booked_at) || '-', 24, y + 18);
-                        ctx.fillText((it.student_id || '-').toString(), 110, y + 18);
-                        drawEllipsisText(ctx, it.name || '-', 220, y + 18, 280);
-                        drawEllipsisText(ctx, it.slot_title || '-', 520, y + 18, width - 540);
+                        // zebra
+                        if (i % 2 === 1) {
+                            ctx.fillStyle = '#fbfdff';
+                            ctx.fillRect(PAD_X, y - 6, width - PAD_X * 2, rowH + 6);
+                        }
 
+                        ctx.fillStyle = COLORS.text;
+
+                        // เวลา: ขวาชิดคอลัมน์เวลา
+                        const timeTxt = formatTime(it.booked_at) || '-';
+                        const timeW = ctx.measureText(timeTxt).width;
+                        ctx.fillText(timeTxt, xTime + COL_TIME - timeW, y + 18);
+
+                        // รหัสนิสิต
+                        ctx.fillText((it.student_id || '-').toString(), xSid, y + 18);
+
+                        // ชื่อ-สกุล (ellipsis)
+                        drawEllipsisText(ctx, it.name || '-', xName, y + 18, COL_NAME);
+
+                        // รอบ/ชุดข้อสอบ (ellipsis ใช้พื้นที่ที่เหลือ)
+                        drawEllipsisText(ctx, it.slot_title || '-', xSlot, y + 18, width - PAD_X - xSlot);
+
+                        // เส้นคั่น
                         ctx.strokeStyle = '#eef2f7';
-                        line(ctx, 16, y + rowH, width - 16, y + rowH);
+                        line(ctx, PAD_X, y + rowH, width - PAD_X, y + rowH);
 
                         y += rowH;
                         if (y > height - 16) break;
@@ -550,7 +580,7 @@
                 if (!grouped.length) {
                     ctx.fillStyle = COLORS.sub;
                     ctx.font = '500 14px "Prompt", system-ui';
-                    ctx.fillText('ไม่พบข้อมูลการลงทะเบียนตามเงื่อนไข', 20, 40);
+                    ctx.fillText('ไม่พบข้อมูลการลงทะเบียนตามเงื่อนไข', PAD_X + 4, 44);
                 }
             }
 
