@@ -445,6 +445,7 @@
                     const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store' });
                     const raw = await r.text(); let d = null; try { d = JSON.parse(raw); } catch { }
                     if (!r.ok) {
+                        if (r.status === 401 || r.status === 403) { clearAuthStores(); goLogin(); return []; }
                         console.error('[registrations_feed] HTTP', r.status, raw);
                         return [];
                     }
@@ -645,8 +646,19 @@
             document.getElementById('btnCancelProfile')?.addEventListener('click', () => showModal('editProfileModal', false));
             document.getElementById('btnSaveProfile')?.addEventListener('click', saveProfile);
 
-            // KPI วันนี้ (นิสิตที่ลงทะเบียนวันนี้)
-            await loadTodayKPI(token);
+            // KPI วันนี้ — ห่อด้วย try/catch กัน Uncaught
+            try {
+                await loadTodayKPI();
+            } catch (e) {
+                // ถ้าเป็น 401 ก็เด้งไปหน้าเข้าสู่ระบบ
+                const msg = String(e && e.message || '');
+                if (/401|unauthor/i.test(msg)) { clearAuthStores(); goLogin(); return; }
+                console.warn('loadTodayKPI failed:', e);
+                // ใส่เครื่องหมายขีดให้ผู้ใช้เห็นว่าโหลดไม่ได้
+                setText('kpiStudents', '—');
+                setText('kpiQuestions', '—');
+                setText('kpiCompleted', '—');
+            }
 
             // โหลด metrics สำหรับ KPI อื่น ๆ
             try {
