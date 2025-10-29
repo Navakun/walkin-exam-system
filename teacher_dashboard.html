@@ -281,8 +281,11 @@
 
         const setText = (id, val) => {
             const el = document.getElementById(id);
-            if (el) el.textContent = (val ?? val === 0) ? String(val) : '—';
+            if (!el) return;
+            const isSet = !(val === null || val === undefined);
+            el.textContent = isSet ? String(val) : '—'; // รองรับ 0 อย่างถูกต้อง
         };
+
 
         function showModal(id, open) {
             const el = document.getElementById(id);
