@@ -323,23 +323,24 @@
         function goLogin() { location.replace('teacher_login.html'); setTimeout(() => location.href = 'teacher_login.html', 150); }
 
         // ---------- KPI วันนี้ ----------
-        async function loadTodayKPI(token) {
-            try {
-                const r = await fetch(`${API}/teacher_kpis_today.php`, {
-                    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-                    cache: 'no-store'
-                });
-                const raw = await r.text(); let d = null; try { d = JSON.parse(raw); } catch { }
-                if (r.ok && d?.status === 'success') {
-                    const today = d?.data?.registered_today ?? 0;
-                    setText('kpiStudents', today); // ใช้ “จำนวนลงทะเบียนวันนี้”
-                } else {
-                    setText('kpiStudents', 0);
-                }
-            } catch {
-                setText('kpiStudents', 0);
-            }
+        async function loadTodayKPI() {
+            const token = localStorage.getItem('teacherToken') || '';
+            const r = await fetch(`${API}/teacher_kpis_today.php`, {
+                headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+                cache: 'no-store'
+            });
+            const raw = await r.text();
+            let d; try { d = JSON.parse(raw); } catch { throw new Error(raw); }
+            if (!r.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${r.status}`);
+
+            const k = d.data || {};
+            // ✅ ปรับให้ “จำนวนนิสิต” = จำนวนที่ลงทะเบียนวันนี้
+            setText('kpiStudents', k.registered_today ?? 0);
+            // ตัวอื่น ๆ เผื่ออยากโชว์
+            setText('kpiQuestions', k.questions_total ?? 0);
+            setText('kpiCompleted', k.completed_today ?? 0);
         }
+
 
         // ---------- profile modal handlers ----------
         async function openEditProfile() {
