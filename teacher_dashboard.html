@@ -312,16 +312,31 @@
         // ---------- helpers ----------
         const ROOT = location.pathname.includes('/walkin-exam-system/') ? '/walkin-exam-system' : '';
         const API = `${ROOT}/api`;
+
+        // === helper: แปลงค่าเป็น YYYY-MM-DD เสมอ ===
+        function toISODate(s) {
+            if (!s) return '';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;                       // already ISO
+            const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);              // mm/dd/yyyy
+            if (m) {
+                const mm = m[1].padStart(2, '0'), dd = m[2].padStart(2, '0'), yyyy = m[3];
+                return `${yyyy}-${mm}-${dd}`;
+            }
+            const d = new Date(s);                                             // last resort
+            return isNaN(d) ? '' : d.toISOString().slice(0, 10);
+        }
+
         // === Pass/Fail Pie ===
         let passPieChart = null;
 
-        function setPfSubtitle(dayISO, total) {
+        function setPfSubtitle(dayFromApiOrNull, total, fallbackISO) {
             const el = document.getElementById('pfSubtitle');
             if (!el) return;
-            const d = new Date(dayISO);
+            const day = dayFromApiOrNull || fallbackISO || '';
+            const d = day ? new Date(day) : new Date('invalid');
             const th = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-            const label = isNaN(d) ? dayISO : `${d.getDate()} ${th[d.getMonth()]} ${d.getFullYear() + 543}`;
-            el.textContent = (typeof total === 'number') ? `${label} • sessions ที่จบ: ${total}` : label;
+            const label = !day || isNaN(d) ? (day || '-') : `${d.getDate()} ${th[d.getMonth()]} ${d.getFullYear() + 543}`;
+            el.textContent = (typeof total === 'number') ? `${label} • sessions ทั้งวัน: ${total}` : label;
         }
 
         async function fetchPassFailByDay(dayISO) {
@@ -358,11 +373,11 @@
                 const { passed, failed, total, day } = await fetchPassFailByDay(iso);
                 c.data.datasets[0].data = [passed || 0, failed || 0];
                 c.update();
-                setPfSubtitle(day, total);
-                console.debug('[pass/fail]', day, { passed, failed, total });
+                setPfSubtitle(day, total, iso);  // ✅ กัน day=null
+                console.debug('[pass/fail]', iso, { passed, failed, total, apiDay: day });
             } catch (e) {
                 console.warn('updatePassPieForDay failed:', e);
-                setPfSubtitle(dayISO, null);
+                setPfSubtitle(dayISO, null, toISODate(dayISO));
             }
         }
 
@@ -630,7 +645,6 @@
                     ctx.fillText('ไม่พบข้อมูลของวันที่เลือก', PAD_X + 4, 44);
                 }
             }
-            if (currentDay) updatePassPieForDay(currentDay);
 
             function drawEllipsisText(ctx, text, x, y, maxW) {
                 if (ctx.measureText(text).width <= maxW) { ctx.fillText(text, x, y); return; }
@@ -674,14 +688,13 @@
 
             // ====== โหลดครั้งแรก/รีโหลด ======
             async function reload() {
-                const list = await fetchRegistrations();        // ดึง 90 วันล่าสุด
+                const list = await fetchRegistrations();
                 DATA_RAW = Array.isArray(list) ? list : [];
                 DAYS_INDEX = listDays(DATA_RAW);
                 applyDayBoundsToPicker();
                 const todayISO = new Date().toISOString().slice(0, 10);
                 const pick = DAYS_INDEX.includes(todayISO) ? todayISO : (DAYS_INDEX[0] || todayISO);
-                setDay(pick);
-                updatePassPieForDay(pick);
+                setDay(pick);                        // setDay จะไปเรียก updatePassPieForDay ให้เอง
             }
 
             // ====== Events ======
@@ -689,10 +702,9 @@
             document.getElementById('dayPrev')?.addEventListener('click', () => shiftDay(-1));
             document.getElementById('dayNext')?.addEventListener('click', () => shiftDay(+1));
             document.getElementById('dayPicker')?.addEventListener('change', e => {
-                const raw = (e.target.value || '');
-                const v = toISODate(raw);
-                if (!v) return;
-                setDay(v);
+                const iso = toISODate(e.target.value || '');
+                if (!iso) return;
+                setDay(iso);
             });
 
             // CSV Export (ใช้ข้อมูลที่กำลังแสดงอยู่)
