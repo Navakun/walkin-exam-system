@@ -2,12 +2,7 @@
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
-$DEBUG = false; // เปลี่ยนเป็น true เฉพาะช่วงดีบัก!
-
-if ($DEBUG) {
-    ini_set('display_errors', 1);
-    error_reporting(E_ALL);
-}
+$DEBUG = true; // ← เปิดเฉพาะช่วงดีบัก แล้วปิดทีหลัง!
 
 require_once __DIR__ . '/db.php';
 
@@ -30,8 +25,8 @@ try {
         respond('error', 'กรุณากรอกข้อมูลให้ครบทุกช่อง', 400);
     }
     if (mb_strlen($instructor_id, 'UTF-8') > 15) respond('error', 'รหัสอาจารย์ยาวเกิน 15 ตัว', 400);
-    if (mb_strlen($name, 'UTF-8') > 100)      respond('error', 'ชื่อ-นามสกุลยาวเกิน 100 ตัว', 400);
-    if (mb_strlen($email, 'UTF-8') > 120)     respond('error', 'อีเมลยาวเกิน 120 ตัว', 400);
+    if (mb_strlen($name, 'UTF-8') > 100)        respond('error', 'ชื่อ-นามสกุลยาวเกิน 100 ตัว', 400);
+    if (mb_strlen($email, 'UTF-8') > 120)       respond('error', 'อีเมลยาวเกิน 120 ตัว', 400);
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) respond('error', 'อีเมลไม่ถูกต้อง', 400);
     if (strlen($password) < 8) respond('error', 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร', 400);
 
@@ -54,6 +49,7 @@ try {
 
     respond('success', 'สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');
 } catch (PDOException $e) {
+    // แยกเคส UNIQUE ชัดๆ
     if ($e->getCode() === '23000') {
         $msg = $e->getMessage();
         if (stripos($msg, 'uk_instructor_email') !== false || stripos($msg, 'email') !== false) {
@@ -61,9 +57,7 @@ try {
         }
         respond('error', 'รหัสอาจารย์นี้มีอยู่แล้ว', 409);
     }
-    if ($GLOBALS['DEBUG']) respond('error', 'DB: ' . $e->getMessage(), 500);
-    respond('error', 'เกิดข้อผิดพลาดในระบบฐานข้อมูล', 500);
+    respond('error', $DEBUG ? ('DB: ' . $e->getMessage()) : 'เกิดข้อผิดพลาดในระบบฐานข้อมูล', 500);
 } catch (Throwable $e) {
-    if ($GLOBALS['DEBUG']) respond('error', 'ERR: ' . $e->getMessage(), 500);
-    respond('error', 'ข้อผิดพลาดภายในระบบ', 500);
+    respond('error', $DEBUG ? ('ERR: ' . $e->getMessage()) : 'ข้อผิดพลาดภายในระบบ', 500);
 }
