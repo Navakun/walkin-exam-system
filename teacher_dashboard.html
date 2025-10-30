@@ -234,6 +234,19 @@
                             <button id="rgSavePng" class="btn btn-ghost" type="button">
                                 บันทึกเป็นภาพ
                             </button>
+                            <!-- Toggle โหมดรายวัน -->
+                            <button id="rgDayToggle" class="btn btn-ghost" type="button" title="สลับโหมดรายวัน">
+                                โหมดรายวัน
+                            </button>
+
+                            <!-- แถบควบคุมรายวัน (เริ่มต้นซ่อน) -->
+                            <div id="dayControls" class="form-field" style="display:none; gap:8px; align-items:center;">
+                                <button id="dayPrev" class="btn" type="button" title="วันก่อนหน้า">‹</button>
+                                <input id="dayPicker" type="date" class="input" style="min-width:180px;">
+                                <button id="dayNext" class="btn" type="button" title="วันถัดไป">›</button>
+                                <button id="dayAll" class="btn btn-ghost" type="button"
+                                    title="แสดงทุกวัน">แสดงทั้งหมด</button>
+                            </div>
                         </div>
                     </div>
 
@@ -618,18 +631,111 @@
                 if (stroke) ctx.stroke();
             }
 
+            // ----- Daily mode state -----
+            let DAY_MODE = false;        // สลับโหมด
+            let currentDay = null;       // 'YYYY-MM-DD'
+            let DAYS_INDEX = [];         // รายการวันที่ที่มีข้อมูลล่าสุด → เก็บจาก DATA_RAW
+
+            function listDays(items) {
+                const set = new Set(items.map(it => (it.booked_at || '').slice(0, 10)).filter(Boolean));
+                return Array.from(set).sort((a, b) => a < b ? 1 : -1); // ล่าสุดก่อน
+            }
+
+            function nearestValidDay(targetDay) {
+                // ถ้าวันที่เลือกไม่มีข้อมูล ให้หา "วันที่ใกล้เคียง" ที่มีข้อมูล
+                if (!DAYS_INDEX.length) return targetDay;
+                if (DAYS_INDEX.includes(targetDay)) return targetDay;
+                // หา day ที่ใกล้ที่สุดตามลำดับเวลา (ล่าสุดก่อน)
+                const after = DAYS_INDEX.find(d => d <= targetDay);     // ใกล้ก่อนหน้า/วันเดียวกัน
+                const before = [...DAYS_INDEX].reverse().find(d => d >= targetDay); // ใกล้ถัดไป
+                return after || before || DAYS_INDEX[0];
+            }
+
+            function setDay(dayStr) {
+                currentDay = dayStr;
+                const dp = document.getElementById('dayPicker');
+                if (dp) dp.value = currentDay || '';
+                // กรองเฉพาะวัน
+                if (DAY_MODE && currentDay) {
+                    const only = DATA_RAW.filter(it => (it.booked_at || '').slice(0, 10) === currentDay);
+                    grouped = groupByDay(only, currentSearch);
+                } else {
+                    grouped = groupByDay(DATA_RAW, currentSearch);
+                }
+                fitCanvasToHolder(); render();
+            }
+
+            function shiftDay(delta) {
+                if (!DAYS_INDEX.length) return;
+                if (!currentDay) currentDay = DAYS_INDEX[0];
+                const i = DAYS_INDEX.indexOf(currentDay);
+                if (i === -1) { setDay(DAYS_INDEX[0]); return; }
+                let j = i + (delta > 0 ? -1 : 1); // DAYS_INDEX เรียงล่าสุด→เก่า: next(ถัดไป) = index-1
+                j = Math.max(0, Math.min(DAYS_INDEX.length - 1, j));
+                setDay(DAYS_INDEX[j]);
+            }
+
+            function applyDayBoundsToPicker() {
+                const dp = document.getElementById('dayPicker');
+                if (!dp) return;
+                if (DAYS_INDEX.length) {
+                    const max = DAYS_INDEX[0];                             // ล่าสุด
+                    const min = DAYS_INDEX[DAYS_INDEX.length - 1];         // เก่าสุด
+                    dp.max = max; dp.min = min;
+                } else {
+                    dp.removeAttribute('min'); dp.removeAttribute('max');
+                }
+            }
+
+            // ----- Toggle handler -----
+            function toggleDayMode(force = null) {
+                DAY_MODE = (force == null ? !DAY_MODE : !!force);
+                document.getElementById('dayControls').style.display = DAY_MODE ? 'inline-flex' : 'none';
+                document.getElementById('rgDayToggle').classList.toggle('btn-primary', DAY_MODE);
+                if (DAY_MODE) {
+                    // สร้าง index ของวันที่มีข้อมูล และตั้งวันปัจจุบัน/ล่าสุด
+                    DAYS_INDEX = listDays(DATA_RAW);
+                    applyDayBoundsToPicker();
+                    const todayISO = new Date().toISOString().slice(0, 10);
+                    const pick = nearestValidDay(todayISO) || DAYS_INDEX[0] || todayISO;
+                    setDay(pick);
+                } else {
+                    setDay(null); // กลับเป็นทุกวัน
+                }
+            }
+
             async function reload() {
                 document.getElementById('rgReload')?.setAttribute('disabled', '');
                 try {
                     const list = await fetchRegistrations(currentRange);
                     DATA_RAW = Array.isArray(list) ? list : [];
-                    grouped = groupByDay(DATA_RAW, currentSearch);
-                    fitCanvasToHolder();
-                    render();
+                    // อัปเดตรายการวัน
+                    DAYS_INDEX = listDays(DATA_RAW);
+                    applyDayBoundsToPicker();
+
+                    if (DAY_MODE) {
+                        // คงวันที่ที่เลือก ถ้าไม่มีให้เลือกวันใกล้สุดที่มีข้อมูล
+                        currentDay = nearestValidDay(currentDay || new Date().toISOString().slice(0, 10));
+                        setDay(currentDay);    // ภายในจะจัด group/render เอง
+                    } else {
+                        grouped = groupByDay(DATA_RAW, currentSearch);
+                        fitCanvasToHolder(); render();
+                    }
                 } finally {
                     document.getElementById('rgReload')?.removeAttribute('disabled');
                 }
             }
+
+            // Daily controls events
+            document.getElementById('rgDayToggle')?.addEventListener('click', () => toggleDayMode());
+            document.getElementById('dayPrev')?.addEventListener('click', () => shiftDay(-1));
+            document.getElementById('dayNext')?.addEventListener('click', () => shiftDay(+1));
+            document.getElementById('dayAll')?.addEventListener('click', () => toggleDayMode(false));
+            document.getElementById('dayPicker')?.addEventListener('change', (e) => {
+                const v = (e.target.value || '').slice(0, 10);
+                if (!v) return;
+                setDay(nearestValidDay(v));
+            });
 
             // ค้นหา/ช่วงเวลา/บันทึกภาพ
             document.getElementById('rgSearch')?.addEventListener('input', throttle(e => {
