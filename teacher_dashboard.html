@@ -114,15 +114,20 @@
 
         /* Canvas shell */
         .canvas-holder {
+            height: 520px;
+            /* ความสูงคงที่ของช่องดูรายชื่อ */
+            overflow: auto;
+            /* ให้เลื่อนในกล่องนี้ */
             border: 1px solid #e5e7eb;
             border-radius: 12px;
-            overflow: auto;
-            max-height: 600px;
             background: #fff;
         }
 
         #regCanvas {
             display: block;
+            width: 100%;
+            /* ให้กว้างตามกล่อง */
+            /* สูงจะถูกกำหนดด้วย JS ตามจำนวนแถว */
         }
 
         .kpi .meta .val {
@@ -434,18 +439,41 @@
             };
 
             // ปรับ DPI ให้คมชัด
-            function fitCanvasToHolder() {
+            // คำนวณความสูงที่ต้องใช้จริงตามจำนวนวัน/แถว
+            function measureContentHeight() {
+                const PAD_X = 16;
+                const rowH = 30;
+                const headerH = 38;
+                const gapDay = 16;
+
+                let h = 12; // margin-top
+                for (const g of grouped) {
+                    h += headerH + 8;   // header ของวัน
+                    h += 6 + 1 + 10;    // หัวคอลัมน์ + เส้นคั่น + padding
+                    h += rowH * (g.items?.length || 0); // แถวข้อมูล
+                    h += gapDay;        // ช่องว่างระหว่างวัน
+                }
+                h += 12;              // margin-bottom
+                return Math.max(300, h); // กันเตี้ยเกินไป
+            }
+
+            // ปรับขนาด canvas ให้สูงเท่าคอนเทนต์ (จะทำให้เกิดสกรอลบาร์ใน holder)
+            function sizeCanvasToContent() {
                 const dpr = Math.max(1, window.devicePixelRatio || 1);
                 const w = Math.max(640, holder.clientWidth);
-                const h = Math.max(480, Math.min(1200, holder.clientHeight));
+                const h = measureContentHeight();          // << ความสูงจริงของเนื้อหา
+
+                // CSS size (สำหรับเลย์เอาต์/สกรอลบาร์)
                 canvas.style.width = w + 'px';
                 canvas.style.height = h + 'px';
+
+                // Pixel buffer (สำหรับความคมชัด)
                 canvas.width = Math.floor(w * dpr);
                 canvas.height = Math.floor(h * dpr);
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            }
 
-            window.addEventListener('resize', throttle(() => { fitCanvasToHolder(); render(); }, 150));
+                return { w, h };
+            }
 
             // ยูทิล
             function throttle(fn, wait) { let t = 0; return (...a) => { const now = Date.now(); if (now - t > wait) { t = now; fn(...a); } }; }
@@ -523,8 +551,11 @@
                 const headerH = 38;     // เดิม 36
                 const gapDay = 16;      // เดิม 14
 
-                const width = parseInt(canvas.style.width, 10) || 800;
-                const height = parseInt(canvas.style.height, 10) || 600;
+                const { w: width, h: height } = sizeCanvasToContent(); // << ใช้ความสูงจริง
+
+                ctx.clearRect(0, 0, width, height);
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, width, height);
 
                 // clear
                 ctx.clearRect(0, 0, width, height);
@@ -606,6 +637,8 @@
                     ctx.fillText('ไม่พบข้อมูลการลงทะเบียนตามเงื่อนไข', PAD_X + 4, 44);
                 }
             }
+
+            window.addEventListener('resize', throttle(() => { render(); }, 150));
 
             function drawEllipsisText(ctx, text, x, y, maxWidth) {
                 if (ctx.measureText(text).width <= maxWidth) {
