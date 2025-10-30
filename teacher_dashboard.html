@@ -236,9 +236,9 @@
                                 รีเฟรช
                             </button>
 
-                            <button id="rgSavePng" class="btn btn-ghost" type="button">
-                                บันทึกเป็นภาพ
-                            </button>
+                            <button id="rgSaveCsv" class="btn btn-ghost" type="button"
+                                title="บันทึกรายชื่อเป็นไฟล์ CSV">บันทึกเป็น CSV</button>
+
                             <!-- Toggle โหมดรายวัน -->
                             <button id="rgDayToggle" class="btn btn-ghost" type="button" title="สลับโหมดรายวัน">
                                 โหมดรายวัน
@@ -510,6 +510,66 @@
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
                 return { w, h };
+            }
+
+            // สร้าง CSV จากข้อมูลที่กำลังแสดงอยู่ (คำนึงถึง โหมดรายวัน + คีย์เวิร์ดค้นหา)
+            function toCSVRows() {
+                // ถ้าอยู่ DAY_MODE: ใช้เฉพาะวันนั้น, ไม่งั้นใช้ตาม filter/search ปัจจุบัน (grouped)
+                const rows = [];
+                // หัวตาราง (ภาษาไทย)
+                rows.push(['วันที่', 'เวลา', 'รหัสนิสิต', 'ชื่อ-สกุล', 'รอบ/ชุดข้อสอบ']);
+
+                const itemsFromGroups = [];
+                for (const g of grouped) {
+                    for (const it of g.items) itemsFromGroups.push(it);
+                }
+
+                // เรียงตามเวลา (เก่า→ใหม่) เพื่ออ่านง่าย
+                itemsFromGroups.sort((a, b) => (a.booked_at < b.booked_at ? -1 : 1));
+
+                for (const it of itemsFromGroups) {
+                    const iso = it.booked_at || '';
+                    const d = new Date(iso);
+                    const dateStr = isNaN(d) ? iso.slice(0, 10) : d.toISOString().slice(0, 10);
+                    const timeStr = isNaN(d) ? '' : d.toTimeString().slice(0, 5);
+                    rows.push([
+                        dateStr,
+                        timeStr,
+                        (it.student_id || '').toString(),
+                        (it.name || '').toString(),
+                        (it.slot_title || '').toString()
+                    ]);
+                }
+                return rows;
+            }
+
+            // escape ค่าที่มีคอมม่า/อัญประกาศ/บรรทัดใหม่
+            function csvEscape(v) {
+                const s = String(v ?? '');
+                return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+            }
+
+            function buildCSV() {
+                const rows = toCSVRows();
+                // ใช้ \r\n เพื่อความเข้ากันได้กับ Excel/Windows
+                const csv = rows.map(r => r.map(csvEscape).join(',')).join('\r\n');
+                // ใส่ BOM เพื่อให้ Excel เปิดภาษาไทยไม่เพี้ยน
+                return '\uFEFF' + csv;
+            }
+
+            function downloadCSV(filenameBase = 'registrations') {
+                const stamp = new Date().toISOString().slice(0, 10);
+                const range = (typeof currentRange === 'string' ? currentRange : 'range');
+                const dayPart = (DAY_MODE && currentDay) ? `_${currentDay}` : '';
+                const filename = `${filenameBase}_${range}${dayPart}_${stamp}.csv`;
+
+                const csv = buildCSV();
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename; a.style.display = 'none';
+                document.body.appendChild(a); a.click();
+                setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
             }
 
             // ยูทิล
@@ -821,20 +881,10 @@
 
             document.getElementById('rgReload')?.addEventListener('click', reload);
 
-            document.getElementById('rgSavePng')?.addEventListener('click', () => {
-                try {
-                    const w = parseInt(canvas.style.width, 10) || 800;
-                    const h = parseInt(canvas.style.height, 10) || 600;
-                    const tmp = document.createElement('canvas');
-                    const tctx = tmp.getContext('2d');
-                    tmp.width = w; tmp.height = h;
-                    // วาดจากสิ่งที่เห็น (anti-DPR) เพื่อให้ไฟล์ขนาดพอดี
-                    tctx.drawImage(canvas, 0, 0, w, h);
-                    const url = tmp.toDataURL('image/png');
-                    const a = document.createElement('a');
-                    a.href = url; a.download = `registrations_${currentRange}.png`;
-                    a.click();
-                } catch { }
+            document.getElementById('rgSaveCsv')?.addEventListener('click', () => {
+                const total = grouped.reduce((n, g) => n + (g.items?.length || 0), 0);
+                if (!total) { alert('ยังไม่มีข้อมูลให้บันทึก'); return; }
+                downloadCSV('registrations');
             });
 
             // เริ่มโหลด
