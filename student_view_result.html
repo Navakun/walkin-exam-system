@@ -390,6 +390,17 @@
         }
       });
 
+      function showBanner(msg = '', type = 'danger', timeout = 4500) {
+        const area = document.getElementById('bannerArea');
+        if (!area) return;
+        if (!msg) {          // ส่ง '' มาเพื่อเคลียร์
+          area.innerHTML = '';
+          return;
+        }
+        area.innerHTML = `<div class="alert alert-${type} mb-2" role="alert">${msg}</div>`;
+        if (timeout) setTimeout(() => { area.innerHTML = ''; }, timeout);
+      }
+
       /** ---------------- Buttons ---------------- */
       if ($('backBtn')) $('backBtn').onclick = () => (location.href = 'student_dashboard.html');
       if ($('logoutBtn')) $('logoutBtn').onclick = () => { localStorage.clear(); location.href = 'student_login.html'; };
