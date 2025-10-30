@@ -215,43 +215,29 @@
                             <!-- <p class="muted reg-sub">ดึงข้อมูลช่วงล่าสุดตามตัวเลือกด้านขวา</p> -->
                         </div>
 
-                        <div class="reg-actions" role="group" aria-label="ตัวกรองและการทำงาน">
-                            <div class="form-field">
-                                <label class="visually-hidden" for="rgSearch">ค้นหาชื่อ/รหัสนิสิต</label>
-                                <input id="rgSearch" type="search" class="input" placeholder="ค้นหาชื่อ/รหัสนิสิต"
-                                    autocomplete="off" />
+                        <div class="reg-actions" role="group" aria-labelledby="regDailyLabel">
+                            <h4 id="regDailyLabel" class="visually-hidden">เลือกวันเพื่อดูรายชื่อผู้ลงทะเบียน</h4>
+
+                            <div id="dayControls" class="form-field" style="gap:8px; align-items:center;">
+                                <label for="dayPicker" class="visually-hidden">เลือกวันที่</label>
+
+                                <button id="dayPrev" class="btn" type="button" aria-label="ไปวันก่อนหน้า"
+                                    title="วันก่อนหน้า">‹</button>
+
+                                <input id="dayPicker" type="date" class="input" aria-describedby="dayHelpText" />
+
+                                <button id="dayNext" class="btn" type="button" aria-label="ไปวันถัดไป"
+                                    title="วันถัดไป">›</button>
+
+                                <span id="dayHelpText" class="visually-hidden">
+                                    เลือกวันที่จากปฏิทิน หรือใช้ปุ่มไปวันก่อนหน้าและถัดไป
+                                </span>
                             </div>
 
-                            <div class="form-field">
-                                <label class="visually-hidden" id="rgRangeLabel" for="rgRange">ช่วงเวลา</label>
-                                <select id="rgRange" class="select" aria-labelledby="rgRangeLabel"
-                                    title="เลือกช่วงเวลา">
-                                    <option value="7d">7 วัน</option>
-                                    <option value="30d" selected>30 วัน</option>
-                                    <option value="90d">90 วัน</option>
-                                </select>
-                            </div>
-
-                            <button id="rgReload" class="btn btn-primary" type="button">
-                                รีเฟรช
+                            <button id="rgSaveCsv" class="btn btn-ghost" type="button" title="บันทึกรายชื่อเป็นไฟล์ CSV"
+                                aria-label="บันทึกเป็นไฟล์ CSV">
+                                บันทึกเป็น CSV
                             </button>
-
-                            <button id="rgSaveCsv" class="btn btn-ghost" type="button"
-                                title="บันทึกรายชื่อเป็นไฟล์ CSV">บันทึกเป็น CSV</button>
-
-                            <!-- Toggle โหมดรายวัน -->
-                            <button id="rgDayToggle" class="btn btn-ghost" type="button" title="สลับโหมดรายวัน">
-                                โหมดรายวัน
-                            </button>
-
-                            <!-- แถบควบคุมรายวัน (เริ่มต้นซ่อน) -->
-                            <div id="dayControls" class="form-field" style="display:none; gap:8px; align-items:center;">
-                                <button id="dayPrev" class="btn" type="button" title="วันก่อนหน้า">‹</button>
-                                <input id="dayPicker" type="date" class="input" style="min-width:180px;">
-                                <button id="dayNext" class="btn" type="button" title="วันถัดไป">›</button>
-                                <button id="dayAll" class="btn btn-ghost" type="button"
-                                    title="แสดงทุกวัน">แสดงทั้งหมด</button>
-                            </div>
                         </div>
                     </div>
 
@@ -434,107 +420,200 @@
                 text: '#0f172a',
                 sub: '#64748b',
                 line: '#e5e7eb',
-                badge: '#2563eb',
-                badgeTx: '#ffffff'
             };
 
-            // ===== ฟังก์ชันช่วยสำหรับ canvas ที่เลื่อนได้ =====
-            function measureContentHeight() {
-                const rowH = 30;
-                const headerH = 38;
-                const gapDay = 16;
+            // ====== STATE (โหมดวันอย่างเดียว) ======
+            let DATA_RAW = [];     // รายการทั้งหมด (ภายใน 90 วันล่าสุด)
+            let grouped = [];     // กลุ่มเฉพาะวันปัจจุบัน (สำหรับวาด)
+            let DAYS_INDEX = [];   // รายชื่อวันที่มีข้อมูล (เรียงล่าสุด→เก่าสุด)
+            let currentDay = null; // 'YYYY-MM-DD'
 
-                let h = 12; // margin บน
-                for (const g of grouped) {
-                    h += headerH + 8;       // แถบหัววัน
-                    h += 6 + 1 + 10;        // หัวคอลัมน์ + เส้นคั่น + padding
-                    h += rowH * (g.items?.length || 0); // แถวข้อมูล
-                    h += gapDay;            // ช่องว่างระหว่างวัน
-                }
-                h += 12; // margin ล่าง
-                return Math.max(300, h);  // กันเตี้ยเกินไป
+            // ====== Utils ======
+            const throttle = (fn, wait) => { let t = 0; return (...a) => { const n = Date.now(); if (n - t > wait) { t = n; fn(...a); } }; };
+            function formatDateThaiISO(iso) {
+                const d = new Date(iso); if (isNaN(d)) return iso;
+                const th = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+                return `${d.getDate()} ${th[d.getMonth()]} ${d.getFullYear() + 543}`;
+            }
+            const formatTime = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toTimeString().slice(0, 5); };
+
+            // ดึงข้อมูลช่วงกว้างคงที่ (90 วันล่าสุด)
+            async function fetchRegistrations() {
+                const token = localStorage.getItem('teacherToken') || '';
+                const url = `${API}/teacher_registrations_feed.php?range=90d`;
+                try {
+                    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store' });
+                    const raw = await r.text(); let d = null; try { d = JSON.parse(raw); } catch { }
+                    if (!r.ok) {
+                        if (r.status === 401 || r.status === 403) { clearAuthStores(); goLogin(); return []; }
+                        console.error('[registrations_feed]', r.status, raw); return [];
+                    }
+                    const arr = Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
+                    return arr.map(it => ({
+                        student_id: it.student_id || '',
+                        name: it.name || '',
+                        booked_at: it.booked_at || '',
+                        slot_title: it.slot_title || ''
+                    })).filter(x => x.booked_at);
+                } catch (e) { console.error('[registrations_feed] error', e); return []; }
             }
 
+            function listDays(items) {
+                const set = new Set(items.map(it => (it.booked_at || '').slice(0, 10)).filter(Boolean));
+                return Array.from(set).sort((a, b) => a < b ? 1 : -1); // ล่าสุดก่อน
+            }
+
+            // ====== Canvas helpers (ทำให้กล่องมีสกรอลบาร์) ======
+            function measureContentHeight() {
+                const rowH = 30, headerH = 38, gapDay = 16;
+                let h = 12;
+                for (const g of grouped) {
+                    h += headerH + 8;
+                    h += 6 + 1 + 10;
+                    h += rowH * (g.items?.length || 0);
+                    h += gapDay;
+                }
+                h += 12;
+                return Math.max(300, h);
+            }
             function sizeCanvasToContent() {
                 const dpr = Math.max(1, window.devicePixelRatio || 1);
                 const w = Math.max(640, holder.clientWidth);
                 const h = measureContentHeight();
-
-                // ขนาด CSS เพื่อให้เกิดสกรอลบาร์ใน .canvas-holder
                 canvas.style.width = w + 'px';
                 canvas.style.height = h + 'px';
-
-                // ขนาดพิกเซลจริงสำหรับความคมชัด
                 canvas.width = Math.floor(w * dpr);
                 canvas.height = Math.floor(h * dpr);
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
                 return { w, h };
             }
 
-            // สำหรับความเข้ากันได้กับโค้ดเดิม
-            function fitCanvasToHolder() { return sizeCanvasToContent(); }
+            // ====== วาด ======
+            function render() {
+                const PAD_X = 16, COL_TIME = 72, COL_SID = 110, COL_NAME = 280;
+                const rowH = 30, headerH = 38, gapDay = 16;
 
-            // ปรับ DPI ให้คมชัด
-            // คำนวณความสูงที่ต้องใช้จริงตามจำนวนวัน/แถว
-            function measureContentHeight() {
-                const PAD_X = 16;
-                const rowH = 30;
-                const headerH = 38;
-                const gapDay = 16;
+                const { w: width, h: height } = sizeCanvasToContent();
+                ctx.clearRect(0, 0, width, height);
+                ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height);
 
-                let h = 12; // margin-top
+                let y = 12;
                 for (const g of grouped) {
-                    h += headerH + 8;   // header ของวัน
-                    h += 6 + 1 + 10;    // หัวคอลัมน์ + เส้นคั่น + padding
-                    h += rowH * (g.items?.length || 0); // แถวข้อมูล
-                    h += gapDay;        // ช่องว่างระหว่างวัน
+                    // header วัน
+                    ctx.fillStyle = COLORS.bgDay;
+                    roundRect(ctx, PAD_X, y, width - PAD_X * 2, headerH, 10, true, false);
+                    ctx.fillStyle = COLORS.text;
+                    ctx.font = '600 14px "Prompt", system-ui';
+                    ctx.fillText(`📅  ${formatDateThaiISO(g.day)}  •  ${g.items.length} คน`, PAD_X + 8, y + 24);
+                    y += headerH + 8;
+
+                    // หัวคอลัมน์
+                    ctx.fillStyle = COLORS.sub;
+                    ctx.font = '600 12px "Prompt", system-ui';
+                    const xTime = PAD_X + 8, xSid = xTime + COL_TIME + 16, xName = xSid + COL_SID + 16, xSlot = xName + COL_NAME + 16;
+                    ctx.fillText('เวลา', xTime, y);
+                    ctx.fillText('รหัสนิสิต', xSid, y);
+                    ctx.fillText('ชื่อ-สกุล', xName, y);
+                    ctx.fillText('รอบ/ชุดข้อสอบ', xSlot, y);
+                    y += 6; ctx.strokeStyle = COLORS.line; ctx.lineWidth = 1; line(ctx, PAD_X, y, width - PAD_X, y); y += 10;
+
+                    // แถว
+                    ctx.font = '500 13px "Prompt", system-ui';
+                    for (let i = 0; i < g.items.length; i++) {
+                        const it = g.items[i];
+                        if (i % 2 === 1) { ctx.fillStyle = '#fbfdff'; ctx.fillRect(PAD_X, y - 6, width - PAD_X * 2, rowH + 6); }
+                        ctx.fillStyle = COLORS.text;
+
+                        const tTxt = formatTime(it.booked_at) || '-';
+                        const tW = ctx.measureText(tTxt).width;
+                        ctx.fillText(tTxt, xTime + COL_TIME - tW, y + 18);
+                        ctx.fillText((it.student_id || '-').toString(), xSid, y + 18);
+                        drawEllipsisText(ctx, it.name || '-', xName, y + 18, COL_NAME);
+                        drawEllipsisText(ctx, it.slot_title || '-', xSlot, y + 18, width - PAD_X - xSlot);
+
+                        ctx.strokeStyle = '#eef2f7'; line(ctx, PAD_X, y + rowH, width - PAD_X, y + rowH);
+                        y += rowH;
+                    }
+                    y += gapDay;
                 }
-                h += 12;              // margin-bottom
-                return Math.max(300, h); // กันเตี้ยเกินไป
+                if (!grouped.length) {
+                    ctx.fillStyle = COLORS.sub; ctx.font = '500 14px "Prompt", system-ui';
+                    ctx.fillText('ไม่พบข้อมูลของวันที่เลือก', PAD_X + 4, 44);
+                }
             }
 
-            // ปรับขนาด canvas ให้สูงเท่าคอนเทนต์ (จะทำให้เกิดสกรอลบาร์ใน holder)
-            function sizeCanvasToContent() {
-                const dpr = Math.max(1, window.devicePixelRatio || 1);
-                const w = Math.max(640, holder.clientWidth);
-                const h = measureContentHeight();          // << ความสูงจริงของเนื้อหา
-
-                // CSS size (สำหรับเลย์เอาต์/สกรอลบาร์)
-                canvas.style.width = w + 'px';
-                canvas.style.height = h + 'px';
-
-                // Pixel buffer (สำหรับความคมชัด)
-                canvas.width = Math.floor(w * dpr);
-                canvas.height = Math.floor(h * dpr);
-                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-                return { w, h };
+            function drawEllipsisText(ctx, text, x, y, maxW) {
+                if (ctx.measureText(text).width <= maxW) { ctx.fillText(text, x, y); return; }
+                let s = text; while (s.length > 0 && ctx.measureText(s + '…').width > maxW) { s = s.slice(0, -1); }
+                ctx.fillText(s + '…', x, y);
+            }
+            function line(ctx, x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+            function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+                if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2;
+                ctx.beginPath();
+                ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+                ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r);
+                ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+                if (fill) ctx.fill(); if (stroke) ctx.stroke();
             }
 
-            // สร้าง CSV จากข้อมูลที่กำลังแสดงอยู่ (คำนึงถึง โหมดรายวัน + คีย์เวิร์ดค้นหา)
+            // ====== เลือกวัน ======
+            function applyDayBoundsToPicker() {
+                const dp = document.getElementById('dayPicker');
+                if (!dp) return;
+                if (DAYS_INDEX.length) { dp.max = DAYS_INDEX[0]; dp.min = DAYS_INDEX[DAYS_INDEX.length - 1]; }
+                else { dp.removeAttribute('min'); dp.removeAttribute('max'); }
+            }
+            function setDay(dayStr) {
+                currentDay = dayStr;
+                const dp = document.getElementById('dayPicker'); if (dp) dp.value = currentDay || '';
+                const only = DATA_RAW.filter(it => (it.booked_at || '').slice(0, 10) === currentDay);
+                const items = only.sort((a, b) => a.booked_at < b.booked_at ? -1 : 1);
+                grouped = currentDay ? [{ day: currentDay, items }] : [];
+                render();
+            }
+            function shiftDay(delta) {
+                if (!DAYS_INDEX.length) return;
+                if (!currentDay) currentDay = DAYS_INDEX[0];
+                const i = DAYS_INDEX.indexOf(currentDay);
+                let j = (i === -1 ? 0 : i + (delta > 0 ? -1 : 1)); // index-1 คือวันถัดไป (เพราะเรียงล่าสุด→เก่าสุด)
+                j = Math.max(0, Math.min(DAYS_INDEX.length - 1, j));
+                setDay(DAYS_INDEX[j]);
+            }
+
+            // ====== โหลดครั้งแรก/รีโหลด ======
+            async function reload() {
+                const list = await fetchRegistrations();        // ดึง 90 วันล่าสุด
+                DATA_RAW = Array.isArray(list) ? list : [];
+                DAYS_INDEX = listDays(DATA_RAW);
+                applyDayBoundsToPicker();
+                const todayISO = new Date().toISOString().slice(0, 10);
+                const pick = DAYS_INDEX.includes(todayISO) ? todayISO : (DAYS_INDEX[0] || todayISO);
+                setDay(pick);
+            }
+
+            // ====== Events ======
+            window.addEventListener('resize', throttle(() => render(), 150));
+            document.getElementById('dayPrev')?.addEventListener('click', () => shiftDay(-1));
+            document.getElementById('dayNext')?.addEventListener('click', () => shiftDay(+1));
+            document.getElementById('dayPicker')?.addEventListener('change', e => {
+                const v = (e.target.value || '').slice(0, 10); if (!v) return; setDay(v);
+            });
+
+            // CSV Export (ใช้ข้อมูลที่กำลังแสดงอยู่)
+            document.getElementById('rgSaveCsv')?.addEventListener('click', () => {
+                const total = grouped.reduce((n, g) => n + (g.items?.length || 0), 0);
+                if (!total) { alert('ยังไม่มีข้อมูลให้บันทึก'); return; }
+                downloadCSV('registrations');
+            });
             function toCSVRows() {
-                // ถ้าอยู่ DAY_MODE: ใช้เฉพาะวันนั้น, ไม่งั้นใช้ตาม filter/search ปัจจุบัน (grouped)
-                const rows = [];
-                // หัวตาราง (ภาษาไทย)
-                rows.push(['วันที่', 'เวลา', 'รหัสนิสิต', 'ชื่อ-สกุล', 'รอบ/ชุดข้อสอบ']);
-
-                const itemsFromGroups = [];
-                for (const g of grouped) {
-                    for (const it of g.items) itemsFromGroups.push(it);
-                }
-
-                // เรียงตามเวลา (เก่า→ใหม่) เพื่ออ่านง่าย
-                itemsFromGroups.sort((a, b) => (a.booked_at < b.booked_at ? -1 : 1));
-
-                for (const it of itemsFromGroups) {
-                    const iso = it.booked_at || '';
-                    const d = new Date(iso);
-                    const dateStr = isNaN(d) ? iso.slice(0, 10) : d.toISOString().slice(0, 10);
-                    const timeStr = isNaN(d) ? '' : d.toTimeString().slice(0, 5);
+                const rows = [['วันที่', 'เวลา', 'รหัสนิสิต', 'ชื่อ-สกุล', 'รอบ/ชุดข้อสอบ']];
+                const items = (grouped[0]?.items || []).slice().sort((a, b) => a.booked_at < b.booked_at ? -1 : 1);
+                for (const it of items) {
+                    const d = new Date(it.booked_at);
                     rows.push([
-                        dateStr,
-                        timeStr,
+                        currentDay,
+                        isNaN(d) ? '' : d.toTimeString().slice(0, 5),
                         (it.student_id || '').toString(),
                         (it.name || '').toString(),
                         (it.slot_title || '').toString()
@@ -542,352 +621,22 @@
                 }
                 return rows;
             }
-
-            // escape ค่าที่มีคอมม่า/อัญประกาศ/บรรทัดใหม่
-            function csvEscape(v) {
-                const s = String(v ?? '');
-                return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-            }
-
+            const csvEscape = v => { const s = String(v ?? ''); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
             function buildCSV() {
                 const rows = toCSVRows();
-                // ใช้ \r\n เพื่อความเข้ากันได้กับ Excel/Windows
                 const csv = rows.map(r => r.map(csvEscape).join(',')).join('\r\n');
-                // ใส่ BOM เพื่อให้ Excel เปิดภาษาไทยไม่เพี้ยน
-                return '\uFEFF' + csv;
+                return '\uFEFF' + csv; // BOM เพื่อ Excel/ภาษาไทย
             }
-
-            function downloadCSV(filenameBase = 'registrations') {
+            function downloadCSV(base = 'registrations') {
                 const stamp = new Date().toISOString().slice(0, 10);
-                const range = (typeof currentRange === 'string' ? currentRange : 'range');
-                const dayPart = (DAY_MODE && currentDay) ? `_${currentDay}` : '';
-                const filename = `${filenameBase}_${range}${dayPart}_${stamp}.csv`;
-
-                const csv = buildCSV();
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
+                const filename = `${base}_${currentDay || 'day'}_${stamp}.csv`;
+                const blob = new Blob([buildCSV()], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob); const a = document.createElement('a');
                 a.href = url; a.download = filename; a.style.display = 'none';
-                document.body.appendChild(a); a.click();
-                setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+                document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
             }
 
-            // ยูทิล
-            function throttle(fn, wait) { let t = 0; return (...a) => { const now = Date.now(); if (now - t > wait) { t = now; fn(...a); } }; }
-            function formatDateThai(iso) {
-                const d = new Date(iso);
-                if (isNaN(d)) return iso;
-                const thMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-                const dd = d.getDate();
-                const mm = thMonths[d.getMonth()];
-                const yyyy = d.getFullYear() + 543;
-                return `${dd} ${mm} ${yyyy}`;
-            }
-            function formatTime(iso) { const d = new Date(iso); if (isNaN(d)) return ''; return d.toTimeString().slice(0, 5); }
-
-            // ดึงข้อมูลจาก endpoint หลัก (ที่ทำไว้ให้ทนทานแล้ว)
-            async function fetchRegistrations(range = '30d') {
-                const token = localStorage.getItem('teacherToken') || '';
-                const url = `${API}/teacher_registrations_feed.php?range=${encodeURIComponent(range)}`;
-                try {
-                    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store' });
-                    const raw = await r.text(); let d = null; try { d = JSON.parse(raw); } catch { }
-                    if (!r.ok) {
-                        if (r.status === 401 || r.status === 403) { clearAuthStores(); goLogin(); return []; }
-                        console.error('[registrations_feed] HTTP', r.status, raw);
-                        return [];
-                    }
-                    const arr = Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
-                    // map ให้อยู่ในรูปเดียวกัน
-                    return arr.map(it => ({
-                        student_id: it.student_id || '',
-                        name: it.name || '',
-                        booked_at: it.booked_at || '',
-                        slot_title: it.slot_title || ''
-                    })).filter(x => x.booked_at);
-                } catch (e) {
-                    console.error('[registrations_feed] error', e);
-                    return [];
-                }
-            }
-
-            // จัดกลุ่มตามวันที่ (YYYY-MM-DD)
-            function groupByDay(items, keyword = '') {
-                const kw = (keyword || '').trim().toLowerCase();
-                const filtered = kw ? items.filter(it => (
-                    (it.name || '').toLowerCase().includes(kw) || (it.student_id || '').toLowerCase().includes(kw)
-                )) : items;
-
-                const map = new Map();
-                for (const it of filtered) {
-                    const day = (it.booked_at || '').slice(0, 10);
-                    if (!map.has(day)) map.set(day, []);
-                    map.get(day).push(it);
-                }
-                const days = Array.from(map.keys()).sort((a, b) => (a < b ? 1 : -1)); // ล่าสุดมาก่อน
-                return days.map(day => ({
-                    day,
-                    items: map.get(day).sort((a, b) => (a.booked_at < b.booked_at ? -1 : 1))
-                }));
-            }
-
-            // วาด
-            let DATA_RAW = [];
-            let grouped = [];
-            let currentRange = '30d';
-            let currentSearch = '';
-
-            // 1) ปรับ layout constants ให้โปร่งขึ้น
-            function render() {
-                const COL_TIME = 72;    // เวลา
-                const COL_SID = 110;   // รหัสนิสิต
-                const COL_NAME = 280;   // ชื่อ-สกุล
-                const PAD_X = 16;
-
-                const rowH = 30;        // เดิม 28
-                const headerH = 38;     // เดิม 36
-                const gapDay = 16;      // เดิม 14
-
-                const { w: width, h: height } = sizeCanvasToContent(); // << ใช้ความสูงจริง
-
-                ctx.clearRect(0, 0, width, height);
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(0, 0, width, height);
-
-                // clear
-                ctx.clearRect(0, 0, width, height);
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(0, 0, width, height);
-
-                let y = 12;
-
-                for (const g of grouped) {
-                    // แถบหัววัน
-                    ctx.fillStyle = COLORS.bgDay;
-                    roundRect(ctx, PAD_X, y, width - PAD_X * 2, headerH, 10, true, false);
-
-                    ctx.fillStyle = COLORS.text;
-                    ctx.font = '600 14px "Prompt", system-ui';
-                    ctx.fillText(`📅  ${formatDateThai(g.day)}  •  ${g.items.length} คน`, PAD_X + 8, y + 24);
-                    y += headerH + 8;
-
-                    // หัวคอลัมน์
-                    ctx.fillStyle = COLORS.sub;
-                    ctx.font = '600 12px "Prompt", system-ui';
-                    const xTime = PAD_X + 8;
-                    const xSid = xTime + COL_TIME + 16;
-                    const xName = xSid + COL_SID + 16;
-                    const xSlot = xName + COL_NAME + 16;
-
-                    ctx.fillText('เวลา', xTime, y);
-                    ctx.fillText('รหัสนิสิต', xSid, y);
-                    ctx.fillText('ชื่อ-สกุล', xName, y);
-                    ctx.fillText('รอบ/ชุดข้อสอบ', xSlot, y);
-
-                    y += 6;
-                    ctx.strokeStyle = COLORS.line; ctx.lineWidth = 1;
-                    line(ctx, PAD_X, y, width - PAD_X, y);
-                    y += 10;
-
-                    // แถวข้อมูล + zebra
-                    ctx.font = '500 13px "Prompt", system-ui';
-                    for (let i = 0; i < g.items.length; i++) {
-                        const it = g.items[i];
-
-                        // zebra
-                        if (i % 2 === 1) {
-                            ctx.fillStyle = '#fbfdff';
-                            ctx.fillRect(PAD_X, y - 6, width - PAD_X * 2, rowH + 6);
-                        }
-
-                        ctx.fillStyle = COLORS.text;
-
-                        // เวลา: ขวาชิดคอลัมน์เวลา
-                        const timeTxt = formatTime(it.booked_at) || '-';
-                        const timeW = ctx.measureText(timeTxt).width;
-                        ctx.fillText(timeTxt, xTime + COL_TIME - timeW, y + 18);
-
-                        // รหัสนิสิต
-                        ctx.fillText((it.student_id || '-').toString(), xSid, y + 18);
-
-                        // ชื่อ-สกุล (ellipsis)
-                        drawEllipsisText(ctx, it.name || '-', xName, y + 18, COL_NAME);
-
-                        // รอบ/ชุดข้อสอบ (ellipsis ใช้พื้นที่ที่เหลือ)
-                        drawEllipsisText(ctx, it.slot_title || '-', xSlot, y + 18, width - PAD_X - xSlot);
-
-                        // เส้นคั่น
-                        ctx.strokeStyle = '#eef2f7';
-                        line(ctx, PAD_X, y + rowH, width - PAD_X, y + rowH);
-
-                        y += rowH;
-                        if (y > height - 16) break;
-                    }
-
-                    y += gapDay;
-                    if (y > height - 16) break;
-                }
-
-                if (!grouped.length) {
-                    ctx.fillStyle = COLORS.sub;
-                    ctx.font = '500 14px "Prompt", system-ui';
-                    ctx.fillText('ไม่พบข้อมูลการลงทะเบียนตามเงื่อนไข', PAD_X + 4, 44);
-                }
-            }
-
-            window.addEventListener('resize', throttle(() => { render(); }, 150));
-
-            function drawEllipsisText(ctx, text, x, y, maxWidth) {
-                if (ctx.measureText(text).width <= maxWidth) {
-                    ctx.fillText(text, x, y); return;
-                }
-                let truncated = text;
-                while (truncated.length > 0 && ctx.measureText(truncated + '…').width > maxWidth) {
-                    truncated = truncated.slice(0, -1);
-                }
-                ctx.fillText(truncated + '…', x, y);
-            }
-            function line(ctx, x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
-            function roundRect(ctx, x, y, w, h, r, fill, stroke) {
-                if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2;
-                ctx.beginPath();
-                ctx.moveTo(x + r, y);
-                ctx.arcTo(x + w, y, x + w, y + h, r);
-                ctx.arcTo(x + w, y + h, x, y + h, r);
-                ctx.arcTo(x, y + h, x, y, r);
-                ctx.arcTo(x, y, x + w, y, r);
-                ctx.closePath();
-                if (fill) ctx.fill();
-                if (stroke) ctx.stroke();
-            }
-
-            // ----- Daily mode state -----
-            let DAY_MODE = false;        // สลับโหมด
-            let currentDay = null;       // 'YYYY-MM-DD'
-            let DAYS_INDEX = [];         // รายการวันที่ที่มีข้อมูลล่าสุด → เก็บจาก DATA_RAW
-
-            function listDays(items) {
-                const set = new Set(items.map(it => (it.booked_at || '').slice(0, 10)).filter(Boolean));
-                return Array.from(set).sort((a, b) => a < b ? 1 : -1); // ล่าสุดก่อน
-            }
-
-            function nearestValidDay(targetDay) {
-                // ถ้าวันที่เลือกไม่มีข้อมูล ให้หา "วันที่ใกล้เคียง" ที่มีข้อมูล
-                if (!DAYS_INDEX.length) return targetDay;
-                if (DAYS_INDEX.includes(targetDay)) return targetDay;
-                // หา day ที่ใกล้ที่สุดตามลำดับเวลา (ล่าสุดก่อน)
-                const after = DAYS_INDEX.find(d => d <= targetDay);     // ใกล้ก่อนหน้า/วันเดียวกัน
-                const before = [...DAYS_INDEX].reverse().find(d => d >= targetDay); // ใกล้ถัดไป
-                return after || before || DAYS_INDEX[0];
-            }
-
-            function setDay(dayStr) {
-                currentDay = dayStr;
-                const dp = document.getElementById('dayPicker');
-                if (dp) dp.value = currentDay || '';
-                // กรองเฉพาะวัน
-                if (DAY_MODE && currentDay) {
-                    const only = DATA_RAW.filter(it => (it.booked_at || '').slice(0, 10) === currentDay);
-                    grouped = groupByDay(only, currentSearch);
-                } else {
-                    grouped = groupByDay(DATA_RAW, currentSearch);
-                }
-                fitCanvasToHolder(); render();
-            }
-
-            function shiftDay(delta) {
-                if (!DAYS_INDEX.length) return;
-                if (!currentDay) currentDay = DAYS_INDEX[0];
-                const i = DAYS_INDEX.indexOf(currentDay);
-                if (i === -1) { setDay(DAYS_INDEX[0]); return; }
-                let j = i + (delta > 0 ? -1 : 1); // DAYS_INDEX เรียงล่าสุด→เก่า: next(ถัดไป) = index-1
-                j = Math.max(0, Math.min(DAYS_INDEX.length - 1, j));
-                setDay(DAYS_INDEX[j]);
-            }
-
-            function applyDayBoundsToPicker() {
-                const dp = document.getElementById('dayPicker');
-                if (!dp) return;
-                if (DAYS_INDEX.length) {
-                    const max = DAYS_INDEX[0];                             // ล่าสุด
-                    const min = DAYS_INDEX[DAYS_INDEX.length - 1];         // เก่าสุด
-                    dp.max = max; dp.min = min;
-                } else {
-                    dp.removeAttribute('min'); dp.removeAttribute('max');
-                }
-            }
-
-            // ----- Toggle handler -----
-            function toggleDayMode(force = null) {
-                DAY_MODE = (force == null ? !DAY_MODE : !!force);
-                document.getElementById('dayControls').style.display = DAY_MODE ? 'inline-flex' : 'none';
-                document.getElementById('rgDayToggle').classList.toggle('btn-primary', DAY_MODE);
-                if (DAY_MODE) {
-                    // สร้าง index ของวันที่มีข้อมูล และตั้งวันปัจจุบัน/ล่าสุด
-                    DAYS_INDEX = listDays(DATA_RAW);
-                    applyDayBoundsToPicker();
-                    const todayISO = new Date().toISOString().slice(0, 10);
-                    const pick = nearestValidDay(todayISO) || DAYS_INDEX[0] || todayISO;
-                    setDay(pick);
-                } else {
-                    setDay(null); // กลับเป็นทุกวัน
-                }
-            }
-
-            async function reload() {
-                document.getElementById('rgReload')?.setAttribute('disabled', '');
-                try {
-                    const list = await fetchRegistrations(currentRange);
-                    DATA_RAW = Array.isArray(list) ? list : [];
-                    // อัปเดตรายการวัน
-                    DAYS_INDEX = listDays(DATA_RAW);
-                    applyDayBoundsToPicker();
-
-                    if (DAY_MODE) {
-                        // คงวันที่ที่เลือก ถ้าไม่มีให้เลือกวันใกล้สุดที่มีข้อมูล
-                        currentDay = nearestValidDay(currentDay || new Date().toISOString().slice(0, 10));
-                        setDay(currentDay);    // ภายในจะจัด group/render เอง
-                    } else {
-                        grouped = groupByDay(DATA_RAW, currentSearch);
-                        fitCanvasToHolder(); render();
-                    }
-                } finally {
-                    document.getElementById('rgReload')?.removeAttribute('disabled');
-                }
-            }
-
-            // Daily controls events
-            document.getElementById('rgDayToggle')?.addEventListener('click', () => toggleDayMode());
-            document.getElementById('dayPrev')?.addEventListener('click', () => shiftDay(-1));
-            document.getElementById('dayNext')?.addEventListener('click', () => shiftDay(+1));
-            document.getElementById('dayAll')?.addEventListener('click', () => toggleDayMode(false));
-            document.getElementById('dayPicker')?.addEventListener('change', (e) => {
-                const v = (e.target.value || '').slice(0, 10);
-                if (!v) return;
-                setDay(nearestValidDay(v));
-            });
-
-            // ค้นหา/ช่วงเวลา/บันทึกภาพ
-            document.getElementById('rgSearch')?.addEventListener('input', throttle(e => {
-                currentSearch = e.target.value || '';
-                grouped = groupByDay(DATA_RAW, currentSearch);
-                render();
-            }, 200));
-
-            document.getElementById('rgRange')?.addEventListener('change', async e => {
-                currentRange = e.target.value || '30d';
-                await reload();
-            });
-
-            document.getElementById('rgReload')?.addEventListener('click', reload);
-
-            document.getElementById('rgSaveCsv')?.addEventListener('click', () => {
-                const total = grouped.reduce((n, g) => n + (g.items?.length || 0), 0);
-                if (!total) { alert('ยังไม่มีข้อมูลให้บันทึก'); return; }
-                downloadCSV('registrations');
-            });
-
-            // เริ่มโหลด
+            // GO
             reload();
         })();
 
