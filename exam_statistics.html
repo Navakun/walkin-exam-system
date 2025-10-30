@@ -349,16 +349,14 @@
         const kill = inst => { try { inst?.destroy(); } catch { } };
 
         function drawPerQuestionChart(rows) {
-            const labels = (rows || []).map(r => 'ข้อ ' + (r.question_id ?? r.id));
-            const corrects = (rows || []).map(r => Number(r.corrects ?? 0));
-            const attempts = (rows || []).map(r => Number(r.attempts ?? 0));
+            const labels = (rows || []).map(r => 'ข้อ ' + (r.id || 0));
+            const corrects = (rows || []).map(r => Number(r.corrects || 0));
+            const attempts = (rows || []).map(r => Number(r.attempts || 0));
 
-            // คำนวณความกว้างตามจำนวนข้อ แล้วคุมเฉพาะ "width"
             const canvas = document.getElementById('perQuestionChart');
-            const pxPerBar = 28;                 // ปรับความถี่แท่ง
+            const pxPerBar = 28;
             const w = Math.max(800, labels.length * pxPerBar);
-            canvas.style.width = w + 'px';       // ให้เลื่อนได้ทาง .hscroll
-            // ห้ามเซ็ต canvas.height / style.height ตรงนี้
+            canvas.style.width = w + 'px';
 
             perQuestionChart?.destroy();
             perQuestionChart = new Chart(canvas, {
@@ -371,8 +369,8 @@
                     ]
                 },
                 options: {
-                    responsive: true,            // ให้ Chart.js ปรับตาม container
-                    maintainAspectRatio: false,  // ความสูงยึด .hscroll-inner 360px
+                    responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: { position: 'top' },
                         tooltip: {
@@ -388,14 +386,7 @@
                         }
                     },
                     scales: {
-                        x: {
-                            ticks: {
-                                autoSkip: false,
-                                maxRotation: 0,
-                                callback: (v) => String(labels[v]).replace('ข้อ ', '')
-                            },
-                            grid: { display: false }
-                        },
+                        x: { ticks: { autoSkip: false, maxRotation: 0, callback: (v) => String(labels[v]).replace('ข้อ ', '') }, grid: { display: false } },
                         y: { beginAtZero: true, ticks: { precision: 0 } }
                     }
                 }
@@ -403,10 +394,10 @@
         }
 
         function drawHistogram(rows) {
-            const labels = (rows || []).map(r => Number(r.corrects ?? r.score ?? 0));
-            const students = (rows || []).map(r => Number(r.students ?? r.count ?? 0));
+            const labels = (rows || []).map(r => Number(r.corrects || 0));
+            const students = (rows || []).map(r => Number(r.students || 0));
 
-            kill(histChart);
+            histChart?.destroy();
             histChart = new Chart($('#histChart'), {
                 type: 'bar',
                 data: { labels, datasets: [{ label: 'จำนวนนักศึกษาที่ทำถูก n ข้อ', data: students }] },
@@ -427,20 +418,21 @@
 
         async function fetchStats() {
             const ex = $('#examsetSelect').value;
-            const f = $('#fromDate').value;
-            const t = $('#toDate').value;
+            const f = $('#fromDate').value;          // YYYY-MM-DD
+            const t = $('#toDate').value;            // YYYY-MM-DD
 
             const params = new URLSearchParams();
             if (ex) params.set('examset_id', ex);
             if (f) params.set('from', f);
-            if (t) params.set('to', t);
+            if (t) {
+                params.set('to', t);
+                params.set('to_end', '23:59:59');      // ✅ ครอบคลุมทั้งวันนั้น
+            }
 
-            const url = `${API}/get_exam_statistics.php` + (params.toString() ? ('?' + params.toString()) : '');
-
-            // cancel request เก่าถ้ายังไม่จบ
             try { _ctrl?.abort(); } catch { }
             _ctrl = new AbortController();
 
+            const url = `${API}/get_exam_statistics.php` + (params.toString() ? ('?' + params.toString()) : '');
             const res = await fetch(url, {
                 headers: { 'Authorization': 'Bearer ' + TOK, 'Accept': 'application/json' },
                 cache: 'no-store',
@@ -454,7 +446,30 @@
             if (!res.ok || data.status !== 'success') {
                 throw new Error(data?.message || `HTTP ${res.status}`);
             }
-            return data.data;
+
+            // --- normalize shape ---
+            const d = data.data || {};
+            const out = {
+                examsets: d.examsets || d.sets || [],
+                totals: {
+                    sessions: Number(d.totals?.sessions ?? d.sessions ?? 0),
+                    total_questions: Number(d.totals?.total_questions ?? d.total_questions ?? 0),
+                    avg_correct: Number(d.totals?.avg_correct ?? d.avg_correct ?? 0),
+                    avg_score_percent: Number(d.totals?.avg_score_percent ?? d.avg_score ?? d.avg_pct ?? 0)
+                },
+                per_question: (d.per_question || d.question_stats || []).map(r => ({
+                    id: Number(r.question_id ?? r.id ?? 0),
+                    attempts: Number(r.attempts ?? r.total ?? 0),
+                    corrects: Number(r.corrects ?? r.right ?? 0),
+                    question_text: String(r.question_text ?? r.title ?? '').trim()
+                })),
+                histogram: (d.histogram || d.distribution || []).map(r => ({
+                    corrects: Number(r.corrects ?? r.score ?? r.x ?? 0),
+                    students: Number(r.students ?? r.count ?? r.y ?? 0)
+                }))
+            };
+
+            return out;
         }
 
         function fillExamsetOptions(arr) {
@@ -472,14 +487,30 @@
             if (keep) sel.value = keep;
         }
 
-        function renderKPI(t) {
-            $('#kpiSessions').textContent = t.sessions ?? '0';
-            $('#kpiQuestions').textContent = t.total_questions ?? '0';
-            $('#kpiAvgCorrect').textContent = (t.avg_correct ?? 0).toString();
-            const avgPct = (t.avg_score_percent != null)
-                ? Number(t.avg_score_percent).toFixed(2)
-                : '0.00';
-            $('#kpiAvgScore').textContent = `${avgPct}%`;
+        function renderKPI(t, perQuestion = []) {
+            const sessions = Number(t.sessions ?? 0);
+            const totalQuestions = Number(t.total_questions ?? 0);
+
+            // fallback เฉลี่ยข้อที่ถูก (รวม corrects ของทุกข้อ / (#ข้อ ถ้ามา) หรือ/ (#ข้อที่มีสถิติ))
+            let avgCorrect = Number(t.avg_correct ?? 0);
+            if (!avgCorrect && perQuestion.length) {
+                const sumCorrect = perQuestion.reduce((s, q) => s + (q.corrects || 0), 0);
+                const denom = (totalQuestions || perQuestion.length);
+                avgCorrect = denom ? (sumCorrect / denom) : 0;
+            }
+
+            // fallback %score เฉลี่ย: (ถูกทั้งหมด / (attempts ทั้งหมด)) * 100
+            let avgPct = Number(t.avg_score_percent ?? 0);
+            if (!avgPct && perQuestion.length) {
+                const sumC = perQuestion.reduce((s, q) => s + (q.corrects || 0), 0);
+                const sumA = perQuestion.reduce((s, q) => s + (q.attempts || 0), 0);
+                avgPct = sumA ? (sumC / sumA * 100) : 0;
+            }
+
+            $('#kpiSessions').textContent = sessions.toString();
+            $('#kpiQuestions').textContent = totalQuestions.toString();
+            $('#kpiAvgCorrect').textContent = avgCorrect.toFixed(2);
+            $('#kpiAvgScore').textContent = `${avgPct.toFixed(2)}%`;
         }
 
         // ---------- ตารางรายข้อ ----------
@@ -488,12 +519,12 @@
 
         function renderQuestionTable(perQuestionRaw) {
             Q_ALL = (perQuestionRaw || []).map(row => {
-                const id = Number(row.question_id ?? row.id ?? 0);
-                const attempts = Number(row.attempts ?? 0);
-                const corrects = Number(row.corrects ?? 0);
+                const id = Number(row.id || 0);
+                const attempts = Math.max(0, Number(row.attempts || 0));
+                const corrects = Math.max(0, Number(row.corrects || 0));
                 const wrongs = Math.max(0, attempts - corrects);
                 const pct = attempts > 0 ? (corrects / attempts) : 0;
-                const text = String(row.question_text || row.title || '').trim();
+                const text = String(row.question_text || '').trim();
                 return { id, attempts, corrects, wrongs, pct, text };
             });
 
@@ -594,7 +625,7 @@
                 if (!stats) return;
 
                 fillExamsetOptions(stats.examsets || []);
-                renderKPI(stats.totals || {});
+                renderKPI(stats.totals || {}, stats.per_question || []);
                 drawPerQuestionChart(stats.per_question || []);
                 drawHistogram(stats.histogram || []);
                 renderQuestionTable(stats.per_question || []);
