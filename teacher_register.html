@@ -6,9 +6,16 @@
     <title>สมัครสมาชิกอาจารย์</title>
     <link rel="icon" href="data:," />
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- CSS ของโปรเจกต์ -->
     <link rel="stylesheet" href="assets/css/main.css">
     <link rel="stylesheet" href="assets/css/login.css">
     <link rel="stylesheet" href="assets/css/teacher.css">
+
+    <!-- Font Awesome (CDN แบบ CSS ปลอด 403) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <style>
         body {
@@ -20,7 +27,7 @@
             background: #fff;
             border-radius: 18px;
             padding: 32px 40px;
-            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, .08);
             max-width: 480px;
             margin: 60px auto;
             text-align: center;
@@ -44,12 +51,12 @@
         input:focus {
             border-color: #2563eb;
             outline: none;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, .2);
         }
 
         button {
             background-color: #2563eb;
-            color: white;
+            color: #fff;
             border: none;
             border-radius: 10px;
             padding: 12px 18px;
@@ -84,17 +91,22 @@
         }
 
         .home-btn {
-            background: #5aa04c;
+            background: #f8fafc;
             color: #1e293b;
             border: 1px solid #cbd5e1;
             padding: 6px 12px;
             border-radius: 10px;
             cursor: pointer;
-            transition: 0.2s;
+            transition: .2s;
         }
 
         .home-btn:hover {
-            background: #538847;
+            background: #e2e8f0;
+        }
+
+        .btn--loading {
+            opacity: .75;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -108,56 +120,107 @@
             </div>
         </div>
         <div class="top-right">
-            <button id="logoutBtn" class="home-btn">กลับหน้า Login</button>
+            <button id="backLoginBtn" class="home-btn">กลับหน้า Login</button>
         </div>
     </header>
 
     <main class="login-box">
-        <h2><i class="fa-solid fa-user-plus me-2"></i> สมัครสมาชิกอาจารย์</h2>
-        <div id="messageBox" class="message"></div>
+        <h2><i class="fa-solid fa-user-plus" aria-hidden="true"></i> สมัครสมาชิกอาจารย์</h2>
 
-        <form id="registerForm">
-            <input type="text" name="instructor_id" placeholder="รหัสอาจารย์ (เช่น T001)" required>
-            <input type="text" name="name" placeholder="ชื่อ-นามสกุล" required>
-            <input type="email" name="email" placeholder="อีเมล" required>
-            <input type="password" name="password" placeholder="รหัสผ่าน" minlength="8" required>
-            <button type="submit"><i class="fa-solid fa-user-plus me-1"></i> สมัครสมาชิก</button>
+        <!-- aria-live เพื่อให้แจ้งผลกับผู้อ่านหน้าจอ -->
+        <div id="messageBox" class="message" role="status" aria-live="polite"></div>
+
+        <form id="registerForm" autocomplete="off" accept-charset="UTF-8" novalidate>
+            <input type="text" name="instructor_id" placeholder="รหัสอาจารย์ (เช่น T001)" required maxlength="15"
+                autocomplete="username">
+            <input type="text" name="name" placeholder="ชื่อ-นามสกุล" required maxlength="100" autocomplete="name">
+            <input type="email" name="email" placeholder="อีเมล" required maxlength="120" autocomplete="email">
+            <input type="password" name="password" placeholder="รหัสผ่าน (อย่างน้อย 8 ตัว)" minlength="8" required
+                autocomplete="new-password">
+            <button type="submit" id="submitBtn">
+                <i class="fa-solid fa-user-plus" aria-hidden="true"></i> สมัครสมาชิก
+            </button>
         </form>
     </main>
 
     <script>
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            window.location.href = 'teacher_login.html';
+        const $ = (sel, root = document) => root.querySelector(sel);
+        const messageBox = $('#messageBox');
+        const form = $('#registerForm');
+        const submitBtn = $('#submitBtn');
+
+        $('#backLoginBtn').addEventListener('click', () => {
+            location.href = 'teacher_login.html';
         });
 
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        function showMsg(type, text) {
+            messageBox.className = 'message ' + (type === 'success' ? 'success' : 'error');
+            messageBox.textContent = text || (type === 'success' ? 'สำเร็จ' : 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+            messageBox.style.display = 'block';
+        }
+
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const messageBox = document.getElementById('messageBox');
-            const form = e.target;
+            messageBox.style.display = 'none';
+
+            // ปรับรหัสอาจารย์ให้เป็นตัวพิมพ์ใหญ่ก่อนส่ง
+            const fd = new FormData(form);
+            const ins = (fd.get('instructor_id') || '').toString().trim().toUpperCase();
+            const name = (fd.get('name') || '').toString().trim();
+            const email = (fd.get('email') || '').toString().trim().toLowerCase();
+            const password = (fd.get('password') || '').toString();
+
+            // ตรวจแบบ client side ให้ครบถ้วน
+            if (!ins || !name || !email || !password) {
+                showMsg('error', 'กรุณากรอกข้อมูลให้ครบทุกช่อง');
+                return;
+            }
+            if (ins.length > 15 || name.length > 100 || email.length > 120) {
+                showMsg('error', 'ข้อมูลยาวเกินกำหนด โปรดตรวจสอบอีกครั้ง');
+                return;
+            }
+            if (password.length < 8) {
+                showMsg('error', 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');
+                return;
+            }
+
+            // เขียนค่าที่ normalize กลับลง FormData
+            fd.set('instructor_id', ins);
+            fd.set('email', email);
+
+            // กันกดซ้ำ
+            submitBtn.classList.add('btn--loading');
+            submitBtn.disabled = true;
+            const origText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i> กำลังสมัคร...';
 
             try {
-                const response = await fetch('api/teacher_register.php', {
-                    method: 'POST',
-                    body: new FormData(form)
-                });
+                const res = await fetch('api/teacher_register.php', { method: 'POST', body: fd, cache: 'no-store' });
+                const raw = await res.text();
 
-                const result = await response.json();
-                messageBox.style.display = 'block';
+                // พยายาม parse JSON ถ้าไม่ใช่ JSON ให้โยน raw ออกไปแสดง (ช่วยดีบัก 500 ได้)
+                let data;
+                try { data = JSON.parse(raw); } catch { data = null; }
 
-                if (response.ok && result.status === 'success') {
-                    messageBox.className = 'message success';
-                    messageBox.textContent = result.message || 'สมัครสมาชิกสำเร็จ!';
-                    setTimeout(() => {
-                        window.location.href = 'teacher_login.html';
-                    }, 2000);
-                } else {
-                    messageBox.className = 'message error';
-                    messageBox.textContent = result.message || result.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+                if (!res.ok) {
+                    const msg = data?.message || data?.error || (raw ? String(raw).replace(/<[^>]*>/g, '').trim() : '');
+                    showMsg('error', msg || `สมัครไม่สำเร็จ (HTTP ${res.status})`);
+                    return;
                 }
-            } catch (error) {
-                messageBox.style.display = 'block';
-                messageBox.className = 'message error';
-                messageBox.textContent = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่';
+
+                if (data?.status === 'success') {
+                    showMsg('success', data.message || 'สมัครสมาชิกสำเร็จ!');
+                    setTimeout(() => { location.href = 'teacher_login.html'; }, 1500);
+                } else {
+                    const msg = data?.message || data?.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+                    showMsg('error', msg);
+                }
+            } catch (err) {
+                showMsg('error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่');
+            } finally {
+                submitBtn.classList.remove('btn--loading');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = origText;
             }
         });
     </script>
