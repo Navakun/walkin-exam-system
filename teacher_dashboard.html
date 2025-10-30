@@ -331,16 +331,17 @@
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
                 cache: 'no-store'
             });
-            const raw = await r.text();
-            let d; try { d = JSON.parse(raw); } catch { throw new Error(raw); }
+            const d = await r.json();
             if (!r.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${r.status}`);
 
             const k = d.data || {};
-            // ✅ ปรับให้ “จำนวนนิสิต” = จำนวนที่ลงทะเบียนวันนี้
-            setText('kpiStudents', k.registered_today ?? 0);
-            // ตัวอื่น ๆ เผื่ออยากโชว์
+            console.log('[kpis]', k);                 // << ดูใน Console ว่า 101 โผล่
+
             setText('kpiQuestions', k.questions_total ?? 0);
-            setText('kpiCompleted', k.completed_today ?? 0);
+            setText('kpiStudents', k.registered_today ?? 0);
+            // กันโดนโค้ดอื่นเปลี่ยนค่าทีหลัง:
+            document.getElementById('kpiQuestions')?.setAttribute('data-locked', '1');
+            document.getElementById('kpiStudents')?.setAttribute('data-locked', '1');
         }
 
         // ---------- profile modal handlers ----------
