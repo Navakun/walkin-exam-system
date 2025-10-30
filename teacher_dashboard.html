@@ -438,6 +438,43 @@
                 badgeTx: '#ffffff'
             };
 
+            // ===== ฟังก์ชันช่วยสำหรับ canvas ที่เลื่อนได้ =====
+            function measureContentHeight() {
+                const rowH = 30;
+                const headerH = 38;
+                const gapDay = 16;
+
+                let h = 12; // margin บน
+                for (const g of grouped) {
+                    h += headerH + 8;       // แถบหัววัน
+                    h += 6 + 1 + 10;        // หัวคอลัมน์ + เส้นคั่น + padding
+                    h += rowH * (g.items?.length || 0); // แถวข้อมูล
+                    h += gapDay;            // ช่องว่างระหว่างวัน
+                }
+                h += 12; // margin ล่าง
+                return Math.max(300, h);  // กันเตี้ยเกินไป
+            }
+
+            function sizeCanvasToContent() {
+                const dpr = Math.max(1, window.devicePixelRatio || 1);
+                const w = Math.max(640, holder.clientWidth);
+                const h = measureContentHeight();
+
+                // ขนาด CSS เพื่อให้เกิดสกรอลบาร์ใน .canvas-holder
+                canvas.style.width = w + 'px';
+                canvas.style.height = h + 'px';
+
+                // ขนาดพิกเซลจริงสำหรับความคมชัด
+                canvas.width = Math.floor(w * dpr);
+                canvas.height = Math.floor(h * dpr);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                return { w, h };
+            }
+
+            // สำหรับความเข้ากันได้กับโค้ดเดิม
+            function fitCanvasToHolder() { return sizeCanvasToContent(); }
+
             // ปรับ DPI ให้คมชัด
             // คำนวณความสูงที่ต้องใช้จริงตามจำนวนวัน/แถว
             function measureContentHeight() {
