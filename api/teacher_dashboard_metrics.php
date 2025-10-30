@@ -106,6 +106,7 @@ try {
         $data['exams_completed_total'] = (int)$pdo->query("SELECT COUNT(*) FROM examsession WHERE end_time IS NOT NULL")->fetchColumn();
     } catch (Throwable $e) {
     }
+
     // ---------- (ใหม่) Pass/Fail ของวันตามพารามิเตอร์ ----------
     $dayParam = isset($_GET['day']) ? substr($_GET['day'], 0, 10) : '';
     if ($dayParam && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dayParam)) {

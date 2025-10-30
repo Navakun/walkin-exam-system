@@ -311,8 +311,7 @@
         // ---------- helpers ----------
         const ROOT = location.pathname.includes('/walkin-exam-system/') ? '/walkin-exam-system' : '';
         const API = `${ROOT}/api`;
-
-        // ====================== Pass/Fail Pie (ตามวันเดียวกับรายชื่อ) ======================
+        // === Pass/Fail Pie ===
         let passPieChart = null;
 
         function setPfSubtitle(dayISO, total) {
@@ -329,7 +328,7 @@
             const url = `${API}/teacher_dashboard_metrics.php?day=${encodeURIComponent(dayISO)}`;
             const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store' });
             const raw = await res.text();
-            let d; try { d = JSON.parse(raw); } catch { throw new Error(raw); }
+            let d; try { d = JSON.parse(raw); } catch { console.warn('metrics RAW:', raw); throw new Error(raw); }
             if (!res.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${res.status}`);
             return d.data?.passfail_day || { passed: 0, failed: 0, total: 0, pass_threshold: 50, day: dayISO };
         }
@@ -338,60 +337,27 @@
             const el = document.getElementById('passPie');
             if (!el) return null;
             if (passPieChart) return passPieChart;
-
             passPieChart = new Chart(el, {
                 type: 'doughnut',
-                data: {
-                    labels: ['ผ่าน', 'ไม่ผ่าน'],
-                    datasets: [{
-                        data: [0, 0],
-                        backgroundColor: ['#16a34a', '#ef4444'], // เขียว / แดง
-                        borderColor: '#ffffff',
-                        borderWidth: 2,
-                        hoverOffset: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '55%',
-                    plugins: {
-                        legend: { position: 'bottom' },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => {
-                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0) || 1;
-                                    const val = ctx.parsed || 0;
-                                    const pct = Math.round((val / total) * 1000) / 10;
-                                    return `${ctx.label}: ${val} คน (${pct.toFixed(1)}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
+                data: { labels: ['ผ่าน', 'ไม่ผ่าน'], datasets: [{ data: [0, 0], backgroundColor: ['#16a34a', '#ef4444'], borderColor: '#fff', borderWidth: 2, hoverOffset: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'bottom' } } }
             });
-
-            // บันทึกเป็น PNG
             document.getElementById('pfSavePng')?.addEventListener('click', () => {
                 const a = document.createElement('a');
                 a.href = passPieChart.toBase64Image('image/png', 1);
-                a.download = `passfail_${new Date().toISOString().slice(0, 10)}.png`;
-                a.click();
+                a.download = `passfail_${new Date().toISOString().slice(0, 10)}.png`; a.click();
             });
-
             return passPieChart;
         }
 
         async function updatePassPieForDay(dayISO) {
             try {
-                const chart = ensurePassPie();
-                if (!chart) return;
-
-                const { passed, failed, total } = await fetchPassFailByDay(dayISO);
-                chart.data.datasets[0].data = [passed || 0, failed || 0];
-                chart.update();
-
-                setPfSubtitle(dayISO, total);
+                const c = ensurePassPie(); if (!c) return;
+                const { passed, failed, total, day } = await fetchPassFailByDay(dayISO);
+                c.data.datasets[0].data = [passed || 0, failed || 0];
+                c.update();
+                setPfSubtitle(day, total);
+                console.debug('[pass/fail]', day, { passed, failed, total });
             } catch (e) {
                 console.warn('updatePassPieForDay failed:', e);
                 setPfSubtitle(dayISO, null);
@@ -650,6 +616,7 @@
                     ctx.fillText('ไม่พบข้อมูลของวันที่เลือก', PAD_X + 4, 44);
                 }
             }
+            if (currentDay) updatePassPieForDay(currentDay);
 
             function drawEllipsisText(ctx, text, x, y, maxW) {
                 if (ctx.measureText(text).width <= maxW) { ctx.fillText(text, x, y); return; }
@@ -806,6 +773,7 @@
             document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') guardAuth(); });
         });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 </body>
 
