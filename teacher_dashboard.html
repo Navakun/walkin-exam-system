@@ -291,6 +291,7 @@
             const isSet = !(val === null || val === undefined);
             el.textContent = isSet ? String(val) : '—'; // รองรับ 0 อย่างถูกต้อง
         };
+        const setTextIf = (id, val) => { if (val !== undefined && val !== null) setText(id, val); };
 
         function showModal(id, open) {
             const el = document.getElementById(id);
@@ -706,11 +707,12 @@
                 });
                 const raw = await resp.text(); let metrics = null; try { metrics = JSON.parse(raw); } catch { }
 
-                const qTotal = metrics?.questions?.total ?? null;
-                const completed = metrics?.exams?.completed ?? null;
+                // อ่านค่าถูกฟิลด์
+                const qTotal = metrics?.data?.questions_total;
+                const completedTotal = metrics?.data?.exams_completed_total;
 
-                setText('kpiQuestions', qTotal);
-                setText('kpiCompleted', completed);
+                if (qTotal != null) setText('kpiQuestions', qTotal);
+                if (completedTotal != null) setText('kpiCompleted', completedTotal); // (ถ้าจะใช้ ให้มี element นี้ด้วย)
             } catch { }
 
             // กันย้อนกลับจาก BFCache แล้ว auth หลุด
