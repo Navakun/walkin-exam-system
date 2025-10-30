@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <title>สมัครสมาชิกอาจารย์</title>
+    <link rel="icon" href="data:," />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/login.css">
+    <link rel="stylesheet" href="assets/css/teacher.css">
+
+    <style>
+        body {
+            background-color: #f6f8fb;
+            font-family: 'Prompt', sans-serif;
+        }
+
+        .login-box {
+            background: #fff;
+            border-radius: 18px;
+            padding: 32px 40px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+            max-width: 480px;
+            margin: 60px auto;
+            text-align: center;
+        }
+
+        h2 {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            margin: 10px 0;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        input:focus {
+            border-color: #2563eb;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 18px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #1d4ed8;
+        }
+
+        .message {
+            display: none;
+            margin: 12px 0;
+            padding: 10px 14px;
+            border-radius: 8px;
+        }
+
+        .message.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .home-btn {
+            background: #f8fafc;
+            color: #1e293b;
+            border: 1px solid #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .home-btn:hover {
+            background: #e2e8f0;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo-text">
+            <img src="nulogo.png" alt="Logo" height="90">
+            <div class="course-title">
+                <h2>ระบบจัดสอบ Walk-in<br>สำหรับอาจารย์ผู้สอน</h2>
+            </div>
+        </div>
+        <div class="top-right">
+            <button id="logoutBtn" class="home-btn">กลับหน้า Login</button>
+        </div>
+    </header>
+
+    <main class="login-box">
+        <h2><i class="fa-solid fa-user-plus me-2"></i> สมัครสมาชิกอาจารย์</h2>
+        <div id="messageBox" class="message"></div>
+
+        <form id="registerForm">
+            <input type="text" name="instructor_id" placeholder="รหัสอาจารย์ (เช่น T001)" required>
+            <input type="text" name="name" placeholder="ชื่อ-นามสกุล" required>
+            <input type="email" name="email" placeholder="อีเมล" required>
+            <input type="password" name="password" placeholder="รหัสผ่าน" minlength="8" required>
+            <button type="submit"><i class="fa-solid fa-user-plus me-1"></i> สมัครสมาชิก</button>
+        </form>
+    </main>
+
+    <script>
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            window.location.href = 'teacher_login.html';
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const messageBox = document.getElementById('messageBox');
+            const form = e.target;
+
+            try {
+                const response = await fetch('api/teacher_register.php', {
+                    method: 'POST',
+                    body: new FormData(form)
+                });
+
+                const result = await response.json();
+                messageBox.style.display = 'block';
+
+                if (response.ok && result.status === 'success') {
+                    messageBox.className = 'message success';
+                    messageBox.textContent = result.message || 'สมัครสมาชิกสำเร็จ!';
+                    setTimeout(() => {
+                        window.location.href = 'teacher_login.html';
+                    }, 2000);
+                } else {
+                    messageBox.className = 'message error';
+                    messageBox.textContent = result.message || result.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+                }
+            } catch (error) {
+                messageBox.style.display = 'block';
+                messageBox.className = 'message error';
+                messageBox.textContent = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่';
+            }
+        });
+    </script>
+
+    <script src="https://kit.fontawesome.com/a2e0e9b2b9.js" crossorigin="anonymous"></script>
+</body>
+
+</html>
