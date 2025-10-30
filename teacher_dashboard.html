@@ -302,51 +302,36 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
     <script>
-        /* =======================
-           Teacher Dashboard JS (Full)
-           - KPI วันนี้
-           - รายชื่อผู้ลงทะเบียน (canvas custom)
-           - กราฟ doughnut ผ่าน/ไม่ผ่าน ตามวันจาก date picker
-           ======================= */
-
-        // ---------- base helpers ----------
+        // ====================== Helpers (เวลา, JWT, DOM) ======================
         const ROOT = location.pathname.includes('/walkin-exam-system/') ? '/walkin-exam-system' : '';
         const API = `${ROOT}/api`;
 
-        // แปลงวันเป็น YYYY-MM-DD เสมอ
+        // YYYY-MM-DD ตามเวลาเครื่อง (Local) — ไม่ใช่ UTC
+        function todayLocalISO() {
+            const now = new Date();
+            const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+            return local.toISOString().slice(0, 10);
+        }
+
+        // แปลงเป็น YYYY-MM-DD (รองรับ mm/dd/yyyy)
         function toISODate(s) {
             if (!s) return '';
             if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-            const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); // mm/dd/yyyy
-            if (m) {
-                const mm = m[1].padStart(2, '0'), dd = m[2].padStart(2, '0'), yyyy = m[3];
-                return `${yyyy}-${mm}-${dd}`;
-            }
-            const d = new Date(s);
-            return isNaN(d) ? '' : d.toISOString().slice(0, 10);
+            const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+            if (m) { const mm = m[1].padStart(2, '0'), dd = m[2].padStart(2, '0'), yy = m[3]; return `${yy}-${mm}-${dd}`; }
+            const d = new Date(s); return isNaN(d) ? '' : d.toISOString().slice(0, 10);
         }
 
         const setText = (id, val) => {
-            const el = document.getElementById(id);
-            if (!el) return;
+            const el = document.getElementById(id); if (!el) return;
             const isSet = !(val === null || val === undefined);
             el.textContent = isSet ? String(val) : '—';
         };
-        const setTextIf = (id, val) => { if (val !== undefined && val !== null) setText(id, val); };
-
-        function showModal(id, open) {
-            const el = document.getElementById(id);
-            if (!el) return;
-            open ? el.removeAttribute('hidden') : el.setAttribute('hidden', '');
-        }
 
         async function readJSONorThrow(res) {
             const raw = await res.text();
             try { return JSON.parse(raw); }
-            catch {
-                console.error('RAW:\n', raw);
-                throw new Error(raw.replace(/<[^>]*>/g, '').trim() || `HTTP ${res.status}`);
-            }
+            catch { console.error('RAW:\n', raw); throw new Error(raw.replace(/<[^>]*>/g, '').trim() || `HTTP ${res.status}`); }
         }
 
         function parseJwt(t) {
@@ -359,106 +344,46 @@
 
         function clearAuthStores() {
             try {
-                localStorage.removeItem('teacherToken');
-                localStorage.removeItem('instructor_name');
+                localStorage.removeItem('teacherToken'); localStorage.removeItem('instructor_name');
                 sessionStorage.clear();
                 document.cookie.split(';').forEach(c => {
                     const name = c.split('=')[0].trim();
-                    if (/token|auth|session/i.test(name)) {
-                        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-                    }
+                    if (/token|auth|session/i.test(name)) document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
                 });
             } catch { }
         }
         function goLogin() { location.replace('teacher_login.html'); setTimeout(() => location.href = 'teacher_login.html', 150); }
 
-        // ---------- KPI วันนี้ ----------
+        // ====================== KPI (วันนี้) ======================
         async function loadTodayKPI() {
             const token = localStorage.getItem('teacherToken') || '';
             const r = await fetch(`${API}/teacher_kpis_today.php`, {
-                headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-                cache: 'no-store'
+                headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store'
             });
             const d = await r.json();
             if (!r.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${r.status}`);
             const k = d.data || {};
             console.log('[kpis]', k);
-
             setText('kpiQuestions', k.questions_total ?? 0);
             setText('kpiStudents', k.registered_today ?? 0);
             document.getElementById('kpiQuestions')?.setAttribute('data-locked', '1');
             document.getElementById('kpiStudents')?.setAttribute('data-locked', '1');
         }
 
-        // ---------- โปรไฟล์ ----------
-        async function openEditProfile() {
-            const token = localStorage.getItem('teacherToken'); if (!token) { goLogin(); return; }
-            try {
-                const r = await fetch(`${API}/teacher_get_profile.php`, { headers: { Authorization: `Bearer ${token}` } });
-                const d = await readJSONorThrow(r);
-                if (!r.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${r.status}`);
-                const $ = id => document.getElementById(id);
-                $('inpName') && ($('inpName').value = d.profile?.name || '');
-                $('inpEmail') && ($('inpEmail').value = d.profile?.email || '');
-                $('inpCur') && ($('inpCur').value = '');
-                $('inpNew') && ($('inpNew').value = '');
-                $('profileMsg') && ($('profileMsg').textContent = '');
-                showModal('editProfileModal', true);
-            } catch (e) { alert(e.message || 'โหลดโปรไฟล์ไม่สำเร็จ'); }
-        }
-
-        async function saveProfile() {
-            const token = localStorage.getItem('teacherToken'); if (!token) { goLogin(); return; }
-            const name = document.getElementById('inpName')?.value.trim() || '';
-            const email = document.getElementById('inpEmail')?.value.trim() || '';
-            const cur = document.getElementById('inpCur')?.value || '';
-            const nw = document.getElementById('inpNew')?.value || '';
-            const msgEl = document.getElementById('profileMsg');
-            if (msgEl) msgEl.textContent = '';
-            if (!name || !email) { if (msgEl) msgEl.textContent = 'กรอกชื่อและอีเมล'; return; }
-            if (nw && nw.length < 8) { if (msgEl) msgEl.textContent = 'รหัสผ่านใหม่อย่างน้อย 8 ตัว'; return; }
-
-            try {
-                const r = await fetch(`${API}/teacher_update_profile.php`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ name, email, current_password: cur, new_password: nw })
-                });
-                const d = await readJSONorThrow(r);
-                if (!r.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${r.status}`);
-                if (msgEl) msgEl.textContent = 'บันทึกสำเร็จ ✓';
-                const nameEl = document.getElementById('teacherName'); if (nameEl) nameEl.textContent = name;
-                localStorage.setItem('instructor_name', name);
-                setTimeout(() => showModal('editProfileModal', false), 800);
-            } catch (e) { if (msgEl) msgEl.textContent = e.message || 'บันทึกไม่สำเร็จ'; }
-        }
-
-        // ====================== Pass/Fail Pie ======================
+        // ====================== Pass/Fail Pie (Chart.js) ======================
         let passPieChart = null;
 
         function setPfSubtitle(dayFromApiOrNull, total, fallbackISO) {
-            const el = document.getElementById('pfSubtitle');
-            if (!el) return;
+            const el = document.getElementById('pfSubtitle'); if (!el) return;
             const day = dayFromApiOrNull || fallbackISO || '';
             const d = day ? new Date(day) : new Date('invalid');
             const th = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-            const label = !day || isNaN(d) ? (day || '-') : `${d.getDate()} ${th[d.getMonth()]} ${d.getFullYear() + 543}`;
+            const label = (!day || isNaN(d)) ? (day || '-') : `${d.getDate()} ${th[d.getMonth()]} ${d.getFullYear() + 543}`;
             el.textContent = (typeof total === 'number') ? `${label} • sessions ทั้งวัน: ${total}` : label;
         }
 
-        async function fetchPassFailByDay(dayISO) {
-            const token = localStorage.getItem('teacherToken') || '';
-            const url = `${API}/teacher_dashboard_metrics.php?day=${encodeURIComponent(dayISO)}`;
-            const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store' });
-            const raw = await res.text();
-            let d; try { d = JSON.parse(raw); } catch { console.warn('metrics RAW:', raw); throw new Error(raw); }
-            if (!res.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${res.status}`);
-            return d.data?.passfail_day || { passed: 0, failed: 0, total: 0, pass_threshold: 50, day: dayISO };
-        }
-
         function ensurePassPie() {
-            const el = document.getElementById('passPie');
-            if (!el) return null;
+            const el = document.getElementById('passPie'); if (!el) return null;
             if (passPieChart) return passPieChart;
             passPieChart = new Chart(el, {
                 type: 'doughnut',
@@ -468,66 +393,69 @@
             document.getElementById('pfSavePng')?.addEventListener('click', () => {
                 const a = document.createElement('a');
                 a.href = passPieChart.toBase64Image('image/png', 1);
-                a.download = `passfail_${new Date().toISOString().slice(0, 10)}.png`;
-                a.click();
+                a.download = `passfail_${todayLocalISO()}.png`; a.click();
             });
             return passPieChart;
+        }
+
+        async function fetchPassFailByDay(dayISO) {
+            const token = localStorage.getItem('teacherToken') || '';
+            const url = `${API}/teacher_dashboard_metrics.php?day=${encodeURIComponent(dayISO)}`;
+            const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store' });
+            const raw = await res.text(); let d = null; try { d = JSON.parse(raw); } catch { console.warn('metrics RAW:', raw); throw new Error(raw); }
+            if (!res.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${res.status}`);
+            return d.data?.passfail_day || { passed: 0, failed: 0, total: 0, pass_threshold: 50, day: dayISO };
+        }
+
+        function showZeroOverlay(c, total) {
+            const wrap = c?.canvas?.parentElement; if (!wrap) return;
+            let badge = wrap.querySelector('.pf-zero');
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.className = 'pf-zero';
+                badge.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:600 14px Prompt,system-ui;color:#94a3b8;';
+                wrap.style.position = 'relative';
+                wrap.appendChild(badge);
+            }
+            badge.textContent = total === 0 ? 'ไม่มี session ที่จบในวันนี้' : '';
         }
 
         async function updatePassPieForDay(dayISO) {
             try {
                 const iso = toISODate(dayISO);
                 const c = ensurePassPie(); if (!c) return;
-
                 const { passed, failed, total, day } = await fetchPassFailByDay(iso);
-                const p = Number(passed || 0), f = Number(failed || 0);
-
-                // zero-data handling → วาดวงสีเทา
-                if ((p + f) === 0) {
-                    c.data.labels = ['ไม่มีข้อมูล'];
-                    c.data.datasets[0].data = [1];
-                    c.data.datasets[0].backgroundColor = ['#e5e7eb'];
-                    c.options.plugins.legend.display = false;
-                } else {
-                    c.data.labels = ['ผ่าน', 'ไม่ผ่าน'];
-                    c.data.datasets[0].data = [p, f];
-                    c.data.datasets[0].backgroundColor = ['#16a34a', '#ef4444'];
-                    c.options.plugins.legend.display = true;
-                }
+                c.data.datasets[0].data = [passed || 0, failed || 0];
                 c.update();
-
                 setPfSubtitle(day, total, iso);
-                console.debug('[pass/fail]', iso, { passed: p, failed: f, total, apiDay: day });
+                showZeroOverlay(c, total);
+                console.debug('[pass/fail]', iso, { passed, failed, total, apiDay: day });
             } catch (e) {
                 console.warn('updatePassPieForDay failed:', e);
                 setPfSubtitle(dayISO, null, toISODate(dayISO));
             }
         }
 
-        // ====================== Registrations Canvas (by day) ======================
+        // ====================== รายชื่อผู้ลงทะเบียน (Canvas by day) ======================
         (function () {
-            const canvas = document.getElementById('regCanvas');
-            if (!canvas) return;
-
+            const canvas = document.getElementById('regCanvas'); if (!canvas) return;
             const holder = canvas.parentElement;
             const ctx = canvas.getContext('2d');
 
-            const COLORS = {
-                bgDay: '#f8fafc', text: '#0f172a', sub: '#64748b', line: '#e5e7eb',
-            };
+            const COLORS = { bgDay: '#f8fafc', text: '#0f172a', sub: '#64748b', line: '#e5e7eb' };
 
-            let DATA_RAW = [];   // 90 วันล่าสุดทั้งหมด
-            let grouped = [];   // กลุ่มเฉพาะวันที่เลือก
-            let DAYS_INDEX = []; // รายชื่อวัน (ล่าสุด→เก่าสุด)
-            let currentDay = null;
+            let DATA_RAW = [];     // ทั้งหมดใน 90 วัน
+            let grouped = [];     // เฉพาะวันปัจจุบัน
+            let DAYS_INDEX = [];   // รายชื่อวันที่มีข้อมูล (ล่าสุด→เก่าสุด)
+            let currentDay = null; // YYYY-MM-DD
 
             const throttle = (fn, wait) => { let t = 0; return (...a) => { const n = Date.now(); if (n - t > wait) { t = n; fn(...a); } }; };
+            const formatTime = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toTimeString().slice(0, 5); };
             function formatDateThaiISO(iso) {
                 const d = new Date(iso); if (isNaN(d)) return iso;
                 const th = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
                 return `${d.getDate()} ${th[d.getMonth()]} ${d.getFullYear() + 543}`;
             }
-            const formatTime = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toTimeString().slice(0, 5); };
 
             async function fetchRegistrations() {
                 const token = localStorage.getItem('teacherToken') || '';
@@ -551,7 +479,7 @@
 
             function listDays(items) {
                 const set = new Set(items.map(it => (it.booked_at || '').slice(0, 10)).filter(Boolean));
-                return Array.from(set).sort((a, b) => a < b ? 1 : -1);
+                return Array.from(set).sort((a, b) => a < b ? 1 : -1); // ล่าสุดก่อน
             }
 
             function measureContentHeight() {
@@ -570,12 +498,24 @@
                 const dpr = Math.max(1, window.devicePixelRatio || 1);
                 const w = Math.max(640, holder.clientWidth);
                 const h = measureContentHeight();
-                canvas.style.width = w + 'px';
-                canvas.style.height = h + 'px';
-                canvas.width = Math.floor(w * dpr);
-                canvas.height = Math.floor(h * dpr);
+                canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+                canvas.width = Math.floor(w * dpr); canvas.height = Math.floor(h * dpr);
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
                 return { w, h };
+            }
+
+            function line(ctx, x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+            function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+                if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2;
+                ctx.beginPath();
+                ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+                ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+                if (fill) ctx.fill(); if (stroke) ctx.stroke();
+            }
+            function drawEllipsisText(ctx, text, x, y, maxW) {
+                if (ctx.measureText(text).width <= maxW) { ctx.fillText(text, x, y); return; }
+                let s = text; while (s.length > 0 && ctx.measureText(s + '…').width > maxW) { s = s.slice(0, -1); }
+                ctx.fillText(s + '…', x, y);
             }
 
             function render() {
@@ -588,25 +528,18 @@
 
                 let y = 12;
                 for (const g of grouped) {
-                    // header ของวัน
                     ctx.fillStyle = COLORS.bgDay;
                     roundRect(ctx, PAD_X, y, width - PAD_X * 2, headerH, 10, true, false);
-                    ctx.fillStyle = COLORS.text;
-                    ctx.font = '600 14px "Prompt", system-ui';
+                    ctx.fillStyle = COLORS.text; ctx.font = '600 14px "Prompt", system-ui';
                     ctx.fillText(`📅  ${formatDateThaiISO(g.day)}  •  ${g.items.length} คน`, PAD_X + 8, y + 24);
                     y += headerH + 8;
 
-                    // หัวตาราง
-                    ctx.fillStyle = COLORS.sub;
-                    ctx.font = '600 12px "Prompt", system-ui';
+                    ctx.fillStyle = COLORS.sub; ctx.font = '600 12px "Prompt", system-ui';
                     const xTime = PAD_X + 8, xSid = xTime + COL_TIME + 16, xName = xSid + COL_SID + 16, xSlot = xName + COL_NAME + 16;
-                    ctx.fillText('เวลา', xTime, y);
-                    ctx.fillText('รหัสนิสิต', xSid, y);
-                    ctx.fillText('ชื่อ-สกุล', xName, y);
-                    ctx.fillText('รอบ/ชุดข้อสอบ', xSlot, y);
+                    ctx.fillText('เวลา', xTime, y); ctx.fillText('รหัสนิสิต', xSid, y);
+                    ctx.fillText('ชื่อ-สกุล', xName, y); ctx.fillText('รอบ/ชุดข้อสอบ', xSlot, y);
                     y += 6; ctx.strokeStyle = COLORS.line; ctx.lineWidth = 1; line(ctx, PAD_X, y, width - PAD_X, y); y += 10;
 
-                    // แถว
                     ctx.font = '500 13px "Prompt", system-ui';
                     for (let i = 0; i < g.items.length; i++) {
                         const it = g.items[i];
@@ -631,27 +564,12 @@
                 }
             }
 
-            function drawEllipsisText(ctx, text, x, y, maxW) {
-                if (ctx.measureText(text).width <= maxW) { ctx.fillText(text, x, y); return; }
-                let s = text; while (s.length > 0 && ctx.measureText(s + '…').width > maxW) { s = s.slice(0, -1); }
-                ctx.fillText(s + '…', x, y);
-            }
-            function line(ctx, x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
-            function roundRect(ctx, x, y, w, h, r, fill, stroke) {
-                if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2;
-                ctx.beginPath();
-                ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
-                ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r);
-                ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
-                if (fill) ctx.fill(); if (stroke) ctx.stroke();
-            }
-
-            // เลือกวัน
             function applyDayBoundsToPicker() {
                 const dp = document.getElementById('dayPicker'); if (!dp) return;
                 if (DAYS_INDEX.length) { dp.max = DAYS_INDEX[0]; dp.min = DAYS_INDEX[DAYS_INDEX.length - 1]; }
                 else { dp.removeAttribute('min'); dp.removeAttribute('max'); }
             }
+
             function setDay(dayStr) {
                 currentDay = toISODate(dayStr);
                 const dp = document.getElementById('dayPicker'); if (dp) dp.value = currentDay || '';
@@ -659,26 +577,26 @@
                 const items = only.sort((a, b) => a.booked_at < b.booked_at ? -1 : 1);
                 grouped = currentDay ? [{ day: currentDay, items }] : [];
                 render();
-                updatePassPieForDay(currentDay);
-            }
-            function shiftDay(delta) {
-                if (!DAYS_INDEX.length) return;
-                if (!currentDay) currentDay = DAYS_INDEX[0];
-                const i = DAYS_INDEX.indexOf(currentDay);
-                let j = (i === -1 ? 0 : i + (delta > 0 ? -1 : 1)); // ล่าสุด→เก่าสุด
-                j = Math.max(0, Math.min(DAYS_INDEX.length - 1, j));
-                setDay(DAYS_INDEX[j]);
+                updatePassPieForDay(currentDay); // อัปเดตกราฟตามวันใน picker
             }
 
-            // โหลดครั้งแรก
+            function shiftDay(delta) {
+                if (!DAYS_INDEX.length) { setDay(currentDay || todayLocalISO()); return; }
+                if (!currentDay) { setDay(DAYS_INDEX[0]); return; }
+                const i = DAYS_INDEX.indexOf(currentDay);
+                if (i === -1) { setDay(DAYS_INDEX[0]); return; }
+                // รายการเรียง "ล่าสุด -> เก่าสุด"
+                const nextIndex = (delta > 0) ? Math.max(0, i - 1) : Math.min(DAYS_INDEX.length - 1, i + 1);
+                setDay(DAYS_INDEX[nextIndex]);
+            }
+
             async function reload() {
                 const list = await fetchRegistrations();
                 DATA_RAW = Array.isArray(list) ? list : [];
                 DAYS_INDEX = listDays(DATA_RAW);
                 applyDayBoundsToPicker();
-                const todayISO = new Date().toISOString().slice(0, 10);
-                const pick = DAYS_INDEX.includes(todayISO) ? todayISO : (DAYS_INDEX[0] || todayISO);
-                setDay(pick);
+                // ✅ เริ่มต้นเป็น "วันนี้" เสมอ
+                setDay(todayLocalISO());
             }
 
             // Events
@@ -686,34 +604,29 @@
             document.getElementById('dayPrev')?.addEventListener('click', () => shiftDay(-1));
             document.getElementById('dayNext')?.addEventListener('click', () => shiftDay(+1));
             document.getElementById('dayPicker')?.addEventListener('change', e => {
-                const iso = toISODate(e.target.value || ''); if (!iso) return; setDay(iso);
+                const iso = toISODate(e.target.value || '');
+                if (!iso) return; setDay(iso);
             });
 
-            // CSV export
+            // CSV
             document.getElementById('rgSaveCsv')?.addEventListener('click', () => {
                 const total = grouped.reduce((n, g) => n + (g.items?.length || 0), 0);
                 if (!total) { alert('ยังไม่มีข้อมูลให้บันทึก'); return; }
                 downloadCSV('registrations');
             });
+            const csvEscape = v => { const s = String(v ?? ''); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
             function toCSVRows() {
                 const rows = [['วันที่', 'เวลา', 'รหัสนิสิต', 'ชื่อ-สกุล', 'รอบ/ชุดข้อสอบ']];
                 const items = (grouped[0]?.items || []).slice().sort((a, b) => a.booked_at < b.booked_at ? -1 : 1);
                 for (const it of items) {
                     const d = new Date(it.booked_at);
-                    rows.push([
-                        currentDay,
-                        isNaN(d) ? '' : d.toTimeString().slice(0, 5),
-                        (it.student_id || '').toString(),
-                        (it.name || '').toString(),
-                        (it.slot_title || '').toString(),
-                    ]);
+                    rows.push([currentDay, isNaN(d) ? '' : d.toTimeString().slice(0, 5), (it.student_id || '').toString(), (it.name || '').toString(), (it.slot_title || '').toString()]);
                 }
                 return rows;
             }
-            const csvEscape = v => { const s = String(v ?? ''); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
             function buildCSV() { const rows = toCSVRows(); const csv = rows.map(r => r.map(csvEscape).join(',')).join('\r\n'); return '\uFEFF' + csv; }
             function downloadCSV(base = 'registrations') {
-                const stamp = new Date().toISOString().slice(0, 10);
+                const stamp = todayLocalISO();
                 const filename = `${base}_${currentDay || 'day'}_${stamp}.csv`;
                 const blob = new Blob([buildCSV()], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob); const a = document.createElement('a');
@@ -725,24 +638,55 @@
             reload();
         })();
 
-        // ---------- boot ----------
+        // ====================== Boot / Profile / Auth ======================
         document.addEventListener('DOMContentLoaded', async () => {
             const token = localStorage.getItem('teacherToken');
             if (!token) { goLogin(); return; }
 
-            // chip ชื่ออาจารย์
             const storedName = localStorage.getItem('instructor_name');
             const fromJWT = parseJwt(token);
             const name = storedName || fromJWT?.name || fromJWT?.teacher_name || '';
             if (name) document.getElementById('teacherName').textContent = name;
 
-            // logout
             document.getElementById('logoutBtn')?.addEventListener('click', () => { clearAuthStores(); goLogin(); });
 
-            // modal profile
-            document.getElementById('editProfileBtn')?.addEventListener('click', openEditProfile);
-            document.getElementById('btnCancelProfile')?.addEventListener('click', () => showModal('editProfileModal', false));
-            document.getElementById('btnSaveProfile')?.addEventListener('click', saveProfile);
+            // โปรไฟล์ (optional; คงโค้ดเดิมของคุณถ้ามีฟอร์ม)
+            document.getElementById('editProfileBtn')?.addEventListener('click', async () => {
+                try {
+                    const r = await fetch(`${API}/teacher_get_profile.php`, { headers: { Authorization: `Bearer ${token}` } });
+                    const d = await readJSONorThrow(r);
+                    if (!r.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${r.status}`);
+                    const $ = id => document.getElementById(id);
+                    $('inpName') && ($('inpName').value = d.profile?.name || '');
+                    $('inpEmail') && ($('inpEmail').value = d.profile?.email || '');
+                    $('inpCur') && ($('inpCur').value = ''); $('inpNew') && ($('inpNew').value = '');
+                    $('profileMsg') && ($('profileMsg').textContent = '');
+                    document.getElementById('editProfileModal')?.removeAttribute('hidden');
+                } catch (e) { alert(e.message || 'โหลดโปรไฟล์ไม่สำเร็จ'); }
+            });
+            document.getElementById('btnCancelProfile')?.addEventListener('click', () => document.getElementById('editProfileModal')?.setAttribute('hidden', ''));
+            document.getElementById('btnSaveProfile')?.addEventListener('click', async () => {
+                const name = document.getElementById('inpName')?.value.trim() || '';
+                const email = document.getElementById('inpEmail')?.value.trim() || '';
+                const cur = document.getElementById('inpCur')?.value || '';
+                const nw = document.getElementById('inpNew')?.value || '';
+                const msgEl = document.getElementById('profileMsg');
+                if (msgEl) msgEl.textContent = '';
+                if (!name || !email) { if (msgEl) msgEl.textContent = 'กรอกชื่อและอีเมล'; return; }
+                if (nw && nw.length < 8) { if (msgEl) msgEl.textContent = 'รหัสผ่านใหม่อย่างน้อย 8 ตัว'; return; }
+                try {
+                    const r = await fetch(`${API}/teacher_update_profile.php`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ name, email, current_password: cur, new_password: nw })
+                    });
+                    const d = await readJSONorThrow(r);
+                    if (!r.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${r.status}`);
+                    if (msgEl) msgEl.textContent = 'บันทึกสำเร็จ ✓';
+                    document.getElementById('teacherName').textContent = name;
+                    localStorage.setItem('instructor_name', name);
+                    setTimeout(() => document.getElementById('editProfileModal')?.setAttribute('hidden', ''), 800);
+                } catch (e) { if (msgEl) msgEl.textContent = e.message || 'บันทึกไม่สำเร็จ'; }
+            });
 
             // KPI วันนี้
             try { await loadTodayKPI(); }
@@ -753,7 +697,7 @@
                 setText('kpiStudents', '—'); setText('kpiQuestions', '—'); setText('kpiCompleted', '—');
             }
 
-            // metrics อื่นๆ (optional)
+            // เติม KPI อื่น ๆ (ถ้าต้องการ)
             try {
                 const resp = await fetch(`${API}/teacher_dashboard_metrics.php`, {
                     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store'
@@ -765,13 +709,12 @@
                 if (completedTotal != null) setText('kpiCompleted', completedTotal);
             } catch { }
 
-            // กัน BFCache
+            // กัน BFCache แล้ว token หลุด
             const guardAuth = () => { if (!localStorage.getItem('teacherToken')) goLogin(); };
             window.addEventListener('pageshow', e => { if (e.persisted) guardAuth(); });
             document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') guardAuth(); });
         });
     </script>
-
 
 </body>
 
