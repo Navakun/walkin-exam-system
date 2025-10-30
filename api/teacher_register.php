@@ -4,7 +4,7 @@ ob_start();
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
-$DEBUG = true; // เปิดเฉพาะตอนดีบัก เสร็จแล้วตั้งเป็น false
+$DEBUG = false; // เปิดเฉพาะตอนดีบัก เสร็จแล้วตั้งเป็น false
 
 require_once __DIR__ . '/db.php';
 
