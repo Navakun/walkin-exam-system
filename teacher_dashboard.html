@@ -303,93 +303,26 @@
 
     <script>
         /* =======================
-           Teacher Dashboard JS
-           - KPI: "จำนวนนิสิต" = จำนวนลงทะเบียน "วันนี้"
-           - รายชื่อผู้ลงทะเบียนแบบรายวัน (วาดบน <canvas>)
-           - ไม่ใช้ Chart.js อีกต่อไป
+           Teacher Dashboard JS (Full)
+           - KPI วันนี้
+           - รายชื่อผู้ลงทะเบียน (canvas custom)
+           - กราฟ doughnut ผ่าน/ไม่ผ่าน ตามวันจาก date picker
            ======================= */
 
-        // ---------- helpers ----------
+        // ---------- base helpers ----------
         const ROOT = location.pathname.includes('/walkin-exam-system/') ? '/walkin-exam-system' : '';
         const API = `${ROOT}/api`;
 
-        // === helper: แปลงค่าเป็น YYYY-MM-DD เสมอ ===
+        // แปลงวันเป็น YYYY-MM-DD เสมอ
         function toISODate(s) {
             if (!s) return '';
-            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;                       // already ISO
-            const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);              // mm/dd/yyyy
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+            const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); // mm/dd/yyyy
             if (m) {
                 const mm = m[1].padStart(2, '0'), dd = m[2].padStart(2, '0'), yyyy = m[3];
                 return `${yyyy}-${mm}-${dd}`;
             }
-            const d = new Date(s);                                             // last resort
-            return isNaN(d) ? '' : d.toISOString().slice(0, 10);
-        }
-
-        // === Pass/Fail Pie ===
-        let passPieChart = null;
-
-        function setPfSubtitle(dayFromApiOrNull, total, fallbackISO) {
-            const el = document.getElementById('pfSubtitle');
-            if (!el) return;
-            const day = dayFromApiOrNull || fallbackISO || '';
-            const d = day ? new Date(day) : new Date('invalid');
-            const th = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-            const label = !day || isNaN(d) ? (day || '-') : `${d.getDate()} ${th[d.getMonth()]} ${d.getFullYear() + 543}`;
-            el.textContent = (typeof total === 'number') ? `${label} • sessions ทั้งวัน: ${total}` : label;
-        }
-
-        async function fetchPassFailByDay(dayISO) {
-            const token = localStorage.getItem('teacherToken') || '';
-            const url = `${API}/teacher_dashboard_metrics.php?day=${encodeURIComponent(dayISO)}`;
-            const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store' });
-            const raw = await res.text();
-            let d; try { d = JSON.parse(raw); } catch { console.warn('metrics RAW:', raw); throw new Error(raw); }
-            if (!res.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${res.status}`);
-            return d.data?.passfail_day || { passed: 0, failed: 0, total: 0, pass_threshold: 50, day: dayISO };
-        }
-
-        function ensurePassPie() {
-            const el = document.getElementById('passPie');
-            if (!el) return null;
-            if (passPieChart) return passPieChart;
-            passPieChart = new Chart(el, {
-                type: 'doughnut',
-                data: { labels: ['ผ่าน', 'ไม่ผ่าน'], datasets: [{ data: [0, 0], backgroundColor: ['#16a34a', '#ef4444'], borderColor: '#fff', borderWidth: 2, hoverOffset: 6 }] },
-                options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'bottom' } } }
-            });
-            document.getElementById('pfSavePng')?.addEventListener('click', () => {
-                const a = document.createElement('a');
-                a.href = passPieChart.toBase64Image('image/png', 1);
-                a.download = `passfail_${new Date().toISOString().slice(0, 10)}.png`; a.click();
-            });
-            return passPieChart;
-        }
-
-        async function updatePassPieForDay(dayISO) {
-            try {
-                const iso = toISODate(dayISO);
-                const c = ensurePassPie(); if (!c) return;
-                const { passed, failed, total, day } = await fetchPassFailByDay(iso);
-                c.data.datasets[0].data = [passed || 0, failed || 0];
-                c.update();
-                setPfSubtitle(day, total, iso);  // ✅ กัน day=null
-                console.debug('[pass/fail]', iso, { passed, failed, total, apiDay: day });
-            } catch (e) {
-                console.warn('updatePassPieForDay failed:', e);
-                setPfSubtitle(dayISO, null, toISODate(dayISO));
-            }
-        }
-
-        function toISODate(s) {
-            if (!s) return '';
-            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;                       // already ISO
-            const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);              // mm/dd/yyyy
-            if (m) {
-                const mm = m[1].padStart(2, '0'), dd = m[2].padStart(2, '0'), yyyy = m[3];
-                return `${yyyy}-${mm}-${dd}`;
-            }
-            const d = new Date(s);                                             // last resort
+            const d = new Date(s);
             return isNaN(d) ? '' : d.toISOString().slice(0, 10);
         }
 
@@ -397,7 +330,7 @@
             const el = document.getElementById(id);
             if (!el) return;
             const isSet = !(val === null || val === undefined);
-            el.textContent = isSet ? String(val) : '—'; // รองรับ 0 อย่างถูกต้อง
+            el.textContent = isSet ? String(val) : '—';
         };
         const setTextIf = (id, val) => { if (val !== undefined && val !== null) setText(id, val); };
 
@@ -448,36 +381,30 @@
             });
             const d = await r.json();
             if (!r.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${r.status}`);
-
             const k = d.data || {};
-            console.log('[kpis]', k);                 // << ดูใน Console ว่า 101 โผล่
+            console.log('[kpis]', k);
 
             setText('kpiQuestions', k.questions_total ?? 0);
             setText('kpiStudents', k.registered_today ?? 0);
-            // กันโดนโค้ดอื่นเปลี่ยนค่าทีหลัง:
             document.getElementById('kpiQuestions')?.setAttribute('data-locked', '1');
             document.getElementById('kpiStudents')?.setAttribute('data-locked', '1');
         }
 
-        // ---------- profile modal handlers ----------
+        // ---------- โปรไฟล์ ----------
         async function openEditProfile() {
             const token = localStorage.getItem('teacherToken'); if (!token) { goLogin(); return; }
             try {
                 const r = await fetch(`${API}/teacher_get_profile.php`, { headers: { Authorization: `Bearer ${token}` } });
                 const d = await readJSONorThrow(r);
                 if (!r.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${r.status}`);
-
                 const $ = id => document.getElementById(id);
                 $('inpName') && ($('inpName').value = d.profile?.name || '');
                 $('inpEmail') && ($('inpEmail').value = d.profile?.email || '');
                 $('inpCur') && ($('inpCur').value = '');
                 $('inpNew') && ($('inpNew').value = '');
                 $('profileMsg') && ($('profileMsg').textContent = '');
-
                 showModal('editProfileModal', true);
-            } catch (e) {
-                alert(e.message || 'โหลดโปรไฟล์ไม่สำเร็จ');
-            }
+            } catch (e) { alert(e.message || 'โหลดโปรไฟล์ไม่สำเร็จ'); }
         }
 
         async function saveProfile() {
@@ -487,7 +414,6 @@
             const cur = document.getElementById('inpCur')?.value || '';
             const nw = document.getElementById('inpNew')?.value || '';
             const msgEl = document.getElementById('profileMsg');
-
             if (msgEl) msgEl.textContent = '';
             if (!name || !email) { if (msgEl) msgEl.textContent = 'กรอกชื่อและอีเมล'; return; }
             if (nw && nw.length < 8) { if (msgEl) msgEl.textContent = 'รหัสผ่านใหม่อย่างน้อย 8 ตัว'; return; }
@@ -500,13 +426,81 @@
                 });
                 const d = await readJSONorThrow(r);
                 if (!r.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${r.status}`);
-
                 if (msgEl) msgEl.textContent = 'บันทึกสำเร็จ ✓';
                 const nameEl = document.getElementById('teacherName'); if (nameEl) nameEl.textContent = name;
                 localStorage.setItem('instructor_name', name);
                 setTimeout(() => showModal('editProfileModal', false), 800);
+            } catch (e) { if (msgEl) msgEl.textContent = e.message || 'บันทึกไม่สำเร็จ'; }
+        }
+
+        // ====================== Pass/Fail Pie ======================
+        let passPieChart = null;
+
+        function setPfSubtitle(dayFromApiOrNull, total, fallbackISO) {
+            const el = document.getElementById('pfSubtitle');
+            if (!el) return;
+            const day = dayFromApiOrNull || fallbackISO || '';
+            const d = day ? new Date(day) : new Date('invalid');
+            const th = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            const label = !day || isNaN(d) ? (day || '-') : `${d.getDate()} ${th[d.getMonth()]} ${d.getFullYear() + 543}`;
+            el.textContent = (typeof total === 'number') ? `${label} • sessions ทั้งวัน: ${total}` : label;
+        }
+
+        async function fetchPassFailByDay(dayISO) {
+            const token = localStorage.getItem('teacherToken') || '';
+            const url = `${API}/teacher_dashboard_metrics.php?day=${encodeURIComponent(dayISO)}`;
+            const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store' });
+            const raw = await res.text();
+            let d; try { d = JSON.parse(raw); } catch { console.warn('metrics RAW:', raw); throw new Error(raw); }
+            if (!res.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${res.status}`);
+            return d.data?.passfail_day || { passed: 0, failed: 0, total: 0, pass_threshold: 50, day: dayISO };
+        }
+
+        function ensurePassPie() {
+            const el = document.getElementById('passPie');
+            if (!el) return null;
+            if (passPieChart) return passPieChart;
+            passPieChart = new Chart(el, {
+                type: 'doughnut',
+                data: { labels: ['ผ่าน', 'ไม่ผ่าน'], datasets: [{ data: [0, 0], backgroundColor: ['#16a34a', '#ef4444'], borderColor: '#fff', borderWidth: 2, hoverOffset: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'bottom' } } }
+            });
+            document.getElementById('pfSavePng')?.addEventListener('click', () => {
+                const a = document.createElement('a');
+                a.href = passPieChart.toBase64Image('image/png', 1);
+                a.download = `passfail_${new Date().toISOString().slice(0, 10)}.png`;
+                a.click();
+            });
+            return passPieChart;
+        }
+
+        async function updatePassPieForDay(dayISO) {
+            try {
+                const iso = toISODate(dayISO);
+                const c = ensurePassPie(); if (!c) return;
+
+                const { passed, failed, total, day } = await fetchPassFailByDay(iso);
+                const p = Number(passed || 0), f = Number(failed || 0);
+
+                // zero-data handling → วาดวงสีเทา
+                if ((p + f) === 0) {
+                    c.data.labels = ['ไม่มีข้อมูล'];
+                    c.data.datasets[0].data = [1];
+                    c.data.datasets[0].backgroundColor = ['#e5e7eb'];
+                    c.options.plugins.legend.display = false;
+                } else {
+                    c.data.labels = ['ผ่าน', 'ไม่ผ่าน'];
+                    c.data.datasets[0].data = [p, f];
+                    c.data.datasets[0].backgroundColor = ['#16a34a', '#ef4444'];
+                    c.options.plugins.legend.display = true;
+                }
+                c.update();
+
+                setPfSubtitle(day, total, iso);
+                console.debug('[pass/fail]', iso, { passed: p, failed: f, total, apiDay: day });
             } catch (e) {
-                if (msgEl) msgEl.textContent = e.message || 'บันทึกไม่สำเร็จ';
+                console.warn('updatePassPieForDay failed:', e);
+                setPfSubtitle(dayISO, null, toISODate(dayISO));
             }
         }
 
@@ -518,21 +512,15 @@
             const holder = canvas.parentElement;
             const ctx = canvas.getContext('2d');
 
-            // สไตล์
             const COLORS = {
-                bgDay: '#f8fafc',
-                text: '#0f172a',
-                sub: '#64748b',
-                line: '#e5e7eb',
+                bgDay: '#f8fafc', text: '#0f172a', sub: '#64748b', line: '#e5e7eb',
             };
 
-            // ====== STATE (โหมดวันอย่างเดียว) ======
-            let DATA_RAW = [];     // รายการทั้งหมด (ภายใน 90 วันล่าสุด)
-            let grouped = [];     // กลุ่มเฉพาะวันปัจจุบัน (สำหรับวาด)
-            let DAYS_INDEX = [];   // รายชื่อวันที่มีข้อมูล (เรียงล่าสุด→เก่าสุด)
-            let currentDay = null; // 'YYYY-MM-DD'
+            let DATA_RAW = [];   // 90 วันล่าสุดทั้งหมด
+            let grouped = [];   // กลุ่มเฉพาะวันที่เลือก
+            let DAYS_INDEX = []; // รายชื่อวัน (ล่าสุด→เก่าสุด)
+            let currentDay = null;
 
-            // ====== Utils ======
             const throttle = (fn, wait) => { let t = 0; return (...a) => { const n = Date.now(); if (n - t > wait) { t = n; fn(...a); } }; };
             function formatDateThaiISO(iso) {
                 const d = new Date(iso); if (isNaN(d)) return iso;
@@ -541,7 +529,6 @@
             }
             const formatTime = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toTimeString().slice(0, 5); };
 
-            // ดึงข้อมูลช่วงกว้างคงที่ (90 วันล่าสุด)
             async function fetchRegistrations() {
                 const token = localStorage.getItem('teacherToken') || '';
                 const url = `${API}/teacher_registrations_feed.php?range=90d`;
@@ -564,10 +551,9 @@
 
             function listDays(items) {
                 const set = new Set(items.map(it => (it.booked_at || '').slice(0, 10)).filter(Boolean));
-                return Array.from(set).sort((a, b) => a < b ? 1 : -1); // ล่าสุดก่อน
+                return Array.from(set).sort((a, b) => a < b ? 1 : -1);
             }
 
-            // ====== Canvas helpers (ทำให้กล่องมีสกรอลบาร์) ======
             function measureContentHeight() {
                 const rowH = 30, headerH = 38, gapDay = 16;
                 let h = 12;
@@ -592,7 +578,6 @@
                 return { w, h };
             }
 
-            // ====== วาด ======
             function render() {
                 const PAD_X = 16, COL_TIME = 72, COL_SID = 110, COL_NAME = 280;
                 const rowH = 30, headerH = 38, gapDay = 16;
@@ -603,7 +588,7 @@
 
                 let y = 12;
                 for (const g of grouped) {
-                    // header วัน
+                    // header ของวัน
                     ctx.fillStyle = COLORS.bgDay;
                     roundRect(ctx, PAD_X, y, width - PAD_X * 2, headerH, 10, true, false);
                     ctx.fillStyle = COLORS.text;
@@ -611,7 +596,7 @@
                     ctx.fillText(`📅  ${formatDateThaiISO(g.day)}  •  ${g.items.length} คน`, PAD_X + 8, y + 24);
                     y += headerH + 8;
 
-                    // หัวคอลัมน์
+                    // หัวตาราง
                     ctx.fillStyle = COLORS.sub;
                     ctx.font = '600 12px "Prompt", system-ui';
                     const xTime = PAD_X + 8, xSid = xTime + COL_TIME + 16, xName = xSid + COL_SID + 16, xSlot = xName + COL_NAME + 16;
@@ -661,10 +646,9 @@
                 if (fill) ctx.fill(); if (stroke) ctx.stroke();
             }
 
-            // ====== เลือกวัน ======
+            // เลือกวัน
             function applyDayBoundsToPicker() {
-                const dp = document.getElementById('dayPicker');
-                if (!dp) return;
+                const dp = document.getElementById('dayPicker'); if (!dp) return;
                 if (DAYS_INDEX.length) { dp.max = DAYS_INDEX[0]; dp.min = DAYS_INDEX[DAYS_INDEX.length - 1]; }
                 else { dp.removeAttribute('min'); dp.removeAttribute('max'); }
             }
@@ -681,12 +665,12 @@
                 if (!DAYS_INDEX.length) return;
                 if (!currentDay) currentDay = DAYS_INDEX[0];
                 const i = DAYS_INDEX.indexOf(currentDay);
-                let j = (i === -1 ? 0 : i + (delta > 0 ? -1 : 1)); // index-1 คือวันถัดไป (เพราะเรียงล่าสุด→เก่าสุด)
+                let j = (i === -1 ? 0 : i + (delta > 0 ? -1 : 1)); // ล่าสุด→เก่าสุด
                 j = Math.max(0, Math.min(DAYS_INDEX.length - 1, j));
                 setDay(DAYS_INDEX[j]);
             }
 
-            // ====== โหลดครั้งแรก/รีโหลด ======
+            // โหลดครั้งแรก
             async function reload() {
                 const list = await fetchRegistrations();
                 DATA_RAW = Array.isArray(list) ? list : [];
@@ -694,20 +678,18 @@
                 applyDayBoundsToPicker();
                 const todayISO = new Date().toISOString().slice(0, 10);
                 const pick = DAYS_INDEX.includes(todayISO) ? todayISO : (DAYS_INDEX[0] || todayISO);
-                setDay(pick);                        // setDay จะไปเรียก updatePassPieForDay ให้เอง
+                setDay(pick);
             }
 
-            // ====== Events ======
+            // Events
             window.addEventListener('resize', throttle(() => render(), 150));
             document.getElementById('dayPrev')?.addEventListener('click', () => shiftDay(-1));
             document.getElementById('dayNext')?.addEventListener('click', () => shiftDay(+1));
             document.getElementById('dayPicker')?.addEventListener('change', e => {
-                const iso = toISODate(e.target.value || '');
-                if (!iso) return;
-                setDay(iso);
+                const iso = toISODate(e.target.value || ''); if (!iso) return; setDay(iso);
             });
 
-            // CSV Export (ใช้ข้อมูลที่กำลังแสดงอยู่)
+            // CSV export
             document.getElementById('rgSaveCsv')?.addEventListener('click', () => {
                 const total = grouped.reduce((n, g) => n + (g.items?.length || 0), 0);
                 if (!total) { alert('ยังไม่มีข้อมูลให้บันทึก'); return; }
@@ -723,17 +705,13 @@
                         isNaN(d) ? '' : d.toTimeString().slice(0, 5),
                         (it.student_id || '').toString(),
                         (it.name || '').toString(),
-                        (it.slot_title || '').toString()
+                        (it.slot_title || '').toString(),
                     ]);
                 }
                 return rows;
             }
             const csvEscape = v => { const s = String(v ?? ''); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-            function buildCSV() {
-                const rows = toCSVRows();
-                const csv = rows.map(r => r.map(csvEscape).join(',')).join('\r\n');
-                return '\uFEFF' + csv; // BOM เพื่อ Excel/ภาษาไทย
-            }
+            function buildCSV() { const rows = toCSVRows(); const csv = rows.map(r => r.map(csvEscape).join(',')).join('\r\n'); return '\uFEFF' + csv; }
             function downloadCSV(base = 'registrations') {
                 const stamp = new Date().toISOString().slice(0, 10);
                 const filename = `${base}_${currentDay || 'day'}_${stamp}.csv`;
@@ -752,57 +730,48 @@
             const token = localStorage.getItem('teacherToken');
             if (!token) { goLogin(); return; }
 
-            // ชื่อบนชิป
+            // chip ชื่ออาจารย์
             const storedName = localStorage.getItem('instructor_name');
             const fromJWT = parseJwt(token);
             const name = storedName || fromJWT?.name || fromJWT?.teacher_name || '';
             if (name) document.getElementById('teacherName').textContent = name;
 
-            // ปุ่ม Logout
-            document.getElementById('logoutBtn')?.addEventListener('click', () => {
-                clearAuthStores(); goLogin();
-            });
+            // logout
+            document.getElementById('logoutBtn')?.addEventListener('click', () => { clearAuthStores(); goLogin(); });
 
-            // โมดัลโปรไฟล์
+            // modal profile
             document.getElementById('editProfileBtn')?.addEventListener('click', openEditProfile);
             document.getElementById('btnCancelProfile')?.addEventListener('click', () => showModal('editProfileModal', false));
             document.getElementById('btnSaveProfile')?.addEventListener('click', saveProfile);
 
-            // KPI วันนี้ — ห่อด้วย try/catch กัน Uncaught
-            try {
-                await loadTodayKPI();
-            } catch (e) {
-                // ถ้าเป็น 401 ก็เด้งไปหน้าเข้าสู่ระบบ
+            // KPI วันนี้
+            try { await loadTodayKPI(); }
+            catch (e) {
                 const msg = String(e && e.message || '');
                 if (/401|unauthor/i.test(msg)) { clearAuthStores(); goLogin(); return; }
                 console.warn('loadTodayKPI failed:', e);
-                // ใส่เครื่องหมายขีดให้ผู้ใช้เห็นว่าโหลดไม่ได้
-                setText('kpiStudents', '—');
-                setText('kpiQuestions', '—');
-                setText('kpiCompleted', '—');
+                setText('kpiStudents', '—'); setText('kpiQuestions', '—'); setText('kpiCompleted', '—');
             }
 
-            // โหลด metrics สำหรับ KPI อื่น ๆ
+            // metrics อื่นๆ (optional)
             try {
                 const resp = await fetch(`${API}/teacher_dashboard_metrics.php`, {
                     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store'
                 });
                 const raw = await resp.text(); let metrics = null; try { metrics = JSON.parse(raw); } catch { }
-
-                // อ่านค่าถูกฟิลด์
                 const qTotal = metrics?.data?.questions_total;
                 const completedTotal = metrics?.data?.exams_completed_total;
-
                 if (qTotal != null) setText('kpiQuestions', qTotal);
-                if (completedTotal != null) setText('kpiCompleted', completedTotal); // (ถ้าจะใช้ ให้มี element นี้ด้วย)
+                if (completedTotal != null) setText('kpiCompleted', completedTotal);
             } catch { }
 
-            // กันย้อนกลับจาก BFCache แล้ว auth หลุด
+            // กัน BFCache
             const guardAuth = () => { if (!localStorage.getItem('teacherToken')) goLogin(); };
             window.addEventListener('pageshow', e => { if (e.persisted) guardAuth(); });
             document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') guardAuth(); });
         });
     </script>
+
 
 </body>
 
