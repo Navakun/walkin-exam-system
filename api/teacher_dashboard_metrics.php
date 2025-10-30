@@ -114,64 +114,92 @@ try {
     } catch (Throwable $e) {
     }
 
-    // ---------- (ใหม่) Pass/Fail ของวันตามพารามิเตอร์ ----------
-    $dayRaw   = $_GET['day'] ?? '';
-    $dayParam = substr($dayRaw, 0, 10);
+    // ---------- Pass/Fail ของวันตามพารามิเตอร์ (เวอร์ชันแก้เต็ม) ----------
+    $dayRaw = $_GET['day'] ?? '';
+    $dayRaw = urldecode(trim($dayRaw));
+    $dayISO = null;
 
-    // รองรับ mm/dd/yyyy ด้วย
-    if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $dayParam)) {
-        [$m, $d, $y] = array_map('intval', explode('/', $dayParam));
-        $dayParam = sprintf('%04d-%02d-%02d', $y, $m, $d);
+    // แปลงให้เป็น YYYY-MM-DD เสมอ
+    if ($dayRaw === '' || strcasecmp($dayRaw, 'today') === 0) {
+        $dayISO = (new DateTime('now', new DateTimeZone('+07:00')))->format('Y-m-d');
+    } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dayRaw)) {
+        // yyyy-mm-dd
+        $dayISO = $dayRaw;
+    } elseif (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $dayRaw)) {
+        // mm/dd/yyyy
+        [$m, $d, $y] = array_map('intval', explode('/', $dayRaw));
+        $dayISO = sprintf('%04d-%02d-%02d', $y, $m, $d);
+    } else {
+        // พยายาม parse ด้วย strtotime เป็นทางสุดท้าย
+        $ts = strtotime($dayRaw);
+        if ($ts) $dayISO = (new DateTime('@' . $ts))->setTimezone(new DateTimeZone('+07:00'))->format('Y-m-d');
     }
 
-    if ($dayParam && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dayParam)) {
-        $PASS_THRESHOLD = 50.0; // % เกณฑ์ผ่าน
-        $start = $dayParam . ' 00:00:00';
-        // คำนวณสิ้นวันแบบไม่รวมปลายทาง เพื่อกัน edge case วินาที
-        $end   = date('Y-m-d', strtotime($dayParam . ' +1 day')) . ' 00:00:00';
-
-        $sql = "
-        SELECT
-          SUM(CASE WHEN pass_pct >= :th THEN 1 ELSE 0 END) AS passed,
-          SUM(CASE WHEN pass_pct  < :th THEN 1 ELSE 0 END) AS failed,
-          COUNT(*) AS total
-        FROM (
-          SELECT
-            s.session_id,
-            COALESCE(
-              s.score,  -- สมมติว่าเป็นเปอร์เซ็นต์ 0–100
-              CASE WHEN s.questions_answered > 0
-                   THEN (s.correct_count * 100.0 / s.questions_answered)
-                   ELSE NULL
-              END,
-              0
-            ) AS pass_pct
-          FROM examsession s
-          WHERE s.end_time IS NOT NULL
-            AND s.end_time >= :start
-            AND s.end_time <  :end
-        ) t
-    ";
+    if ($dayISO) {
+        $PASS_THRESHOLD = 50.0; // เปอร์เซ็นต์ผ่าน
+        $start = $dayISO . ' 00:00:00';
+        $end   = date('Y-m-d', strtotime($dayISO . ' +1 day')) . ' 00:00:00';
 
         try {
+            $pdo->query("SET time_zone = '+07:00'");
+
+            // ดึง session ที่จบภายในวันนั้น (มี end_time)
+            $sql = "
+            SELECT
+                s.session_id,
+                COALESCE(
+                    s.score,
+                    CASE
+                        WHEN s.questions_answered > 0
+                        THEN (s.correct_count * 100.0 / s.questions_answered)
+                        ELSE NULL
+                    END,
+                    0
+                ) AS pct
+            FROM examsession s
+            WHERE s.end_time IS NOT NULL
+              AND s.end_time >= :start
+              AND s.end_time <  :end
+        ";
             $st = $pdo->prepare($sql);
-            $st->bindValue(':th',    $PASS_THRESHOLD, PDO::PARAM_STR);
-            $st->bindValue(':start', $start,          PDO::PARAM_STR);
-            $st->bindValue(':end',   $end,            PDO::PARAM_STR);
-            $st->execute();
-            $row = $st->fetch(PDO::FETCH_ASSOC) ?: ['passed' => 0, 'failed' => 0, 'total' => 0];
+            $st->execute([':start' => $start, ':end' => $end]);
+            $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+
+            $total  = count($rows);
+            $passed = 0;
+            foreach ($rows as $r) {
+                if ((float)$r['pct'] >= $PASS_THRESHOLD) $passed++;
+            }
+            $failed = max(0, $total - $passed);
 
             $data['passfail_day'] = [
-                'passed'         => (int)($row['passed'] ?? 0),
-                'failed'         => (int)($row['failed'] ?? 0),
-                'total'          => (int)($row['total']  ?? 0),
-                'pass_threshold' => (float)$PASS_THRESHOLD,
-                'day'            => $dayParam,
-                'window'         => ['start' => $start, 'end' => $end] // เผื่อดีบัก
+                'passed'         => $passed,
+                'failed'         => $failed,
+                'total'          => $total,
+                'pass_threshold' => $PASS_THRESHOLD,
+                'day'            => $dayISO,
+                'window'         => ['start' => $start, 'end' => $end] // ไว้ debug ได้
             ];
         } catch (Throwable $e) {
-            // ไม่ให้ล้มทั้ง API ถ้าส่วน pass/fail พลาด
+            $data['passfail_day'] = [
+                'passed' => 0,
+                'failed' => 0,
+                'total' => 0,
+                'pass_threshold' => $PASS_THRESHOLD,
+                'day' => $dayISO,
+                'error' => $e->getMessage()
+            ];
         }
+    } else {
+        // day parse ไม่ได้ — ส่งค่า default แต่ใส่บันทึกไว้
+        $data['passfail_day'] = [
+            'passed' => 0,
+            'failed' => 0,
+            'total' => 0,
+            'pass_threshold' => 50.0,
+            'day' => null,
+            'note' => 'Unparseable day parameter'
+        ];
     }
 
     echo json_encode(['status' => 'success', 'data' => $data], JSON_UNESCAPED_UNICODE);
