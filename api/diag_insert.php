@@ -1,5 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
+header('Content-Type: text/plain; charset=utf-8');
 require_once __DIR__ . '/../config/db.php';
 
 try {
@@ -21,3 +22,9 @@ echo json_encode([
     'mb_strlen'     => function_exists('mb_strlen'),
     'mbstring_ext'  => extension_loaded('mbstring'),
 ]);
+
+echo "__DIR__ = " . __DIR__ . "\n";
+echo "scandir(__DIR__):\n";
+print_r(scandir(__DIR__));
+echo "exists db.php? " . (file_exists(__DIR__ . '/db.php') ? 'YES' : 'NO') . "\n";
+echo "readable db.php? " . (is_readable(__DIR__ . '/db.php') ? 'YES' : 'NO') . "\n";

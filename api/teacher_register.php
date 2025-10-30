@@ -18,7 +18,20 @@ register_shutdown_function(function () use ($DEBUG) {
     }
 });
 
-require_once __DIR__ . '/db.php';
+// ชี้ไปยัง public_html/config/db.php
+$ROOT = dirname(__DIR__);                    // = .../public_html
+$DBCFG = $ROOT . '/config/db.php';           // = .../public_html/config/db.php
+if (!is_file($DBCFG) || !is_readable($DBCFG)) {
+    if (function_exists('respond')) {
+        respond('error', 'Config not found: ' . $DBCFG, 500);
+    } else {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Config not found: ' . $DBCFG], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+}
+require_once $DBCFG;
 
 // ---- helpers (fallback หาก mbstring ไม่มี) ----
 function upcase($s)
