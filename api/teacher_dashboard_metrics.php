@@ -118,58 +118,59 @@ try {
     $dayRaw   = $_GET['day'] ?? '';
     $dayParam = substr($dayRaw, 0, 10);
 
-    // รองรับ MM/DD/YYYY
-    if ($dayParam && preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $dayParam)) {
+    // รองรับ mm/dd/yyyy ด้วย
+    if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $dayParam)) {
         [$m, $d, $y] = array_map('intval', explode('/', $dayParam));
         $dayParam = sprintf('%04d-%02d-%02d', $y, $m, $d);
     }
 
-    // debug (ลบได้เมื่อเรียบร้อย)
-    $data['debug_day'] = $dayParam;
-
     if ($dayParam && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dayParam)) {
         $PASS_THRESHOLD = 50.0; // % เกณฑ์ผ่าน
+        $start = $dayParam . ' 00:00:00';
+        // คำนวณสิ้นวันแบบไม่รวมปลายทาง เพื่อกัน edge case วินาที
+        $end   = date('Y-m-d', strtotime($dayParam . ' +1 day')) . ' 00:00:00';
 
-        // ใช้ end_time หรือ exam_slots.exam_date เพื่อนับให้ตรง "วันที่สอบ"
         $sql = "
-            SELECT
-              SUM(CASE WHEN pass_pct >= :th THEN 1 ELSE 0 END) AS passed,
-              SUM(CASE WHEN pass_pct  < :th THEN 1 ELSE 0 END) AS failed,
-              COUNT(*) AS total
-            FROM (
-              SELECT
-                s.session_id,
-                COALESCE(
-                  s.score,  -- สมมติเป็น % 0–100
-                  CASE WHEN s.questions_answered > 0
-                       THEN (s.correct_count * 100.0 / s.questions_answered)
-                       ELSE NULL
-                  END,
-                  0.0
-                ) AS pass_pct
-              FROM examsession s
-              LEFT JOIN exam_slots sl ON sl.id = s.slot_id
-              WHERE s.end_time IS NOT NULL
-                AND ( DATE(s.end_time) = :day OR (sl.exam_date = :day) )
-            ) t
-        ";
+        SELECT
+          SUM(CASE WHEN pass_pct >= :th THEN 1 ELSE 0 END) AS passed,
+          SUM(CASE WHEN pass_pct  < :th THEN 1 ELSE 0 END) AS failed,
+          COUNT(*) AS total
+        FROM (
+          SELECT
+            s.session_id,
+            COALESCE(
+              s.score,  -- สมมติว่าเป็นเปอร์เซ็นต์ 0–100
+              CASE WHEN s.questions_answered > 0
+                   THEN (s.correct_count * 100.0 / s.questions_answered)
+                   ELSE NULL
+              END,
+              0
+            ) AS pass_pct
+          FROM examsession s
+          WHERE s.end_time IS NOT NULL
+            AND s.end_time >= :start
+            AND s.end_time <  :end
+        ) t
+    ";
 
         try {
             $st = $pdo->prepare($sql);
-            $st->bindValue(':day', $dayParam, PDO::PARAM_STR);
-            $st->bindValue(':th',  (string)$PASS_THRESHOLD, PDO::PARAM_STR);
+            $st->bindValue(':th',    $PASS_THRESHOLD, PDO::PARAM_STR);
+            $st->bindValue(':start', $start,          PDO::PARAM_STR);
+            $st->bindValue(':end',   $end,            PDO::PARAM_STR);
             $st->execute();
             $row = $st->fetch(PDO::FETCH_ASSOC) ?: ['passed' => 0, 'failed' => 0, 'total' => 0];
 
             $data['passfail_day'] = [
-                'passed' => (int)($row['passed'] ?? 0),
-                'failed' => (int)($row['failed'] ?? 0),
-                'total'  => (int)($row['total']  ?? 0),
-                'pass_threshold' => $PASS_THRESHOLD,
-                'day' => $dayParam,
+                'passed'         => (int)($row['passed'] ?? 0),
+                'failed'         => (int)($row['failed'] ?? 0),
+                'total'          => (int)($row['total']  ?? 0),
+                'pass_threshold' => (float)$PASS_THRESHOLD,
+                'day'            => $dayParam,
+                'window'         => ['start' => $start, 'end' => $end] // เผื่อดีบัก
             ];
         } catch (Throwable $e) {
-            // เงียบเพื่อไม่ล้มทั้ง API; ถ้าต้อง debug เพิ่มเติม: $data['passfail_error'] = $e->getMessage();
+            // ไม่ให้ล้มทั้ง API ถ้าส่วน pass/fail พลาด
         }
     }
 
