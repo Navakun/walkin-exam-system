@@ -353,8 +353,9 @@
 
         async function updatePassPieForDay(dayISO) {
             try {
+                const iso = toISODate(dayISO);
                 const c = ensurePassPie(); if (!c) return;
-                const { passed, failed, total, day } = await fetchPassFailByDay(dayISO);
+                const { passed, failed, total, day } = await fetchPassFailByDay(iso);
                 c.data.datasets[0].data = [passed || 0, failed || 0];
                 c.update();
                 setPfSubtitle(day, total);
@@ -363,6 +364,18 @@
                 console.warn('updatePassPieForDay failed:', e);
                 setPfSubtitle(dayISO, null);
             }
+        }
+
+        function toISODate(s) {
+            if (!s) return '';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;                       // already ISO
+            const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);              // mm/dd/yyyy
+            if (m) {
+                const mm = m[1].padStart(2, '0'), dd = m[2].padStart(2, '0'), yyyy = m[3];
+                return `${yyyy}-${mm}-${dd}`;
+            }
+            const d = new Date(s);                                             // last resort
+            return isNaN(d) ? '' : d.toISOString().slice(0, 10);
         }
 
         const setText = (id, val) => {
@@ -642,7 +655,7 @@
                 else { dp.removeAttribute('min'); dp.removeAttribute('max'); }
             }
             function setDay(dayStr) {
-                currentDay = dayStr;
+                currentDay = toISODate(dayStr);
                 const dp = document.getElementById('dayPicker'); if (dp) dp.value = currentDay || '';
                 const only = DATA_RAW.filter(it => (it.booked_at || '').slice(0, 10) === currentDay);
                 const items = only.sort((a, b) => a.booked_at < b.booked_at ? -1 : 1);
@@ -676,7 +689,10 @@
             document.getElementById('dayPrev')?.addEventListener('click', () => shiftDay(-1));
             document.getElementById('dayNext')?.addEventListener('click', () => shiftDay(+1));
             document.getElementById('dayPicker')?.addEventListener('change', e => {
-                const v = (e.target.value || '').slice(0, 10); if (!v) return; setDay(v);
+                const raw = (e.target.value || '');
+                const v = toISODate(raw);
+                if (!v) return;
+                setDay(v);
             });
 
             // CSV Export (ใช้ข้อมูลที่กำลังแสดงอยู่)

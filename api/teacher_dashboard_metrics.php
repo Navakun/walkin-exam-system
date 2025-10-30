@@ -108,7 +108,15 @@ try {
     }
 
     // ---------- (ใหม่) Pass/Fail ของวันตามพารามิเตอร์ ----------
-    $dayParam = isset($_GET['day']) ? substr($_GET['day'], 0, 10) : '';
+    $dayRaw = $_GET['day'] ?? '';
+    $dayParam = substr($dayRaw, 0, 10);
+
+    // ✅ รองรับทั้ง mm/dd/yyyy และ yyyy-mm-dd
+    if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $dayParam)) {
+        [$m, $d, $y] = array_map('intval', explode('/', $dayParam));
+        $dayParam = sprintf('%04d-%02d-%02d', $y, $m, $d);
+    }
+
     if ($dayParam && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dayParam)) {
         $PASS_THRESHOLD = 50.0; // % เกณฑ์ผ่าน
 
@@ -121,7 +129,7 @@ try {
           SELECT
             s.session_id,
             COALESCE(
-              s.score, -- สมมติว่าเป็น % 0-100
+              s.score,
               CASE WHEN s.questions_answered > 0
                    THEN (s.correct_count * 100.0 / s.questions_answered)
                    ELSE NULL
@@ -136,7 +144,9 @@ try {
 
         try {
             $st = $pdo->prepare($sql);
-            $st->execute([':day' => $dayParam, ':th' => $PASS_THRESHOLD]);
+            $st->bindValue(':day', $dayParam, PDO::PARAM_STR);
+            $st->bindValue(':th', $PASS_THRESHOLD, PDO::PARAM_STR);
+            $st->execute();
             $row = $st->fetch(PDO::FETCH_ASSOC) ?: ['passed' => 0, 'failed' => 0, 'total' => 0];
             $data['passfail_day'] = [
                 'passed' => (int)($row['passed'] ?? 0),
