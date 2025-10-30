@@ -3,11 +3,24 @@ ob_start();
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
-$DEBUG = true; // ทดสอบเสร็จค่อยตั้งเป็น false
+$DEBUG = true; // ทดสอบเสร็จ ให้ตั้งเป็น false
+
+// ดัก fatal error ทุกชนิดให้แสดงเป็น JSON
+register_shutdown_function(function () use ($DEBUG) {
+    $e = error_get_last();
+    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        if (ob_get_length()) ob_clean();
+        http_response_code(500);
+        echo json_encode([
+            'status'  => 'error',
+            'message' => $DEBUG ? ('FATAL: ' . $e['message'] . ' @ ' . $e['file'] . ':' . $e['line']) : 'ข้อผิดพลาดภายในระบบ',
+        ], JSON_UNESCAPED_UNICODE);
+    }
+});
 
 require_once __DIR__ . '/db.php';
 
-// ---- helpers (fallback ถ้า mbstring ไม่มี) ----
+// ---- helpers (fallback หาก mbstring ไม่มี) ----
 function upcase($s)
 {
     return function_exists('mb_strtoupper') ? mb_strtoupper($s, 'UTF-8') : strtoupper($s);
@@ -35,7 +48,7 @@ try {
         respond('error', 'Method not allowed', 405);
     }
 
-    // normalize + validate
+    // --- STEP A: normalize + validate ---
     $instructor_id = upcase(trim($_POST['instructor_id'] ?? ''));
     $name          = trim($_POST['name'] ?? '');
     $email         = locase(trim($_POST['email'] ?? ''));
@@ -48,36 +61,36 @@ try {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) respond('error', 'อีเมลไม่ถูกต้อง', 400);
     if (strlen($password) < 8) respond('error', 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร', 400);
 
-    // กัน $pdo พัง
+    // --- STEP B: DB ping ---
     try {
         $pdo->query('SELECT 1');
     } catch (Throwable $e) {
         respond('error', $DEBUG ? ('DB connect: ' . $e->getMessage()) : 'เชื่อมต่อฐานข้อมูลล้มเหลว', 500);
     }
 
-    // เช็คซ้ำ
+    // --- STEP C: duplicate check ---
     $chk = $pdo->prepare("SELECT 
       SUM(CASE WHEN instructor_id=? THEN 1 ELSE 0 END) AS id_dup,
       SUM(CASE WHEN email=? THEN 1 ELSE 0 END)         AS email_dup
     FROM instructor WHERE instructor_id=? OR email=?");
     $chk->execute([$instructor_id, $email, $instructor_id, $email]);
-    $dup = $chk->fetch() ?: ['id_dup' => 0, 'email_dup' => 0];
+    $dup = $chk->fetch(PDO::FETCH_ASSOC) ?: ['id_dup' => 0, 'email_dup' => 0];
     if ((int)$dup['id_dup'] > 0)   respond('error', 'รหัสอาจารย์นี้มีอยู่แล้ว', 409);
     if ((int)$dup['email_dup'] > 0) respond('error', 'อีเมลนี้มีอยู่แล้ว', 409);
 
-    // insert
+    // --- STEP D: insert ---
     $hash = password_hash($password, PASSWORD_DEFAULT);
     $ins = $pdo->prepare("INSERT INTO instructor (instructor_id,name,email,password) VALUES (?,?,?,?)");
     $ins->execute([$instructor_id, $name, $email, $hash]);
 
     respond('success', 'สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');
 } catch (PDOException $e) {
-    // ถ้าเป็น duplicate แต่ข้อความไม่แมตช์ ให้ re-check อีกชั้น
+    // duplicate (23000) → re-check ให้บอกสาเหตุชัด
     if ($e->getCode() === '23000') {
         try {
             $re = $pdo->prepare("SELECT instructor_id,email FROM instructor WHERE instructor_id=? OR email=? LIMIT 1");
             $re->execute([$instructor_id, $email]);
-            $row = $re->fetch();
+            $row = $re->fetch(PDO::FETCH_ASSOC);
             if ($row && ($row['instructor_id'] ?? '') === $instructor_id) respond('error', 'รหัสอาจารย์นี้มีอยู่แล้ว', 409);
             if ($row && locase($row['email'] ?? '') === $email)           respond('error', 'อีเมลนี้มีอยู่แล้ว', 409);
         } catch (Throwable $e2) {
