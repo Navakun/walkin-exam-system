@@ -299,6 +299,7 @@
             </div>
         </main>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
     <script>
         /* =======================
@@ -647,6 +648,7 @@
                 const items = only.sort((a, b) => a.booked_at < b.booked_at ? -1 : 1);
                 grouped = currentDay ? [{ day: currentDay, items }] : [];
                 render();
+                updatePassPieForDay(currentDay);
             }
             if (currentDay) updatePassPieForDay(currentDay);
             function shiftDay(delta) {
@@ -667,6 +669,7 @@
                 const todayISO = new Date().toISOString().slice(0, 10);
                 const pick = DAYS_INDEX.includes(todayISO) ? todayISO : (DAYS_INDEX[0] || todayISO);
                 setDay(pick);
+                updatePassPieForDay(pick);
             }
 
             // ====== Events ======
@@ -773,7 +776,6 @@
             document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') guardAuth(); });
         });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 </body>
 
