@@ -214,16 +214,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="chart-card">
-                    <div class="chart-card">
-                        <h5 class="h6 mb-3">จำนวนคนตามจำนวนข้อที่ทำถูก</h5>
-                        <div class="hscroll"> </div>
-                        <div class="hscroll-inner">
-                            <canvas id="histChart" class="chart-box" role="img"
-                                aria-label="ฮิสโตแกรมจำนวนนักศึกษาตามจำนวนข้อที่ทำถูก"></canvas>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Question statistics panel -->
@@ -345,7 +335,7 @@
         }
 
         // ---------- Charts ----------
-        let perQuestionChart, histChart;
+        let perQuestionChart;
         const kill = inst => { try { inst?.destroy(); } catch { } };
 
         function drawPerQuestionChart(rows) {
@@ -388,26 +378,6 @@
                     scales: {
                         x: { ticks: { autoSkip: false, maxRotation: 0, callback: (v) => String(labels[v]).replace('ข้อ ', '') }, grid: { display: false } },
                         y: { beginAtZero: true, ticks: { precision: 0 } }
-                    }
-                }
-            });
-        }
-
-        function drawHistogram(rows) {
-            const labels = (rows || []).map(r => Number(r.corrects || 0));
-            const students = (rows || []).map(r => Number(r.students || 0));
-
-            histChart?.destroy();
-            histChart = new Chart($('#histChart'), {
-                type: 'bar',
-                data: { labels, datasets: [{ label: 'จำนวนนักศึกษาที่ทำถูก n ข้อ', data: students }] },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { title: { display: true, text: 'จำนวนข้อที่ทำถูก' } },
-                        y: { beginAtZero: true, title: { display: true, text: 'จำนวนคน' }, ticks: { precision: 0 } }
                     }
                 }
             });
@@ -627,7 +597,6 @@
                 fillExamsetOptions(stats.examsets || []);
                 renderKPI(stats.totals || {}, stats.per_question || []);
                 drawPerQuestionChart(stats.per_question || []);
-                drawHistogram(stats.histogram || []);
                 renderQuestionTable(stats.per_question || []);
             } catch (e) {
                 err.textContent = e?.message || 'โหลดสถิติไม่สำเร็จ';
