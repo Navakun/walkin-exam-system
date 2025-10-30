@@ -57,6 +57,15 @@ try {
         'registered_last_30d'   => 0,
         'completed_today'       => 0,
         'exams_completed_total' => 0,
+
+        // ให้มี key นี้เสมอ (กันหายจาก response)
+        'passfail_day' => [
+            'passed' => 0,
+            'failed' => 0,
+            'total' => 0,
+            'pass_threshold' => 50.0,
+            'day' => null
+        ],
     ];
 
     // 1) รวมคำถามทั้งหมด
@@ -73,7 +82,6 @@ try {
 
     // 3) ลงทะเบียนวันนี้ / 7 วัน / 30 วัน  (prefer exam_slot_registrations → fallback exam_booking)
     $regSQLs = [
-        // ตารางใหม่
         'today' => "SELECT COUNT(*) FROM exam_slot_registrations WHERE registered_at >= {$todayStart} AND registered_at < {$todayEnd}",
         '7d'    => "SELECT COUNT(*) FROM exam_slot_registrations WHERE registered_at >= (NOW() - INTERVAL 7 DAY)",
         '30d'   => "SELECT COUNT(*) FROM exam_slot_registrations WHERE registered_at >= (NOW() - INTERVAL 30 DAY)",
@@ -88,7 +96,6 @@ try {
         $data['registered_last_7d']  = (int)$pdo->query($regSQLs['7d'])->fetchColumn();
         $data['registered_last_30d'] = (int)$pdo->query($regSQLs['30d'])->fetchColumn();
     } catch (Throwable $e) {
-        // fallback
         try {
             $data['registered_today']    = (int)$pdo->query($regFallback['today'])->fetchColumn();
             $data['registered_last_7d']  = (int)$pdo->query($regFallback['7d'])->fetchColumn();
@@ -108,46 +115,52 @@ try {
     }
 
     // ---------- (ใหม่) Pass/Fail ของวันตามพารามิเตอร์ ----------
-    $dayRaw = $_GET['day'] ?? '';
+    $dayRaw   = $_GET['day'] ?? '';
     $dayParam = substr($dayRaw, 0, 10);
 
-    // ✅ รองรับทั้ง mm/dd/yyyy และ yyyy-mm-dd
-    if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $dayParam)) {
+    // รองรับ MM/DD/YYYY
+    if ($dayParam && preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $dayParam)) {
         [$m, $d, $y] = array_map('intval', explode('/', $dayParam));
         $dayParam = sprintf('%04d-%02d-%02d', $y, $m, $d);
     }
 
+    // debug (ลบได้เมื่อเรียบร้อย)
+    $data['debug_day'] = $dayParam;
+
     if ($dayParam && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dayParam)) {
         $PASS_THRESHOLD = 50.0; // % เกณฑ์ผ่าน
 
+        // ใช้ end_time หรือ exam_slots.exam_date เพื่อนับให้ตรง "วันที่สอบ"
         $sql = "
-        SELECT
-          SUM(CASE WHEN pass_pct >= :th THEN 1 ELSE 0 END) AS passed,
-          SUM(CASE WHEN pass_pct  < :th THEN 1 ELSE 0 END) AS failed,
-          COUNT(*) AS total
-        FROM (
-          SELECT
-            s.session_id,
-            COALESCE(
-              s.score,
-              CASE WHEN s.questions_answered > 0
-                   THEN (s.correct_count * 100.0 / s.questions_answered)
-                   ELSE NULL
-              END,
-              0
-            ) AS pass_pct
-          FROM examsession s
-          WHERE s.end_time IS NOT NULL
-            AND DATE(s.end_time) = :day
-        ) t
-    ";
+            SELECT
+              SUM(CASE WHEN pass_pct >= :th THEN 1 ELSE 0 END) AS passed,
+              SUM(CASE WHEN pass_pct  < :th THEN 1 ELSE 0 END) AS failed,
+              COUNT(*) AS total
+            FROM (
+              SELECT
+                s.session_id,
+                COALESCE(
+                  s.score,  -- สมมติเป็น % 0–100
+                  CASE WHEN s.questions_answered > 0
+                       THEN (s.correct_count * 100.0 / s.questions_answered)
+                       ELSE NULL
+                  END,
+                  0.0
+                ) AS pass_pct
+              FROM examsession s
+              LEFT JOIN exam_slots sl ON sl.id = s.slot_id
+              WHERE s.end_time IS NOT NULL
+                AND ( DATE(s.end_time) = :day OR (sl.exam_date = :day) )
+            ) t
+        ";
 
         try {
             $st = $pdo->prepare($sql);
             $st->bindValue(':day', $dayParam, PDO::PARAM_STR);
-            $st->bindValue(':th', $PASS_THRESHOLD, PDO::PARAM_STR);
+            $st->bindValue(':th',  (string)$PASS_THRESHOLD, PDO::PARAM_STR);
             $st->execute();
             $row = $st->fetch(PDO::FETCH_ASSOC) ?: ['passed' => 0, 'failed' => 0, 'total' => 0];
+
             $data['passfail_day'] = [
                 'passed' => (int)($row['passed'] ?? 0),
                 'failed' => (int)($row['failed'] ?? 0),
@@ -156,7 +169,7 @@ try {
                 'day' => $dayParam,
             ];
         } catch (Throwable $e) {
-            // ไม่ให้ล้มทั้ง API ถ้าส่วน pass/fail คำนวณพลาด
+            // เงียบเพื่อไม่ล้มทั้ง API; ถ้าต้อง debug เพิ่มเติม: $data['passfail_error'] = $e->getMessage();
         }
     }
 
