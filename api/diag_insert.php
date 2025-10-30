@@ -14,3 +14,10 @@ try {
 } catch (PDOException $e) {
     echo json_encode(['ok' => false, 'code' => $e->getCode(), 'err' => $e->getMessage()]);
 }
+
+echo json_encode([
+    'mb_strtoupper' => function_exists('mb_strtoupper'),
+    'mb_strtolower' => function_exists('mb_strtolower'),
+    'mb_strlen'     => function_exists('mb_strlen'),
+    'mbstring_ext'  => extension_loaded('mbstring'),
+]);
