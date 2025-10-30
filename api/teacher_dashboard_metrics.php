@@ -106,6 +106,48 @@ try {
         $data['exams_completed_total'] = (int)$pdo->query("SELECT COUNT(*) FROM examsession WHERE end_time IS NOT NULL")->fetchColumn();
     } catch (Throwable $e) {
     }
+    // ---------- (ใหม่) Pass/Fail ของวันตามพารามิเตอร์ ----------
+    $dayParam = isset($_GET['day']) ? substr($_GET['day'], 0, 10) : '';
+    if ($dayParam && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dayParam)) {
+        $PASS_THRESHOLD = 50.0; // % เกณฑ์ผ่าน
+
+        $sql = "
+        SELECT
+          SUM(CASE WHEN pass_pct >= :th THEN 1 ELSE 0 END) AS passed,
+          SUM(CASE WHEN pass_pct  < :th THEN 1 ELSE 0 END) AS failed,
+          COUNT(*) AS total
+        FROM (
+          SELECT
+            s.session_id,
+            COALESCE(
+              s.score, -- สมมติว่าเป็น % 0-100
+              CASE WHEN s.questions_answered > 0
+                   THEN (s.correct_count * 100.0 / s.questions_answered)
+                   ELSE NULL
+              END,
+              0
+            ) AS pass_pct
+          FROM examsession s
+          WHERE s.end_time IS NOT NULL
+            AND DATE(s.end_time) = :day
+        ) t
+    ";
+
+        try {
+            $st = $pdo->prepare($sql);
+            $st->execute([':day' => $dayParam, ':th' => $PASS_THRESHOLD]);
+            $row = $st->fetch(PDO::FETCH_ASSOC) ?: ['passed' => 0, 'failed' => 0, 'total' => 0];
+            $data['passfail_day'] = [
+                'passed' => (int)($row['passed'] ?? 0),
+                'failed' => (int)($row['failed'] ?? 0),
+                'total'  => (int)($row['total']  ?? 0),
+                'pass_threshold' => $PASS_THRESHOLD,
+                'day' => $dayParam,
+            ];
+        } catch (Throwable $e) {
+            // ไม่ให้ล้มทั้ง API ถ้าส่วน pass/fail คำนวณพลาด
+        }
+    }
 
     echo json_encode(['status' => 'success', 'data' => $data], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {

@@ -247,6 +247,29 @@
                 </section>
             </div>
 
+            <!-- สัดส่วนสอบผ่าน/ไม่ผ่านตามวัน -->
+            <div class="grid mt-12">
+                <section class="card" style="flex: 0 0 420px; max-width: 520px;">
+                    <div class="reg-toolbar">
+                        <div class="reg-head">
+                            <h3 class="reg-title">สัดส่วนสอบผ่าน/ไม่ผ่าน (ตามวันที่เลือก)</h3>
+                            <p class="muted reg-sub" id="pfSubtitle">—</p>
+                        </div>
+                        <div class="reg-actions">
+                            <button id="pfSavePng" class="btn btn-ghost" type="button"
+                                title="บันทึกกราฟเป็นภาพ PNG">บันทึกเป็นภาพ</button>
+                        </div>
+                    </div>
+                    <div class="canvas-holder" style="max-height: 380px; overflow: visible;">
+                        <canvas id="passPie" width="400" height="300"
+                            aria-label="กราฟวงกลมสัดส่วนผู้สอบผ่านและไม่ผ่าน"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <!-- โหลด Chart.js (ใส่ครั้งเดียวพอ) -->
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
             <!-- Edit Profile Modal -->
             <div id="editProfileModal" class="modal-backdrop" hidden>
                 <div class="modal-card">
@@ -288,6 +311,92 @@
         // ---------- helpers ----------
         const ROOT = location.pathname.includes('/walkin-exam-system/') ? '/walkin-exam-system' : '';
         const API = `${ROOT}/api`;
+
+        // ====================== Pass/Fail Pie (ตามวันเดียวกับรายชื่อ) ======================
+        let passPieChart = null;
+
+        function setPfSubtitle(dayISO, total) {
+            const el = document.getElementById('pfSubtitle');
+            if (!el) return;
+            const d = new Date(dayISO);
+            const th = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            const label = isNaN(d) ? dayISO : `${d.getDate()} ${th[d.getMonth()]} ${d.getFullYear() + 543}`;
+            el.textContent = (typeof total === 'number') ? `${label} • sessions ที่จบ: ${total}` : label;
+        }
+
+        async function fetchPassFailByDay(dayISO) {
+            const token = localStorage.getItem('teacherToken') || '';
+            const url = `${API}/teacher_dashboard_metrics.php?day=${encodeURIComponent(dayISO)}`;
+            const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, cache: 'no-store' });
+            const raw = await res.text();
+            let d; try { d = JSON.parse(raw); } catch { throw new Error(raw); }
+            if (!res.ok || d.status !== 'success') throw new Error(d.message || `HTTP ${res.status}`);
+            return d.data?.passfail_day || { passed: 0, failed: 0, total: 0, pass_threshold: 50, day: dayISO };
+        }
+
+        function ensurePassPie() {
+            const el = document.getElementById('passPie');
+            if (!el) return null;
+            if (passPieChart) return passPieChart;
+
+            passPieChart = new Chart(el, {
+                type: 'doughnut',
+                data: {
+                    labels: ['ผ่าน', 'ไม่ผ่าน'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: ['#16a34a', '#ef4444'], // เขียว / แดง
+                        borderColor: '#ffffff',
+                        borderWidth: 2,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '55%',
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0) || 1;
+                                    const val = ctx.parsed || 0;
+                                    const pct = Math.round((val / total) * 1000) / 10;
+                                    return `${ctx.label}: ${val} คน (${pct.toFixed(1)}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // บันทึกเป็น PNG
+            document.getElementById('pfSavePng')?.addEventListener('click', () => {
+                const a = document.createElement('a');
+                a.href = passPieChart.toBase64Image('image/png', 1);
+                a.download = `passfail_${new Date().toISOString().slice(0, 10)}.png`;
+                a.click();
+            });
+
+            return passPieChart;
+        }
+
+        async function updatePassPieForDay(dayISO) {
+            try {
+                const chart = ensurePassPie();
+                if (!chart) return;
+
+                const { passed, failed, total } = await fetchPassFailByDay(dayISO);
+                chart.data.datasets[0].data = [passed || 0, failed || 0];
+                chart.update();
+
+                setPfSubtitle(dayISO, total);
+            } catch (e) {
+                console.warn('updatePassPieForDay failed:', e);
+                setPfSubtitle(dayISO, null);
+            }
+        }
 
         const setText = (id, val) => {
             const el = document.getElementById(id);
@@ -572,6 +681,7 @@
                 grouped = currentDay ? [{ day: currentDay, items }] : [];
                 render();
             }
+            if (currentDay) updatePassPieForDay(currentDay);
             function shiftDay(delta) {
                 if (!DAYS_INDEX.length) return;
                 if (!currentDay) currentDay = DAYS_INDEX[0];
