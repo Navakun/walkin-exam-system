@@ -205,6 +205,12 @@
     canvas {
       max-width: 100%
     }
+
+    .chart-wrap {
+      height: 280px;
+      max-height: 40vh;
+      min-height: 220px;
+    }
   </style>
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
@@ -317,15 +323,15 @@
             <canvas id="resultChart" height="160" aria-label="กราฟสรุปผลถูก/ผิด"></canvas>
           </div>
 
-          <div class="wrong-list">
-            <h4 style="margin:14px 0 6px">ข้อที่ตอบผิด</h4>
-            <div id="wrongContainer">—</div>
-          </div>
-
           <!-- เพิ่มกราฟใหม่ -->
           <h4 style="margin:14px 0 6px">ระดับผลลัพธ์การเรียนรู้</h4>
           <div class="chart-wrap">
             <canvas id="cognitiveChart" height="180" aria-label="กราฟสรุปความสามารถตามระดับ"></canvas>
+          </div>
+
+          <div class="wrong-list">
+            <h4 style="margin:14px 0 6px">ข้อที่ตอบผิด</h4>
+            <div id="wrongContainer">—</div>
           </div>
         </div>
       </div>
@@ -520,7 +526,6 @@
       if (!ctx) return;
       if (window._cogChartInstance) window._cogChartInstance.destroy();
 
-      // เตรียมข้อมูลนับจำนวนถูก/ผิดแยกตาม cognitive_level_id
       const levels = {
         1: { label: 'เข้าใจ (Understand)', correct: 0, total: 0 },
         2: { label: 'ประยุกต์ (Apply)', correct: 0, total: 0 },
@@ -528,17 +533,27 @@
       };
 
       items.forEach(q => {
-        const lvl = Number(q.cognitive_level_id ?? q.level_id ?? 0);
+        const lvl =
+          Number(q.cognitive_level_id ?? q.level_id ?? q.cognitiveLevelId ?? 0);
         if (!levels[lvl]) return;
         levels[lvl].total++;
-        if (q.is_correct === true || q.is_correct === '1' || q.is_correct === 1) levels[lvl].correct++;
+        if (toBool(q.is_correct ?? q.correct ?? q.isCorrect)) {
+          levels[lvl].correct++;
+        }
       });
 
       const labels = Object.values(levels).map(l => l.label);
       const correctData = Object.values(levels).map(l => l.correct);
       const totalData = Object.values(levels).map(l => l.total);
+      const incorrectData = totalData.map((t, i) => Math.max(0, t - correctData[i]));
 
-      const incorrectData = totalData.map((t, i) => t - correctData[i]);
+      // ถ้าไม่มีข้อมูลระดับเลย แสดงข้อความแจ้งแทน
+      const sumTotal = totalData.reduce((a, b) => a + b, 0);
+      if (!sumTotal) {
+        ctx.parentElement.innerHTML =
+          '<div style="padding:8px;color:#666">ไม่มีข้อมูลระดับผลลัพธ์ในรายการนี้</div>';
+        return;
+      }
 
       window._cogChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -552,6 +567,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          animation: false,
           plugins: { legend: { position: 'bottom' } },
           scales: {
             x: { stacked: true, title: { display: true, text: 'ระดับผลลัพธ์การเรียนรู้' } },
@@ -560,6 +576,7 @@
         }
       });
     }
+
     function renderWrongList(items) {
       const wrap = $('wrongContainer');
       if (!items || !items.length) { wrap.textContent = '—'; return; }
