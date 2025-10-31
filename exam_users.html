@@ -323,6 +323,10 @@
             <canvas id="resultChart" height="160" aria-label="กราฟสรุปผลถูก/ผิด"></canvas>
           </div>
 
+          <!-- ปุ่มสลับโหมด (วางไว้เหนือกราฟได้) -->
+          <label style="display:inline-flex;gap:6px;align-items:center;margin-top:8px">
+            <input type="checkbox" id="cogPercentToggle"> แสดงเป็นสัดส่วน (%)
+          </label>
           <!-- เพิ่มกราฟใหม่ -->
           <h4 style="margin:14px 0 6px">ระดับผลลัพธ์การเรียนรู้</h4>
           <div class="chart-wrap">
@@ -526,55 +530,85 @@
       if (!ctx) return;
       if (window._cogChartInstance) window._cogChartInstance.destroy();
 
-      const levels = {
+      // 1) เตรียม label ทั้งสามระดับให้ครบเสมอ
+      const LEVELS = {
         1: { label: 'เข้าใจ (Understand)', correct: 0, total: 0 },
         2: { label: 'ประยุกต์ (Apply)', correct: 0, total: 0 },
-        3: { label: 'วิเคราะห์ (Analyze)', correct: 0, total: 0 }
+        3: { label: 'วิเคราะห์ (Analyze)', correct: 0, total: 0 },
       };
 
+      // 2) นับถูก/รวม แยกตาม level
       items.forEach(q => {
-        const lvl =
-          Number(q.cognitive_level_id ?? q.level_id ?? q.cognitiveLevelId ?? 0);
-        if (!levels[lvl]) return;
-        levels[lvl].total++;
-        if (toBool(q.is_correct ?? q.correct ?? q.isCorrect)) {
-          levels[lvl].correct++;
+        // fallback: ถ้าไม่มี cognitive_level_id ให้ map จาก item_difficulty ชั่วคราว
+        let lvl = Number(q.cognitive_level_id ?? 0);
+        if (!lvl) {
+          const d = Number(q.item_difficulty ?? NaN);
+          if (Number.isFinite(d)) {
+            lvl = (d <= -0.50) ? 1 : (d >= 0.50 ? 3 : 2);
+          }
         }
+        if (!LEVELS[lvl]) return;  // ข้ามถ้าระดับไม่รู้จัก
+
+        LEVELS[lvl].total++;
+        if (q.is_correct === 1 || q.is_correct === '1' || q.is_correct === true) LEVELS[lvl].correct++;
       });
 
-      const labels = Object.values(levels).map(l => l.label);
-      const correctData = Object.values(levels).map(l => l.correct);
-      const totalData = Object.values(levels).map(l => l.total);
-      const incorrectData = totalData.map((t, i) => Math.max(0, t - correctData[i]));
+      const labels = [LEVELS[1].label, LEVELS[2].label, LEVELS[3].label];
+      const correct = [LEVELS[1].correct, LEVELS[2].correct, LEVELS[3].correct];
+      const total = [LEVELS[1].total, LEVELS[2].total, LEVELS[3].total];
+      const wrong = total.map((t, i) => Math.max(0, t - correct[i]));
 
-      // ถ้าไม่มีข้อมูลระดับเลย แสดงข้อความแจ้งแทน
-      const sumTotal = totalData.reduce((a, b) => a + b, 0);
-      if (!sumTotal) {
-        ctx.parentElement.innerHTML =
-          '<div style="padding:8px;color:#666">ไม่มีข้อมูลระดับผลลัพธ์ในรายการนี้</div>';
-        return;
-      }
+      // 3) โหมดแสดงผล: จำนวนจริง หรือ สัดส่วน (%)
+      const asPercent = !!document.getElementById('cogPercentToggle')?.checked;
+      const pct = (a, t) => t ? +(a * 100 / t).toFixed(1) : 0;
 
+      const dataCorrect = asPercent ? correct.map((v, i) => pct(v, total[i])) : correct;
+      const dataWrong = asPercent ? wrong.map((v, i) => pct(v, total[i])) : wrong;
+
+      // 4) วาดกราฟ
       window._cogChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
           labels,
           datasets: [
-            { label: 'ตอบถูก', data: correctData, backgroundColor: '#16a34a' },
-            { label: 'ตอบผิด', data: incorrectData, backgroundColor: '#ef4444' }
+            { label: asPercent ? 'ตอบถูก (%)' : 'ตอบถูก', data: dataCorrect, backgroundColor: '#16a34a' },
+            { label: asPercent ? 'ตอบผิด (%)' : 'ตอบผิด', data: dataWrong, backgroundColor: '#ef4444' }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          animation: false,
-          plugins: { legend: { position: 'bottom' } },
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const i = ctx.dataIndex;
+                  const t = total[i] || 0;
+                  const c = correct[i] || 0;
+                  const w = Math.max(0, t - c);
+                  const p = t ? (c * 100 / t).toFixed(1) : '0.0';
+                  return asPercent
+                    ? `${ctx.dataset.label}: ${ctx.formattedValue}% (ถูก ${c}/${t} = ${p}%)`
+                    : `${ctx.dataset.label}: ${ctx.formattedValue} (รวม ${t})`;
+                }
+              }
+            }
+          },
           scales: {
             x: { stacked: true, title: { display: true, text: 'ระดับผลลัพธ์การเรียนรู้' } },
-            y: { stacked: true, beginAtZero: true, title: { display: true, text: 'จำนวนข้อ' } }
+            y: {
+              stacked: true,
+              beginAtZero: true,
+              title: { display: true, text: asPercent ? 'สัดส่วน (%)' : 'จำนวนข้อ' },
+              max: asPercent ? 100 : undefined
+            }
           }
         }
       });
+
+      // รีเรนเดอร์เมื่อสลับโหมด
+      document.getElementById('cogPercentToggle')?.addEventListener('change', () => drawCognitiveChart(items), { once: true });
     }
 
     function renderWrongList(items) {
