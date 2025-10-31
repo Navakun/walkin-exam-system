@@ -223,6 +223,14 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* ทำให้กราฟ “ผอม” โดยรวม (เตี้ยลง) */
+    .chart-wrap.thin {
+      height: 180px;
+      max-height: 30vh;
+    }
+
+    /* ปรับตัวเลขได้ */
   </style>
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
@@ -339,7 +347,7 @@
           <label style="display:inline-flex;align-items:center;gap:8px;margin-bottom:8px">
             <input id="chkCogPercent" type="checkbox"> แสดงเป็นสัดส่วน (%)
           </label>
-          <div class="chart-wrap" style="height:280px;max-height:40vh">
+          <div class="chart-wrap thin" style="height:180px;max-height:30vh">
             <canvas id="cogChartGrouped" aria-label="ตอบถูก/ตอบผิด ต่อด้าน"></canvas>
           </div>
 
@@ -577,42 +585,41 @@
       vals.map((v, i) => totals[i] ? +((v * 100) / totals[i]).toFixed(2) : 0);
 
     // กราฟ “ตอบถูก vs ตอบผิด” วางข้างกันในแต่ละด้าน
-    function drawCognitiveGrouped(items, usePercent) {
-      const { labels, totals, correct, wrong } = computeCogBuckets(items);
-      const dataCorrect = usePercent ? asPercent(correct, totals) : correct;
-      const dataWrong = usePercent ? asPercent(wrong, totals) : wrong;
+    function drawCognitiveGrouped(items, usePercent = false) {
+      const { labels, totals, corrects, wrongs } = computeCogBuckets(items);
+      const dataCorrect = usePercent ? asPercent(corrects, totals) : corrects;
+      const dataWrong = usePercent ? asPercent(wrongs, totals) : wrongs;
+      const yTitle = usePercent ? 'สัดส่วน (%)' : 'จำนวนข้อ';
 
       const ctx = document.getElementById('cogChartGrouped');
-      if (!ctx) return;
-      _cogGroupedChart?.destroy();
+      if (_cogGroupedChart) _cogGroupedChart.destroy();
 
       _cogGroupedChart = new Chart(ctx, {
         type: 'bar',
         data: {
           labels,
           datasets: [
-            { label: 'ตอบถูก', data: dataCorrect, borderWidth: 1 },
-            { label: 'ตอบผิด', data: dataWrong, borderWidth: 1 },
+            { label: 'ตอบถูก', data: dataCorrect, borderWidth: 1, barThickness: 22, maxBarThickness: 28 },
+            { label: 'ตอบผิด', data: dataWrong, borderWidth: 1, barThickness: 22, maxBarThickness: 28 },
           ]
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'top' },
-            tooltip: {
-              callbacks: usePercent ? {
-                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}%`
-              } : {}
-            }
-          },
+          maintainAspectRatio: false,     // ให้ยืดตามกล่องครอบ
+          plugins: { legend: { position: 'top' } },
           scales: {
-            x: { stacked: false, title: { display: true, text: 'ระดับผลลัพธ์การเรียนรู้' } },
+            x: {
+              stacked: false,
+              title: { display: true, text: 'ระดับผลลัพธ์การเรียนรู้' },
+              // ↓ ยิ่งน้อยแท่งยิ่งผอม/มีช่องว่างมากขึ้น
+              barPercentage: 0.65,
+              categoryPercentage: 0.70,
+            },
             y: {
               beginAtZero: true,
-              title: { display: true, text: usePercent ? 'สัดส่วน (%)' : 'จำนวนข้อ' },
+              title: { display: true, text: yTitle },
               suggestedMax: usePercent ? 100 : undefined,
-              ticks: usePercent ? { callback: (v) => v + '%' } : { precision: 0 }
+              ticks: usePercent ? { callback: v => v + '%' } : {}
             }
           }
         }
