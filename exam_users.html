@@ -335,16 +335,12 @@
             <canvas id="resultChart" height="160" aria-label="กราฟสรุปผลถูก/ผิด"></canvas>
           </div>
 
-          <!-- เพิ่มกราฟใหม่ -->
-          <h4 style="margin:14px 0 6px">ระดับผลลัพธ์การเรียนรู้</h4>
-
           <h4 style="margin:14px 0 6px">ระดับผลลัพธ์การเรียนรู้</h4>
           <label style="display:inline-flex;align-items:center;gap:8px;margin-bottom:8px">
             <input id="chkCogPercent" type="checkbox"> แสดงเป็นสัดส่วน (%)
           </label>
-
-          <div class="chart-wrap">
-            <canvas id="cogChartStacked" height="220" aria-label="กราฟแยกระดับ (แท่งซ้อน ถูก/ผิด)"></canvas>
+          <div class="chart-wrap" style="height:280px;max-height:40vh">
+            <canvas id="cogChartGrouped" aria-label="ตอบถูก/ตอบผิด ต่อด้าน"></canvas>
           </div>
 
           <div class="wrong-list">
@@ -520,7 +516,7 @@
       $('detailBackdrop').style.display = 'none';
       $('detailModal').style.display = 'none';
       _chartInstance?.destroy();
-      _cogStackedChart?.destroy();
+      _cogGroupedChart?.destroy();
     }
     window.closeDetailModal = closeDetailModal;
 
@@ -553,6 +549,9 @@
     }
 
     // ---------- Cognitive stacked chart ----------
+    let _cogGroupedChart = null;
+
+    // รวมยอดต่อระดับ
     function computeCogBuckets(items) {
       const levels = {
         1: { th: 'เข้าใจ (Understand)', total: 0, correct: 0 },
@@ -569,13 +568,55 @@
       }
       const labels = [levels[1].th, levels[2].th, levels[3].th];
       const totals = [levels[1].total, levels[2].total, levels[3].total];
-      const corrects = [levels[1].correct, levels[2].correct, levels[3].correct];
-      const wrongs = totals.map((t, i) => Math.max(0, t - corrects[i]));
-      return { labels, totals, corrects, wrongs };
+      const correct = [levels[1].correct, levels[2].correct, levels[3].correct];
+      const wrong = totals.map((t, i) => Math.max(0, t - correct[i]));
+      return { labels, totals, correct, wrong };
     }
 
-    function asPercent(values, totals) {
-      return values.map((v, i) => totals[i] ? +((v * 100) / totals[i]).toFixed(2) : 0);
+    const asPercent = (vals, totals) =>
+      vals.map((v, i) => totals[i] ? +((v * 100) / totals[i]).toFixed(2) : 0);
+
+    // กราฟ “ตอบถูก vs ตอบผิด” วางข้างกันในแต่ละด้าน
+    function drawCognitiveGrouped(items, usePercent) {
+      const { labels, totals, correct, wrong } = computeCogBuckets(items);
+      const dataCorrect = usePercent ? asPercent(correct, totals) : correct;
+      const dataWrong = usePercent ? asPercent(wrong, totals) : wrong;
+
+      const ctx = document.getElementById('cogChartGrouped');
+      if (!ctx) return;
+      _cogGroupedChart?.destroy();
+
+      _cogGroupedChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'ตอบถูก', data: dataCorrect, borderWidth: 1 },
+            { label: 'ตอบผิด', data: dataWrong, borderWidth: 1 },
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+              callbacks: usePercent ? {
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}%`
+              } : {}
+            }
+          },
+          scales: {
+            x: { stacked: false, title: { display: true, text: 'ระดับผลลัพธ์การเรียนรู้' } },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: usePercent ? 'สัดส่วน (%)' : 'จำนวนข้อ' },
+              suggestedMax: usePercent ? 100 : undefined,
+              ticks: usePercent ? { callback: (v) => v + '%' } : { precision: 0 }
+            }
+          }
+        }
+      });
     }
 
     function drawCognitiveStacked(items, usePercent) {
@@ -673,6 +714,12 @@
         const chk = document.getElementById('chkCogPercent');
         drawCognitiveStacked(items, chk?.checked === true);
         if (chk) chk.onchange = (e) => drawCognitiveStacked(items, e.target.checked === true);
+        // หลังคำนวณ total/correct/wrong/score เสร็จ
+        drawCognitiveGrouped(items, document.getElementById('chkCogPercent')?.checked === true);
+        if (chk) {
+          chk.onchange = (e) => drawCognitiveGrouped(items, e.target.checked === true);
+        }
+
 
         // update score cell
         if (Number.isFinite(score)) {
