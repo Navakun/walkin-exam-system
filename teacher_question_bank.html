@@ -102,7 +102,7 @@
                             <th>ID</th>
                             <th>คำถาม</th>
                             <th>คำตอบที่ถูก</th>
-                            <th>ระดับความยาก</th>
+                            <th>ระดับผลลัพธ์การเรียนรู้</th>
                             <th>ค่าอำนาจจำแนก</th>
                             <th>จำนวนผู้ทำ</th>
                             <th>ตอบถูก (%)</th>
@@ -165,7 +165,7 @@
         let pageSize = 25;
 
         // ---- Utils ----
-        function getDifficultyText(d) { const v = parseFloat(d); if (v === 0.150) return 'ง่าย'; if (v === 0.500) return 'ปานกลาง'; if (v === 0.850) return 'ยาก'; return 'ไม่ระบุ'; }
+        function getDifficultyText(d) { const v = parseFloat(d); if (v === 0.150) return 'ด้านความเข้าใจ (Understand)'; if (v === 0.500) return 'ด้านประยุกต์ (Apply)'; if (v === 0.850) return 'ด้านวิเคราะห์ (Analyze)'; return 'ไม่ระบุ'; }
         function getDifficultyClass(d) { const v = parseFloat(d); if (v === 0.150) return 'difficulty-easy'; if (v === 0.500) return 'difficulty-medium'; if (v === 0.850) return 'difficulty-hard'; return 'difficulty-unknown'; }
         function getDifficultyHTML(d) { return `<span class="${getDifficultyClass(d)}">${getDifficultyText(d)}</span>`; }
         function formatCorrectRate(total, correct) { if (!total) return '0%'; return ((correct / total) * 100).toFixed(1) + '%'; }
