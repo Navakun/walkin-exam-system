@@ -18,7 +18,7 @@ function out(array $o, int $code = 200): void
   exit;
 }
 
-/* ---------- auth: ต้องเป็นอาจารย์/ผู้สอน ---------- */
+/* ---------- auth ---------- */
 $h = array_change_key_case(getallheaders(), CASE_LOWER);
 if (!isset($h['authorization']) || !preg_match('/bearer\s+(\S+)/i', $h['authorization'], $m)) {
   out(['status' => 'error', 'message' => 'Unauthorized'], 401);
@@ -59,7 +59,7 @@ try {
         ELSE 'registered'
       END AS status
     FROM examsession s
-    JOIN student st      ON st.student_id = s.student_id
+    JOIN student st         ON st.student_id = s.student_id
     LEFT JOIN exam_slots sl ON sl.id = s.slot_id
     LEFT JOIN examset   es  ON es.examset_id = sl.examset_id
     WHERE s.session_id = :sid
@@ -71,20 +71,17 @@ try {
 
   $examsetId = (int)($meta['examset_id'] ?? 0);
 
-  /* 2) สร้างรายการ question_id ที่ใช้เรียง */
+  /* 2) build ordered question_id list */
   $qidList = [];
   if (!empty($meta['question_ids'])) {
     $tmp = json_decode($meta['question_ids'], true);
-    if (is_array($tmp)) {
-      foreach ($tmp as $q) {
-        $q = (int)$q;
-        if ($q > 0) $qidList[] = $q;
-      }
+    if (is_array($tmp)) foreach ($tmp as $q) {
+      $q = (int)$q;
+      if ($q > 0) $qidList[] = $q;
     }
   }
   if (!$qidList) {
     try {
-      // เผื่อไม่มีตาราง mapping จะโดน catch แล้วข้ามไป
       $pdo->query("SELECT 1 FROM exam_set_question LIMIT 1");
       $st = $pdo->prepare("
         SELECT question_id
@@ -131,7 +128,7 @@ try {
     ], 200);
   }
 
-  /* 3) ดึงรายละเอียดแบบปลอดภัยเรื่องคอลลเลชัน + เลือกคำตอบล่าสุด */
+  /* 3) fetch answers + question info (✅ เพิ่ม cognitive_level_id + labels) */
   $params = [':sid' => $sid];
   $ph = [];
   $case = [];
@@ -147,6 +144,10 @@ try {
       q.question_id,
       q.question_text,
       q.correct_choice,
+      q.cognitive_level_id,             -- ✅ ระดับผลลัพธ์ใน question
+      cl.code       AS cognitive_code,  -- (optional) code: UNDERSTAND/APPLY/ANALYZE
+      cl.th_label   AS cognitive_th,    -- (optional) ป้ายไทย
+      cl.en_label   AS cognitive_en,    -- (optional) ป้ายอังกฤษ
       a.selected_choice AS student_choice,
       CASE
         WHEN a.selected_choice IS NULL THEN 0
@@ -156,11 +157,13 @@ try {
       co.content AS student_choice_text,
       cc.content AS correct_choice_text
     FROM (
-      SELECT q.question_id, q.question_text, q.correct_choice,
+      SELECT q.question_id, q.question_text, q.correct_choice, q.cognitive_level_id,
              CASE q.question_id " . implode(' ', $case) . " ELSE 9999 END AS ordx
       FROM question q
       WHERE q.question_id IN (" . implode(',', $ph) . ")
     ) q
+    LEFT JOIN cognitive_levels cl
+           ON cl.level_id = q.cognitive_level_id
     LEFT JOIN (
       SELECT a1.*
       FROM answer a1
@@ -207,7 +210,6 @@ try {
     'items'           => $items
   ], 200);
 } catch (Throwable $e) {
-  // ล็อกเต็ม ๆ เพื่อไล่ 500 ง่าย ๆ
   error_log('[get_session_answers] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
   out(['status' => 'error', 'message' => 'Server error'], 500);
 }
