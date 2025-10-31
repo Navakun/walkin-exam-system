@@ -56,7 +56,6 @@
         <a href="teaching_materials.html"><i class="fa-solid fa-file-arrow-up"></i> อัปโหลดสื่อการสอน</a>
         <a href="teacher_open_materials.html"><i class="fa-solid fa-book-open-reader"></i> ดูสื่อการสอน</a>
       </nav>
-
     </aside>
 
     <!-- Main -->
@@ -91,24 +90,29 @@
             <option value="D">D</option>
           </select>
 
-          <label for="difficulty">ระดับความยาก:</label>
-          <select id="difficulty" required>
-            <option value="easy">ง่าย</option>
-            <option value="medium" selected>ปานกลาง</option>
-            <option value="hard">ยาก</option>
+          <!-- เปลี่ยนจากระดับความยาก เป็นระดับผลลัพธ์การเรียนรู้ -->
+          <label for="cognitive_level">ระดับผลลัพธ์การเรียนรู้:</label>
+          <select id="cognitive_level" required>
+            <option value="1">ด้านความเข้าใจ (Understand)</option>
+            <option value="2">ด้านประยุกต์ (Apply)</option>
+            <option value="3">ด้านวิเคราะห์ (Analyze)</option>
           </select>
 
-          <button type="submit" class="submit-btn sticky-save">บันทึกคำถาม</button>
+          <button type="submit" class="submit-btn sticky-save">
+            <i class="fa-solid fa-floppy-disk"></i> บันทึกคำถาม
+          </button>
         </form>
       </div>
     </main>
   </div>
+
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
     (function init() {
       if (!window.Swal) { console.error('SweetAlert2 ไม่ได้โหลด'); return; }
 
+      // ---------- SweetAlert helpers ----------
       const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 2200, timerProgressBar: true });
       const showError = (msg) => Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: msg });
       const showWarn = (title, text, goto) =>
@@ -117,13 +121,12 @@
       const showLoading = (t = 'กำลังบันทึก...') => Swal.fire({ title: t, allowOutsideClick: false, allowEscapeKey: false, didOpen: () => Swal.showLoading() });
       const closeLoading = () => Swal.close();
 
-      // ตั้งชื่ออาจารย์บน sidebar (ถ้ามีใน token/localStorage)
+      // ---------- Auth / UI header ----------
       const token = localStorage.getItem('teacherToken');
       if (!token) { showWarn('ยังไม่ได้เข้าสู่ระบบ', 'กรุณาเข้าสู่ระบบสำหรับอาจารย์ก่อน', 'teacher_login.html'); return; }
-      document.getElementById('teacherName').textContent =
-        localStorage.getItem('instructor_name') || 'อาจารย์ผู้สอน';
+      document.getElementById('teacherName').textContent = localStorage.getItem('instructor_name') || 'อาจารย์ผู้สอน';
 
-      // ปุ่มนำทาง
+      // ---------- Nav buttons ----------
       document.getElementById('backBtn').onclick = () => (location.href = 'teacher_question_bank.html');
       document.getElementById('logoutBtn').onclick = () => {
         Swal.fire({
@@ -138,10 +141,15 @@
         });
       };
 
-      // map difficulty → float
-      const toFloatDifficulty = (label) => label === 'easy' ? 0.15 : (label === 'hard' ? 0.85 : 0.5);
+      // ---------- Legacy bridge: แปลงระดับการคิดเป็นตัวเลข (ถ้า API เก่ายังอ่าน difficulty) ----------
+      const diffFromCognitive = (cogId) => {
+        // 1=UNDERSTAND, 2=APPLY, 3=ANALYZE
+        if (cogId === 1) return 0.15;
+        if (cogId === 3) return 0.85;
+        return 0.50;
+      };
 
-      // submit
+      // ---------- Submit ----------
       const form = document.getElementById('addQuestionForm');
       const saveBtn = document.querySelector('.submit-btn');
 
@@ -154,29 +162,33 @@
         });
         if (!ok.isConfirmed) return;
 
-        const payload = {
-          question_text: document.getElementById('question_text').value.trim(),
-          choices: {
-            A: document.getElementById('choiceA').value.trim(),
-            B: document.getElementById('choiceB').value.trim(),
-            C: document.getElementById('choiceC').value.trim(),
-            D: document.getElementById('choiceD').value.trim(),
-          },
-          correct_choice: document.getElementById('correct_choice').value,
-          difficulty: toFloatDifficulty(document.getElementById('difficulty').value),
-          difficulty_level: toFloatDifficulty(document.getElementById('difficulty').value)
-        };
+        const qtext = document.getElementById('question_text').value.trim();
+        const A = document.getElementById('choiceA').value.trim();
+        const B = document.getElementById('choiceB').value.trim();
+        const C = document.getElementById('choiceC').value.trim();
+        const D = document.getElementById('choiceD').value.trim();
+        const correct = document.getElementById('correct_choice').value;
+        const cogId = Number(document.getElementById('cognitive_level').value || 1);
 
-        if (!payload.question_text || !payload.choices.A || !payload.choices.B || !payload.choices.C || !payload.choices.D) {
-          return showError('กรุณากรอกข้อมูลให้ครบทุกช่อง');
-        }
+        if (!qtext || !A || !B || !C || !D) return showError('กรุณากรอกข้อมูลให้ครบทุกช่อง');
+        if (!/^[ABCD]$/.test(correct)) return showError('คำตอบที่ถูกต้องต้องเป็น A, B, C หรือ D');
+
+        // payload ใหม่ (หลัก) + ใส่ฟิลด์ legacy ให้ด้วยเพื่อความเข้ากันได้
+        const payload = {
+          question_text: qtext,
+          choices: { A, B, C, D },
+          correct_choice: correct,
+          cognitive_level_id: cogId,                 // <-- ใช้คอลัมน์ใหม่ใน DB
+          difficulty: diffFromCognitive(cogId),      // <-- เผื่อ API เก่าที่อ่าน difficulty
+          difficulty_level: diffFromCognitive(cogId) // <-- เผื่อมีอีกชื่อหนึ่งในโค้ดเก่า
+        };
 
         const originalText = saveBtn.textContent;
         saveBtn.disabled = true; saveBtn.classList.add('is-loading'); saveBtn.textContent = 'กำลังบันทึก...';
         showLoading('กำลังบันทึก...');
 
         try {
-          const res = await fetch('api/create_question.php', {
+          const res = await fetch('api/create_question.php', { // ใช้ endpoint เดิมของคุณ
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
             body: JSON.stringify(payload),
@@ -207,6 +219,7 @@
       });
     })();
   </script>
+
 </body>
 
 </html>
