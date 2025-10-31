@@ -140,48 +140,65 @@ try {
   }
 
   $sql = "
-    SELECT
-      q.question_id,
-      q.question_text,
-      q.correct_choice,
-      q.cognitive_level_id,             -- ✅ ระดับผลลัพธ์ใน question
-      cl.code       AS cognitive_code,  -- (optional) code: UNDERSTAND/APPLY/ANALYZE
-      cl.th_label   AS cognitive_th,    -- (optional) ป้ายไทย
-      cl.en_label   AS cognitive_en,    -- (optional) ป้ายอังกฤษ
-      a.selected_choice AS student_choice,
-      CASE
-        WHEN a.selected_choice IS NULL THEN 0
-        WHEN CAST(a.selected_choice AS BINARY) = CAST(q.correct_choice AS BINARY) THEN 1
-        ELSE 0
-      END AS is_correct,
-      co.content AS student_choice_text,
-      cc.content AS correct_choice_text
-    FROM (
-      SELECT q.question_id, q.question_text, q.correct_choice, q.cognitive_level_id,
-             CASE q.question_id " . implode(' ', $case) . " ELSE 9999 END AS ordx
-      FROM question q
-      WHERE q.question_id IN (" . implode(',', $ph) . ")
-    ) q
-    LEFT JOIN cognitive_levels cl
-           ON cl.level_id = q.cognitive_level_id
-    LEFT JOIN (
-      SELECT a1.*
-      FROM answer a1
-      JOIN (
-        SELECT question_id, MAX(answer_id) AS last_id
-        FROM answer
-        WHERE session_id = :sid
-        GROUP BY question_id
-      ) la ON la.last_id = a1.answer_id
-    ) a  ON a.question_id = q.question_id
-    LEFT JOIN choice co
-           ON co.question_id = q.question_id
-          AND CAST(co.label AS BINARY) = CAST(a.selected_choice AS BINARY)
-    LEFT JOIN choice cc
-           ON cc.question_id = q.question_id
-          AND CAST(cc.label AS BINARY) = CAST(q.correct_choice AS BINARY)
-    ORDER BY q.ordx, q.question_id
-  ";
+  SELECT
+    q.question_id,
+    q.question_text,
+    q.correct_choice,
+    q.cognitive_level_id,
+
+    /* ✅ ใส่ป้ายชื่อระดับโดยตรงด้วย CASE */
+    CASE q.cognitive_level_id
+      WHEN 1 THEN 'UNDERSTAND'
+      WHEN 2 THEN 'APPLY'
+      WHEN 3 THEN 'ANALYZE'
+      ELSE NULL
+    END AS cognitive_code,
+    CASE q.cognitive_level_id
+      WHEN 1 THEN 'เข้าใจ'
+      WHEN 2 THEN 'ประยุกต์'
+      WHEN 3 THEN 'วิเคราะห์'
+      ELSE NULL
+    END AS cognitive_th,
+    CASE q.cognitive_level_id
+      WHEN 1 THEN 'Understand'
+      WHEN 2 THEN 'Apply'
+      WHEN 3 THEN 'Analyze'
+      ELSE NULL
+    END AS cognitive_en,
+
+    a.selected_choice AS student_choice,
+    CASE
+      WHEN a.selected_choice IS NULL THEN 0
+      WHEN CAST(a.selected_choice AS BINARY) = CAST(q.correct_choice AS BINARY) THEN 1
+      ELSE 0
+    END AS is_correct,
+    co.content AS student_choice_text,
+    cc.content AS correct_choice_text
+  FROM (
+    SELECT q.question_id, q.question_text, q.correct_choice, q.cognitive_level_id,
+           CASE q.question_id " . implode(' ', $case) . " ELSE 9999 END AS ordx
+    FROM question q
+    WHERE q.question_id IN (" . implode(',', $ph) . ")
+  ) q
+  /* ไม่ต้อง JOIN ตารางอื่นแล้ว */
+  LEFT JOIN (
+    SELECT a1.*
+    FROM answer a1
+    JOIN (
+      SELECT question_id, MAX(answer_id) AS last_id
+      FROM answer
+      WHERE session_id = :sid
+      GROUP BY question_id
+    ) la ON la.last_id = a1.answer_id
+  ) a  ON a.question_id = q.question_id
+  LEFT JOIN choice co
+         ON co.question_id = q.question_id
+        AND CAST(co.label AS BINARY) = CAST(a.selected_choice AS BINARY)
+  LEFT JOIN choice cc
+         ON cc.question_id = q.question_id
+        AND CAST(cc.label AS BINARY) = CAST(q.correct_choice AS BINARY)
+  ORDER BY q.ordx, q.question_id
+";
   $st = $pdo->prepare($sql);
   $st->execute($params);
   $items = $st->fetchAll(PDO::FETCH_ASSOC);
