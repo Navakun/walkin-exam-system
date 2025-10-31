@@ -338,17 +338,13 @@
           <!-- เพิ่มกราฟใหม่ -->
           <h4 style="margin:14px 0 6px">ระดับผลลัพธ์การเรียนรู้</h4>
 
+          <h4 style="margin:14px 0 6px">ระดับผลลัพธ์การเรียนรู้</h4>
           <label style="display:inline-flex;align-items:center;gap:8px;margin-bottom:8px">
             <input id="chkCogPercent" type="checkbox"> แสดงเป็นสัดส่วน (%)
           </label>
 
-          <div class="cog-grid">
-            <div class="chart-wrap">
-              <canvas id="cogChartCorrect" height="180" aria-label="กราฟตอบถูกแยกระดับ"></canvas>
-            </div>
-            <div class="chart-wrap">
-              <canvas id="cogChartWrong" height="180" aria-label="กราฟตอบผิดแยกระดับ"></canvas>
-            </div>
+          <div class="chart-wrap">
+            <canvas id="cogChartStacked" height="220" aria-label="กราฟแยกระดับ (แท่งซ้อน ถูก/ผิด)"></canvas>
           </div>
 
           <div class="wrong-list">
@@ -552,9 +548,9 @@
 
     let _cogCorrectChart = null;
     let _cogWrongChart = null;
+    let _cogStackedChart = null;
 
     function computeCogBuckets(items) {
-      // เตรียมถังนับ ถูก/ผิด ต่อระดับ 1–3
       const levels = {
         1: { th: 'เข้าใจ (Understand)', total: 0, correct: 0 },
         2: { th: 'ประยุกต์ (Apply)', total: 0, correct: 0 },
@@ -569,54 +565,54 @@
         }
       }
       const labels = [levels[1].th, levels[2].th, levels[3].th];
-      const corrects = [levels[1].correct, levels[2].correct, levels[3].correct];
       const totals = [levels[1].total, levels[2].total, levels[3].total];
+      const corrects = [levels[1].correct, levels[2].correct, levels[3].correct];
       const wrongs = totals.map((t, i) => Math.max(0, t - corrects[i]));
-      return { labels, corrects, wrongs, totals };
+      return { labels, totals, corrects, wrongs };
     }
 
     function asPercent(values, totals) {
       return values.map((v, i) => totals[i] ? +((v * 100) / totals[i]).toFixed(2) : 0);
     }
 
-    function drawTwoCognitiveCharts(items, usePercent) {
-      const { labels, corrects, wrongs, totals } = computeCogBuckets(items);
+    function drawCognitiveStacked(items, usePercent) {
+      const { labels, totals, corrects, wrongs } = computeCogBuckets(items);
       const dCorrect = usePercent ? asPercent(corrects, totals) : corrects;
       const dWrong = usePercent ? asPercent(wrongs, totals) : wrongs;
-      const yTitle = usePercent ? 'สัดส่วน (%)' : 'จำนวนข้อ';
 
-      // กราฟ "ตอบถูก"
-      const ctxC = document.getElementById('cogChartCorrect');
-      if (_cogCorrectChart) _cogCorrectChart.destroy();
-      _cogCorrectChart = new Chart(ctxC, {
-        type: 'bar',
-        data: { labels, datasets: [{ label: 'ตอบถูก', data: dCorrect }] },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, title: { display: true, text: 'ตอบถูก' } },
-          scales: {
-            x: { title: { display: true, text: 'ระดับผลลัพธ์การเรียนรู้' } },
-            y: { beginAtZero: true, title: { display: true, text: yTitle } }
-          }
-        }
-      });
+      const ctx = document.getElementById('cogChartStacked');
+      if (_cogStackedChart) _cogStackedChart.destroy();
 
-      // กราฟ "ตอบผิด"
-      const ctxW = document.getElementById('cogChartWrong');
-      if (_cogWrongChart) _cogWrongChart.destroy();
-      _cogWrongChart = new Chart(ctxW, {
+      _cogStackedChart = new Chart(ctx, {
         type: 'bar',
-        data: { labels, datasets: [{ label: 'ตอบผิด', data: dWrong }] },
+        data: {
+          labels,
+          datasets: [
+            { label: 'ตอบถูก', data: dCorrect, stack: 'cog' },
+            { label: 'ตอบผิด', data: dWrong, stack: 'cog' },
+          ]
+        },
         options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, title: { display: true, text: 'ตอบผิด' } },
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: false }
+          },
           scales: {
-            x: { title: { display: true, text: 'ระดับผลลัพธ์การเรียนรู้' } },
-            y: { beginAtZero: true, title: { display: true, text: yTitle } }
+            x: { stacked: true, title: { display: true, text: 'ระดับผลลัพธ์การเรียนรู้' } },
+            y: {
+              stacked: true,
+              beginAtZero: true,
+              title: { display: true, text: usePercent ? 'สัดส่วน (%)' : 'จำนวนข้อ' },
+              suggestedMax: usePercent ? 100 : undefined,
+              ticks: usePercent ? { callback: (v) => v + '%' } : {}
+            }
           }
         }
       });
     }
+
 
     function renderWrongList(items) {
       const wrap = $('wrongContainer');
