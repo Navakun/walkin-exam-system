@@ -347,7 +347,7 @@
           <label style="display:inline-flex;align-items:center;gap:8px;margin-bottom:8px">
             <input id="chkCogPercent" type="checkbox"> แสดงเป็นสัดส่วน (%)
           </label>
-          <div class="chart-wrap thin" style="height:180px;max-height:30vh">
+          <div class="chart-wrap thin">
             <canvas id="cogChartGrouped" aria-label="ตอบถูก/ตอบผิด ต่อด้าน"></canvas>
           </div>
 
@@ -368,18 +368,14 @@
 
     // ---------- State ----------
     let SESSIONS = [];
-    let _chartInstance = null;     // โดนัท ถูก/ผิด
-    let _cogStackedChart = null;   // แท่งซ้อนรวม ถูก/ผิด ต่อระดับ
+    let _chartInstance = null;      // โดนัท ถูก/ผิด
+    let _cogGroupedChart = null;    // แท่งคู่ ถูก/ผิด ต่อระดับ
 
     // ---------- Utils ----------
     const $ = (id) => document.getElementById(id);
-    const esc = (s) => String(s ?? '')
-      .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-      .replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const toBool = (v) => (v === 1 || v === '1' || v === true ||
-      (typeof v === 'string' && v.toLowerCase() === 'true') || v === '✓');
-    const fmtDT = (s) => !s ? '-' : new Date((s + '').replace(' ', 'T'))
-      .toLocaleString('th-TH', { hour12: false });
+    const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const toBool = (v) => (v === 1 || v === '1' || v === true || (typeof v === 'string' && v.toLowerCase() === 'true') || v === '✓');
+    const fmtDT = (s) => !s ? '-' : new Date((s + '').replace(' ', 'T')).toLocaleString('th-TH', { hour12: false });
     const getTeacherToken = () =>
       localStorage.getItem('teacherToken') ||
       localStorage.getItem('instructorToken') ||
@@ -388,11 +384,9 @@
 
     // ---------- Boot ----------
     document.addEventListener('DOMContentLoaded', () => {
-      // show name
       const name = localStorage.getItem('instructor_name');
       if (name) $('teacherName').textContent = name;
 
-      // logout
       $('logoutBtn')?.addEventListener('click', () => {
         if (confirm('ต้องการออกจากระบบหรือไม่')) {
           localStorage.removeItem('teacherToken');
@@ -404,10 +398,8 @@
         }
       });
 
-      // search
       $('searchInput')?.addEventListener('input', (e) => filterTable(e.target.value));
 
-      // open details
       $('results-container')?.addEventListener('click', (e) => {
         const btn = e.target.closest('.btn-details');
         if (!btn) return;
@@ -530,10 +522,10 @@
 
     function fillDetailMeta(det) {
       $('detailMeta').innerHTML = `
-      <div><b>รหัสนิสิต:</b> ${esc(det.student_id)} &nbsp;&nbsp; <b>ชื่อ-สกุล:</b> ${esc(det.student_name)}</div>
-      <div><b>ชุดข้อสอบ:</b> ${esc(det.exam_title)}</div>
-      <div><b>เวลาเริ่ม:</b> ${esc(fmtDT(det.start_time))} &nbsp;&nbsp; <b>เวลาสิ้นสุด:</b> ${esc(fmtDT(det.end_time))}</div>
-      <div><b>สถานะ:</b> ${esc(det.status)}</div>`;
+    <div><b>รหัสนิสิต:</b> ${esc(det.student_id)} &nbsp;&nbsp; <b>ชื่อ-สกุล:</b> ${esc(det.student_name)}</div>
+    <div><b>ชุดข้อสอบ:</b> ${esc(det.exam_title)}</div>
+    <div><b>เวลาเริ่ม:</b> ${esc(fmtDT(det.start_time))} &nbsp;&nbsp; <b>เวลาสิ้นสุด:</b> ${esc(fmtDT(det.end_time))}</div>
+    <div><b>สถานะ:</b> ${esc(det.status)}</div>`;
     }
     function fillKPIs({ total, correct, wrong, score }) {
       $('kpi_total').textContent = Number.isFinite(total) ? total : '-';
@@ -547,19 +539,11 @@
       _chartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: { labels: ['ถูก', 'ผิด'], datasets: [{ data: [correct || 0, wrong || 0] }] },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom' } },
-          cutout: '60%'
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '60%' }
       });
     }
 
-    // ---------- Cognitive stacked chart ----------
-    let _cogGroupedChart = null;
-
-    // รวมยอดต่อระดับ
+    // ---------- Cognitive: คำนวณ & วาดแท่งคู่ ----------
     function computeCogBuckets(items) {
       const levels = {
         1: { th: 'เข้าใจ (Understand)', total: 0, correct: 0 },
@@ -576,71 +560,30 @@
       }
       const labels = [levels[1].th, levels[2].th, levels[3].th];
       const totals = [levels[1].total, levels[2].total, levels[3].total];
-      const correct = [levels[1].correct, levels[2].correct, levels[3].correct];
-      const wrong = totals.map((t, i) => Math.max(0, t - correct[i]));
-      return { labels, totals, correct, wrong };
+      const corrects = [levels[1].correct, levels[2].correct, levels[3].correct];
+      const wrongs = totals.map((t, i) => Math.max(0, t - corrects[i]));
+      return { labels, totals, corrects, wrongs };   // ← ชื่อคีย์ให้ตรงกับผู้เรียก
     }
+    const asPercent = (vals, totals) => vals.map((v, i) => totals[i] ? +((v * 100) / totals[i]).toFixed(2) : 0);
 
-    const asPercent = (vals, totals) =>
-      vals.map((v, i) => totals[i] ? +((v * 100) / totals[i]).toFixed(2) : 0);
-
-    // กราฟ “ตอบถูก vs ตอบผิด” วางข้างกันในแต่ละด้าน
     function drawCognitiveGrouped(items, usePercent = false) {
-      const { labels, totals, corrects, wrongs } = computeCogBuckets(items);
-      const dataCorrect = usePercent ? asPercent(corrects, totals) : corrects;
-      const dataWrong = usePercent ? asPercent(wrongs, totals) : wrongs;
-      const yTitle = usePercent ? 'สัดส่วน (%)' : 'จำนวนข้อ';
+      const cvs = document.getElementById('cogChartGrouped');
+      if (!cvs) return;
 
-      const ctx = document.getElementById('cogChartGrouped');
-      if (_cogGroupedChart) _cogGroupedChart.destroy();
-
-      _cogGroupedChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [
-            { label: 'ตอบถูก', data: dataCorrect, borderWidth: 1, barThickness: 22, maxBarThickness: 28 },
-            { label: 'ตอบผิด', data: dataWrong, borderWidth: 1, barThickness: 22, maxBarThickness: 28 },
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,     // ให้ยืดตามกล่องครอบ
-          plugins: { legend: { position: 'top' } },
-          scales: {
-            x: {
-              stacked: false,
-              title: { display: true, text: 'ระดับผลลัพธ์การเรียนรู้' },
-              // ↓ ยิ่งน้อยแท่งยิ่งผอม/มีช่องว่างมากขึ้น
-              barPercentage: 0.65,
-              categoryPercentage: 0.70,
-            },
-            y: {
-              beginAtZero: true,
-              title: { display: true, text: yTitle },
-              suggestedMax: usePercent ? 100 : undefined,
-              ticks: usePercent ? { callback: v => v + '%' } : {}
-            }
-          }
-        }
-      });
-    }
-
-    function drawCognitiveStacked(items, usePercent) {
       const { labels, totals, corrects, wrongs } = computeCogBuckets(items);
       const dCorrect = usePercent ? asPercent(corrects, totals) : corrects;
       const dWrong = usePercent ? asPercent(wrongs, totals) : wrongs;
+      const yTitle = usePercent ? 'สัดส่วน (%)' : 'จำนวนข้อ';
 
-      const ctx = document.getElementById('cogChartStacked');
-      if (_cogStackedChart) _cogStackedChart.destroy();
+      if (_cogGroupedChart) _cogGroupedChart.destroy();
 
-      _cogStackedChart = new Chart(ctx, {
+      _cogGroupedChart = new Chart(cvs, {
         type: 'bar',
         data: {
           labels,
           datasets: [
-            { label: 'ตอบถูก', data: dCorrect, stack: 'cog' },
-            { label: 'ตอบผิด', data: dWrong, stack: 'cog' },
+            { label: 'ตอบถูก', data: dCorrect, borderWidth: 1, barThickness: 22, maxBarThickness: 28 },
+            { label: 'ตอบผิด', data: dWrong, borderWidth: 1, barThickness: 22, maxBarThickness: 28 },
           ]
         },
         options: {
@@ -649,13 +592,14 @@
           plugins: { legend: { position: 'top' } },
           scales: {
             x: {
-              stacked: true,
-              title: { display: true, text: 'ระดับผลลัพธ์การเรียนรู้' }
+              stacked: false,
+              title: { display: true, text: 'ระดับผลลัพธ์การเรียนรู้' },
+              barPercentage: 0.65,
+              categoryPercentage: 0.70,
             },
             y: {
-              stacked: true,
               beginAtZero: true,
-              title: { display: true, text: usePercent ? 'สัดส่วน (%)' : 'จำนวนข้อ' },
+              title: { display: true, text: yTitle },
               suggestedMax: usePercent ? 100 : undefined,
               ticks: usePercent ? { callback: (v) => v + '%' } : {}
             }
@@ -717,18 +661,12 @@
         drawChart(correct, wrong);
         renderWrongList(items);
 
-        // กราฟแท่งซ้อนรวม ถูก/ผิด ต่อระดับ (toggle %)
+        // วาดกราฟแท่งคู่ + toggle %
         const chk = document.getElementById('chkCogPercent');
-        drawCognitiveStacked(items, chk?.checked === true);
-        if (chk) chk.onchange = (e) => drawCognitiveStacked(items, e.target.checked === true);
-        // หลังคำนวณ total/correct/wrong/score เสร็จ
-        drawCognitiveGrouped(items, document.getElementById('chkCogPercent')?.checked === true);
-        if (chk) {
-          chk.onchange = (e) => drawCognitiveGrouped(items, e.target.checked === true);
-        }
+        drawCognitiveGrouped(items, chk?.checked === true);
+        if (chk) chk.onchange = (e) => drawCognitiveGrouped(items, e.target.checked === true);
 
-
-        // update score cell
+        // อัปเดตคอลัมน์คะแนน
         if (Number.isFinite(score)) {
           row.dataset.score = String(score);
           const scoreCell = row.children?.[3];
